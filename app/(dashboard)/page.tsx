@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button"
 import type { TypingProfile, JobStatus } from "@/types"
 import { useRouter } from "next/navigation"
 
-function DashboardContent() {
+function DashboardInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const jobIdParam = searchParams.get("jobId")
@@ -78,7 +78,6 @@ function DashboardContent() {
 
     eventSource.onerror = () => {
       eventSource.close()
-      // Reconnect after delay
       setTimeout(() => {
         if (currentJobIdRef.current) {
           startProgressStream(currentJobIdRef.current)
@@ -91,7 +90,6 @@ function DashboardContent() {
     }
   }, [])
 
-  // Load job if jobId is provided
   useEffect(() => {
     if (jobIdParam) {
       loadJob(jobIdParam)
@@ -311,7 +309,7 @@ function DashboardContent() {
 export default function DashboardPage() {
   return (
     <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}>
-      <DashboardContent />
+      <DashboardInner />
     </Suspense>
   )
 }
