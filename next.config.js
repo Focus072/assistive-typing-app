@@ -5,9 +5,6 @@ const nextConfig = {
       bodySizeLimit: '10mb',
     },
   },
-  outputFileTracingIncludes: {
-    '/dashboard': ['./app/(dashboard)/**/*'],
-  },
 }
 
 module.exports = nextConfig
