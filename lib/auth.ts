@@ -24,6 +24,7 @@ export const authOptions: NextAuthOptions = {
           where: { email: credentials.email },
         })
 
+        // Only allow email/password login if user has a password set
         if (!user || !user.password) {
           return null
         }
@@ -54,27 +55,7 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async signIn({ user, account, profile }) {
-      if (account?.provider === "google" && account.access_token && account.refresh_token) {
-        // Store Google OAuth tokens
-        const expiresAt = account.expires_at
-          ? new Date(account.expires_at * 1000)
-          : new Date(Date.now() + 3600 * 1000)
-
-        await prisma.googleToken.upsert({
-          where: { userId: user.id! },
-          create: {
-            userId: user.id!,
-            accessToken: account.access_token,
-            refreshToken: account.refresh_token,
-            expiresAt,
-          },
-          update: {
-            accessToken: account.access_token,
-            refreshToken: account.refresh_token,
-            expiresAt,
-          },
-        })
-      }
+      // Allow sign in - PrismaAdapter will create user if needed
       return true
     },
     async session({ session, token }) {
@@ -87,6 +68,34 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.sub = user.id
       }
+      
+      // Store Google OAuth tokens after user is created
+      if (account?.provider === "google" && account.access_token && account.refresh_token && user?.id) {
+        try {
+          const expiresAt = account.expires_at
+            ? new Date(account.expires_at * 1000)
+            : new Date(Date.now() + 3600 * 1000)
+
+          await prisma.googleToken.upsert({
+            where: { userId: user.id },
+            create: {
+              userId: user.id,
+              accessToken: account.access_token,
+              refreshToken: account.refresh_token,
+              expiresAt,
+            },
+            update: {
+              accessToken: account.access_token,
+              refreshToken: account.refresh_token,
+              expiresAt,
+            },
+          })
+        } catch (error) {
+          console.error("Error saving Google token:", error)
+          // Don't fail the sign-in if token save fails
+        }
+      }
+      
       return token
     },
   },

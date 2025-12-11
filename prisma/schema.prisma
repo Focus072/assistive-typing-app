@@ -13,7 +13,9 @@ datasource db {
 model User {
   id            String   @id @default(cuid())
   email         String   @unique
-  password      String
+  password      String?  // Optional - Google OAuth users don't have passwords
+  name          String?
+  image         String?
   createdAt     DateTime @default(now())
   googleTokens  GoogleToken?
   jobs          Job[]
