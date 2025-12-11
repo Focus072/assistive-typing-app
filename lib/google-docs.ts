@@ -171,6 +171,36 @@ export async function insertBatch(
   }
 }
 
+/**
+ * Delete a small number of characters (used to simulate backspace mistakes).
+ */
+export async function deleteText(
+  userId: string,
+  documentId: string,
+  deleteCount: number
+): Promise<void> {
+  if (deleteCount <= 0) return
+  const docs = await getDocsClient(userId)
+  const endIndex = await getDocumentEndIndex(userId, documentId)
+  const startIndex = Math.max(1, endIndex - deleteCount)
+
+  await docs.documents.batchUpdate({
+    documentId,
+    requestBody: {
+      requests: [
+        {
+          deleteContentRange: {
+            range: {
+              startIndex,
+              endIndex,
+            },
+          },
+        },
+      ],
+    },
+  })
+}
+
 export async function handleThrottling(
   jobId: string,
   currentDelay: number

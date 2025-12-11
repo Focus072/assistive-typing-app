@@ -1,7 +1,49 @@
 import { inngest } from "../client"
-import { processBatch, calculateNextDelay } from "@/lib/batching"
 import { prisma } from "@/lib/prisma"
+import { buildBatchPlan } from "@/lib/typing-engine"
+import { insertBatch, deleteText, handleThrottling, resetThrottling } from "@/lib/google-docs"
 import type { TypingProfile } from "@/types"
+import { MIN_INTERVAL_MS } from "@/lib/batching"
+
+async function loadJob(jobId: string) {
+  return prisma.job.findUnique({ where: { id: jobId } })
+}
+
+async function markCompleted(jobId: string, totalChars: number) {
+  await prisma.job.update({
+    where: { id: jobId },
+    data: { status: "completed", completedAt: new Date(), currentIndex: totalChars },
+  })
+  await prisma.jobEvent.create({
+    data: { jobId, type: "completed", details: JSON.stringify({ totalChars }) },
+  })
+}
+
+async function markFailed(jobId: string, code: string) {
+  await prisma.job.update({
+    where: { id: jobId },
+    data: { status: "failed", errorCode: code },
+  })
+  await prisma.jobEvent.create({
+    data: { jobId, type: "failed", details: JSON.stringify({ error: code }) },
+  })
+}
+
+async function ensureRunnable(jobId: string) {
+  const job = await loadJob(jobId)
+  if (!job) throw new Error(`Job ${jobId} not found`)
+  if (job.status !== "running") throw new Error(`Job status: ${job.status}`)
+  if (job.expiresAt < new Date()) {
+    await prisma.job.update({ where: { id: jobId }, data: { status: "expired" } })
+    throw new Error("Job expired")
+  }
+  const runtimeHours = (Date.now() - job.createdAt.getTime()) / (1000 * 60 * 60)
+  if (runtimeHours > 8) {
+    await markFailed(jobId, "MAX_RUNTIME_EXCEEDED")
+    throw new Error("Max runtime exceeded")
+  }
+  return job
+}
 
 export const typingJob = inngest.createFunction(
   { id: "typing-job" },
@@ -9,72 +51,102 @@ export const typingJob = inngest.createFunction(
   async ({ event, step }) => {
     const { jobId } = event.data
 
-    // Load job
-    const job = await step.run("load-job", async () => {
-      return await prisma.job.findUnique({
-        where: { id: jobId },
-      })
-    })
+    const job = await step.run("load-job", async () => ensureRunnable(jobId))
 
-    if (!job) {
-      throw new Error(`Job ${jobId} not found`)
-    }
+    const next = await step.run("process-next-batch", async () => {
+      const fresh = await ensureRunnable(jobId)
+      const plan = buildBatchPlan(
+        fresh.textContent,
+        fresh.currentIndex,
+        fresh.totalChars,
+        fresh.durationMinutes,
+        fresh.typingProfile as TypingProfile
+      )
 
-    // Check if job should continue
-    const shouldContinue = await step.run("check-status", async () => {
-      const currentJob = await prisma.job.findUnique({
-        where: { id: jobId },
-      })
-      return currentJob?.status === "running"
-    })
+      if (!plan.batch) {
+        await markCompleted(jobId, fresh.totalChars)
+        return { done: true }
+      }
 
-    if (!shouldContinue) {
-      return { message: "Job is not running", jobId }
-    }
-
-    // Process batch
-    const result = await step.run("process-batch", async () => {
-      return await processBatch(jobId, job.userId, job.documentId)
-    })
-
-    if (!result.shouldContinue) {
-      return { message: "Job completed or stopped", jobId, result }
-    }
-
-    if (!result.success && result.error === "RATE_LIMIT") {
-      // Wait for throttling delay
-      const delay = await step.run("get-throttle-delay", async () => {
-        const currentJob = await prisma.job.findUnique({
+      // idempotency: skip if hash matches last
+      if (fresh.lastBatchHash && fresh.lastBatchHash === plan.batch.hash) {
+        await prisma.job.update({
           where: { id: jobId },
+          data: { currentIndex: plan.batch.endIndex },
         })
-        return currentJob?.throttleDelayMs || 2000
+        return { done: false, delay: plan.totalDelayMs }
+      }
+
+      // Insert text
+      const insertRes = await insertBatch(fresh.userId, fresh.documentId, plan.batch)
+      if (!insertRes.success) {
+        if (insertRes.error === "GOOGLE_AUTH_REVOKED") {
+          await markFailed(jobId, "GOOGLE_AUTH_REVOKED")
+          return { done: true }
+        }
+        if (insertRes.error === "RATE_LIMIT") {
+          const newDelay = await handleThrottling(jobId, fresh.throttleDelayMs)
+          await prisma.jobEvent.create({
+            data: {
+              jobId,
+              type: "throttled",
+              details: JSON.stringify({ delay: newDelay }),
+            },
+          })
+          return { done: false, delay: newDelay }
+        }
+        await prisma.jobEvent.create({
+          data: {
+            jobId,
+            type: "batch_error",
+            details: JSON.stringify({ error: insertRes.error, batch: plan.batch.hash }),
+          },
+        })
+        return { done: false, delay: Math.max(fresh.throttleDelayMs, MIN_INTERVAL_MS) }
+      }
+
+      // Optional mistake simulation: delete a char and move index back
+      if (plan.mistakePlan.hasMistake) {
+        await deleteText(fresh.userId, fresh.documentId, plan.mistakePlan.deleteCount)
+      }
+
+      // Update job state
+      await prisma.job.update({
+        where: { id: jobId },
+        data: {
+          currentIndex: plan.batch.endIndex - (plan.mistakePlan.hasMistake ? plan.mistakePlan.deleteCount : 0),
+          lastBatchHash: plan.batch.hash,
+          throttleDelayMs: MIN_INTERVAL_MS,
+        },
       })
 
-      await step.sleep("throttle-wait", `${delay}ms`)
-      
-      // Retry batch
-      return await step.sendEvent("retry-batch", {
-        name: "job/batch",
-        data: { jobId },
+      await prisma.jobEvent.create({
+        data: {
+          jobId,
+          type: "batch_success",
+          details: JSON.stringify({
+            insertedChars: plan.batch.text.length,
+            currentIndex: plan.batch.endIndex,
+            delayMs: plan.totalDelayMs,
+          }),
+        },
       })
-    }
 
-    // Calculate next delay
-    const delay = await step.run("calculate-delay", async () => {
-      return await calculateNextDelay(jobId, job.typingProfile as TypingProfile)
+      await resetThrottling(jobId)
+      return { done: false, delay: plan.totalDelayMs }
     })
 
-    // Schedule next batch
-    if (delay > 0) {
-      await step.sleep("wait-for-next-batch", `${delay}ms`)
-      
-      return await step.sendEvent("next-batch", {
-        name: "job/batch",
-        data: { jobId },
-      })
+    if (next.done) {
+      return { message: "Job completed", jobId }
     }
 
-    return { message: "Batch processed", jobId, result }
+    const delay = Math.max(
+      "delay" in next && typeof next.delay === "number" ? next.delay : MIN_INTERVAL_MS,
+      MIN_INTERVAL_MS
+    )
+    await step.sleep("wait-next-batch", `${delay}ms`)
+    await step.sendEvent("next-batch", { name: "job/batch", data: { jobId } })
+    return { message: "Scheduled next batch", jobId, delay }
   }
 )
 
@@ -84,63 +156,95 @@ export const typingBatch = inngest.createFunction(
   async ({ event, step }) => {
     const { jobId } = event.data
 
-    // Load job
-    const job = await step.run("load-job", async () => {
-      return await prisma.job.findUnique({
-        where: { id: jobId },
-      })
-    })
+    const next = await step.run("process-next-batch", async () => {
+      const fresh = await ensureRunnable(jobId)
+      const plan = buildBatchPlan(
+        fresh.textContent,
+        fresh.currentIndex,
+        fresh.totalChars,
+        fresh.durationMinutes,
+        fresh.typingProfile as TypingProfile
+      )
 
-    if (!job) {
-      return { message: "Job not found", jobId }
-    }
+      if (!plan.batch) {
+        await markCompleted(jobId, fresh.totalChars)
+        return { done: true }
+      }
 
-    // Check status
-    if (job.status !== "running") {
-      return { message: `Job status: ${job.status}`, jobId }
-    }
-
-    // Process batch
-    const result = await step.run("process-batch", async () => {
-      return await processBatch(jobId, job.userId, job.documentId)
-    })
-
-    if (!result.shouldContinue) {
-      return { message: "Job completed", jobId, result }
-    }
-
-    if (!result.success && result.error === "RATE_LIMIT") {
-      const delay = await step.run("get-throttle-delay", async () => {
-        const currentJob = await prisma.job.findUnique({
+      if (fresh.lastBatchHash && fresh.lastBatchHash === plan.batch.hash) {
+        await prisma.job.update({
           where: { id: jobId },
+          data: { currentIndex: plan.batch.endIndex },
         })
-        return currentJob?.throttleDelayMs || 2000
+        return { done: false, delay: plan.totalDelayMs }
+      }
+
+      const insertRes = await insertBatch(fresh.userId, fresh.documentId, plan.batch)
+      if (!insertRes.success) {
+        if (insertRes.error === "GOOGLE_AUTH_REVOKED") {
+          await markFailed(jobId, "GOOGLE_AUTH_REVOKED")
+          return { done: true }
+        }
+        if (insertRes.error === "RATE_LIMIT") {
+          const newDelay = await handleThrottling(jobId, fresh.throttleDelayMs)
+          await prisma.jobEvent.create({
+            data: {
+              jobId,
+              type: "throttled",
+              details: JSON.stringify({ delay: newDelay }),
+            },
+          })
+          return { done: false, delay: newDelay }
+        }
+        await prisma.jobEvent.create({
+          data: {
+            jobId,
+            type: "batch_error",
+            details: JSON.stringify({ error: insertRes.error, batch: plan.batch.hash }),
+          },
+        })
+        return { done: false, delay: Math.max(fresh.throttleDelayMs, MIN_INTERVAL_MS) }
+      }
+
+      if (plan.mistakePlan.hasMistake) {
+        await deleteText(fresh.userId, fresh.documentId, plan.mistakePlan.deleteCount)
+      }
+
+      await prisma.job.update({
+        where: { id: jobId },
+        data: {
+          currentIndex: plan.batch.endIndex - (plan.mistakePlan.hasMistake ? plan.mistakePlan.deleteCount : 0),
+          lastBatchHash: plan.batch.hash,
+          throttleDelayMs: MIN_INTERVAL_MS,
+        },
       })
 
-      await step.sleep("throttle-wait", `${delay}ms`)
-      
-      return await step.sendEvent("retry-batch", {
-        name: "job/batch",
-        data: { jobId },
+      await prisma.jobEvent.create({
+        data: {
+          jobId,
+          type: "batch_success",
+          details: JSON.stringify({
+            insertedChars: plan.batch.text.length,
+            currentIndex: plan.batch.endIndex,
+            delayMs: plan.totalDelayMs,
+          }),
+        },
       })
-    }
 
-    // Calculate next delay
-    const delay = await step.run("calculate-delay", async () => {
-      return await calculateNextDelay(jobId, job.typingProfile as TypingProfile)
+      await resetThrottling(jobId)
+      return { done: false, delay: plan.totalDelayMs }
     })
 
-    if (delay > 0) {
-      await step.sleep("wait-for-next-batch", `${delay}ms`)
-      
-      return await step.sendEvent("next-batch", {
-        name: "job/batch",
-        data: { jobId },
-      })
+    if (next.done) {
+      return { message: "Job completed", jobId }
     }
 
-    return { message: "Batch processed", jobId, result }
+    const delay = Math.max(
+      "delay" in next && typeof next.delay === "number" ? next.delay : MIN_INTERVAL_MS,
+      MIN_INTERVAL_MS
+    )
+    await step.sleep("wait-next-batch", `${delay}ms`)
+    await step.sendEvent("next-batch", { name: "job/batch", data: { jobId } })
+    return { message: "Scheduled next batch", jobId, delay }
   }
 )
-
-
