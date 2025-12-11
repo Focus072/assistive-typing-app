@@ -1,20 +1,44 @@
 "use client"
 
-import { useState } from "react"
-import { signIn } from "next-auth/react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect, Suspense } from "react"
+import { signIn, useSession } from "next-auth/react"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
-export default function LoginPage() {
+function LoginPageInner() {
   const router = useRouter()
+  const { data: session, status } = useSession()
+  const searchParams = useSearchParams()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+
+  // Redirect to dashboard if already authenticated (check this first)
+  useEffect(() => {
+    if (status === "authenticated" && session) {
+      // User is authenticated - redirect immediately, ignore error params
+      const callbackUrl = searchParams.get("callbackUrl")
+      // Clean callbackUrl - remove error params
+      const cleanCallbackUrl = callbackUrl?.split("&error=")[0].split("?error=")[0]
+      const targetUrl = cleanCallbackUrl?.startsWith("/") ? cleanCallbackUrl : "/dashboard"
+      // Use replace to avoid adding to history and remove error from URL
+      window.location.replace(targetUrl)
+      return
+    }
+    
+    // Only show error if NOT authenticated
+    if (status === "unauthenticated") {
+      const errorParam = searchParams.get("error")
+      if (errorParam === "OAuthCallback") {
+        setError("Google sign-in failed. Please try again.")
+      }
+    }
+  }, [status, session, searchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -122,4 +146,10 @@ export default function LoginPage() {
   )
 }
 
-
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPageInner />
+    </Suspense>
+  )
+}

@@ -154,9 +154,10 @@ export const authOptions: NextAuthOptions = {
         // #endregion
         return token
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error)
         console.error("[NextAuth] Error in jwt callback:", error)
         // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/edc11742-e69a-445c-9523-36ad1186a0ce',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/auth.ts:114',message:'jwt callback error caught',data:{errorMessage:error?.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+        fetch('http://127.0.0.1:7242/ingest/edc11742-e69a-445c-9523-36ad1186a0ce',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/auth.ts:114',message:'jwt callback error caught',data:{errorMessage},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
         // #endregion
         // Return token even if there's an error
         return token
@@ -202,9 +203,10 @@ export const authOptions: NextAuthOptions = {
           // #endregion
           console.log("[NextAuth] Google token saved successfully for user:", user.id)
         } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error)
           console.error("[NextAuth] Error saving Google token in events (non-blocking):", error)
           // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/edc11742-e69a-445c-9523-36ad1186a0ce',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/auth.ts:261',message:'events.signIn token save error',data:{errorMessage:error?.message,userId:user?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+          fetch('http://127.0.0.1:7242/ingest/edc11742-e69a-445c-9523-36ad1186a0ce',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/auth.ts:261',message:'events.signIn token save error',data:{errorMessage,userId:user?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
           // #endregion
           // Don't throw - this is non-critical and won't affect OAuth flow
         }
@@ -213,12 +215,6 @@ export const authOptions: NextAuthOptions = {
         fetch('http://127.0.0.1:7242/ingest/edc11742-e69a-445c-9523-36ad1186a0ce',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/auth.ts:290',message:'events.signIn conditions not met',data:{hasUser:!!user,hasAccount:!!account,provider:account?.provider,hasAccessToken:!!account?.access_token,hasRefreshToken:!!account?.refresh_token,userId:user?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run6',hypothesisId:'F'})}).catch(()=>{});
         // #endregion
       }
-    },
-    async error({ error }) {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/edc11742-e69a-445c-9523-36ad1186a0ce',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/auth.ts:294',message:'NextAuth error event',data:{errorMessage:error?.message,errorType:error?.type,errorStack:error?.stack},timestamp:Date.now(),sessionId:'debug-session',runId:'run6',hypothesisId:'J'})}).catch(()=>{});
-      // #endregion
-      console.error("[NextAuth] Error event:", error)
     },
   },
   session: {
