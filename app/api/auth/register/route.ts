@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 
+export const dynamic = 'force-dynamic'
+
 export async function POST(request: Request) {
   try {
     const { email, password } = await request.json()
@@ -20,6 +22,7 @@ export async function POST(request: Request) {
       )
     }
 
+    // Check if user already exists
     const existingUser = await prisma.user.findUnique({
       where: { email },
     })
@@ -31,8 +34,10 @@ export async function POST(request: Request) {
       )
     }
 
+    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10)
 
+    // Create user with password
     const user = await prisma.user.create({
       data: {
         email,
@@ -44,10 +49,26 @@ export async function POST(request: Request) {
       { message: "User created successfully", userId: user.id },
       { status: 201 }
     )
-  } catch (error) {
+  } catch (error: any) {
     console.error("Registration error:", error)
+    
+    // Provide more specific error messages
+    if (error.code === 'P2002') {
+      return NextResponse.json(
+        { error: "User already exists" },
+        { status: 400 }
+      )
+    }
+    
+    if (error.message?.includes('password')) {
+      return NextResponse.json(
+        { error: "Database schema error. Please contact support." },
+        { status: 500 }
+      )
+    }
+    
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: error.message || "Internal server error" },
       { status: 500 }
     )
   }
