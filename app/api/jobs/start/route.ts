@@ -99,11 +99,23 @@ export async function POST(request: Request) {
       data: { status: "running" },
     })
 
-    // Trigger Inngest function
-    await inngest.send({
-      name: "job/start",
-      data: { jobId: job.id },
-    })
+    // Trigger Inngest function (non-blocking failure)
+    try {
+      await inngest.send({
+        name: "job/start",
+        data: { jobId: job.id },
+      })
+    } catch (err: any) {
+      console.error("Inngest dispatch failed (job still created and running):", err)
+      await prisma.jobEvent.create({
+        data: {
+          jobId: job.id,
+          type: "start_dispatch_failed",
+          details: JSON.stringify({ message: err?.message ?? "unknown error" }),
+        },
+      })
+      // keep status running; UI can retry if needed
+    }
 
     return NextResponse.json({ jobId: job.id })
   } catch (error: any) {
