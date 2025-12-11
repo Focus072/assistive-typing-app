@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { useSearchParams } from "next/navigation"
 import { TextInput } from "@/components/TextInput"
 import { TimeSelector } from "@/components/TimeSelector"
@@ -28,10 +28,16 @@ export default function DashboardPage() {
 
   // Job state
   const [currentJobId, setCurrentJobId] = useState<string | null>(jobIdParam)
+  const currentJobIdRef = useRef<string | null>(jobIdParam)
   const [jobStatus, setJobStatus] = useState<JobStatus>("pending")
   const [currentIndex, setCurrentIndex] = useState(0)
   const [totalChars, setTotalChars] = useState(0)
   const [jobDurationMinutes, setJobDurationMinutes] = useState(30)
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    currentJobIdRef.current = currentJobId
+  }, [currentJobId])
 
   const loadJob = useCallback(async (id: string) => {
     try {
@@ -74,8 +80,8 @@ export default function DashboardPage() {
       eventSource.close()
       // Reconnect after delay
       setTimeout(() => {
-        if (currentJobId) {
-          startProgressStream(currentJobId)
+        if (currentJobIdRef.current) {
+          startProgressStream(currentJobIdRef.current)
         }
       }, 2000)
     }
