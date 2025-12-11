@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useSearchParams } from "next/navigation"
 import { TextInput } from "@/components/TextInput"
 import { TimeSelector } from "@/components/TimeSelector"
@@ -33,15 +33,7 @@ export default function DashboardPage() {
   const [totalChars, setTotalChars] = useState(0)
   const [jobDurationMinutes, setJobDurationMinutes] = useState(30)
 
-  // Load job if jobId is provided
-  useEffect(() => {
-    if (jobIdParam) {
-      loadJob(jobIdParam)
-      startProgressStream(jobIdParam)
-    }
-  }, [jobIdParam])
-
-  const loadJob = async (id: string) => {
+  const loadJob = useCallback(async (id: string) => {
     try {
       const response = await fetch(`/api/jobs/${id}`)
       if (response.ok) {
@@ -57,9 +49,9 @@ export default function DashboardPage() {
     } catch (error) {
       console.error("Failed to load job:", error)
     }
-  }
+  }, [])
 
-  const startProgressStream = (id: string) => {
+  const startProgressStream = useCallback((id: string) => {
     const eventSource = new EventSource(`/api/progress/stream?jobId=${id}`)
 
     eventSource.onmessage = (event) => {
@@ -91,7 +83,15 @@ export default function DashboardPage() {
     return () => {
       eventSource.close()
     }
-  }
+  }, [])
+
+  // Load job if jobId is provided
+  useEffect(() => {
+    if (jobIdParam) {
+      loadJob(jobIdParam)
+      startProgressStream(jobIdParam)
+    }
+  }, [jobIdParam, loadJob, startProgressStream])
 
   const handleCreateDocument = async (title: string): Promise<string> => {
     const response = await fetch("/api/google-docs/create", {
