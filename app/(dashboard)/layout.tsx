@@ -1,20 +1,37 @@
-import { redirect } from "next/navigation"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+"use client"
+
+import { useSession } from "next-auth/react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { SignOutButton } from "@/components/SignOutButton"
+import { useEffect } from "react"
 
-export const dynamic = 'force-dynamic'
-
-export default async function DashboardLayout({
+export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const session = await getServerSession(authOptions)
+  const { data: session, status } = useSession()
+  const router = useRouter()
 
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/login")
+    }
+  }, [status, router])
+
+  // Show loading state while checking session
+  if (status === "loading") {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div>Loading...</div>
+      </div>
+    )
+  }
+
+  // Don't render if not authenticated (redirect will happen)
   if (!session) {
-    redirect("/login")
+    return null
   }
 
   return (
