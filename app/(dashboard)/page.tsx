@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import { useSearchParams } from "next/navigation"
+
+export const dynamic = 'force-dynamic'
 import { TextInput } from "@/components/TextInput"
 import { TimeSelector } from "@/components/TimeSelector"
 import { TypingProfileSelector } from "@/components/TypingProfileSelector"
