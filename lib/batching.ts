@@ -3,6 +3,9 @@ import { createBatch, insertBatch, handleThrottling, resetThrottling } from "./g
 import { calculateTypingTiming, shouldAddCorrection, simulateCorrection } from "./typing-engine"
 import type { TypingProfile } from "@/types"
 
+const BATCH_SIZE = 20
+const MIN_INTERVAL_MS = 500
+
 export async function processBatch(
   jobId: string,
   userId: string,
