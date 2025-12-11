@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
+import { useSession } from "next-auth/react"
+import { useRouter } from "next/navigation"
 import { TextInput } from "@/components/TextInput"
 import { TimeSelector } from "@/components/TimeSelector"
 import { TypingProfileSelector } from "@/components/TypingProfileSelector"
@@ -12,7 +14,6 @@ import { JobHistory } from "@/components/JobHistory"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import type { TypingProfile, JobStatus } from "@/types"
-import { useRouter } from "next/navigation"
 
 export default function DashboardPage() {
   return (
@@ -24,8 +25,16 @@ export default function DashboardPage() {
 
 function DashboardContent() {
   const router = useRouter()
+  const { data: session, status } = useSession()
   const searchParams = useSearchParams()
   const jobIdParam = searchParams.get("jobId")
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/login")
+    }
+  }, [status, router])
 
   const [textContent, setTextContent] = useState("")
   const [durationMinutes, setDurationMinutes] = useState(30)

@@ -56,9 +56,12 @@ export default function RegisterPage() {
 
       if (result?.error) {
         setError("Registration successful but login failed. Please try logging in.")
+      } else if (result?.ok) {
+        // Wait a moment for session to be set, then redirect
+        await new Promise(resolve => setTimeout(resolve, 100))
+        window.location.href = "/dashboard"
       } else {
-        router.push("/dashboard")
-        router.refresh()
+        setError("Registration successful but login failed. Please try logging in.")
       }
     } catch (err) {
       setError("An error occurred. Please try again.")

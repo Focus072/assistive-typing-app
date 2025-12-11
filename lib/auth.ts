@@ -7,6 +7,7 @@ import bcrypt from "bcryptjs"
 import { google } from "googleapis"
 
 export const authOptions: NextAuthOptions = {
+  // Use PrismaAdapter for user management, but JWT for sessions
   adapter: PrismaAdapter(prisma),
   providers: [
     CredentialsProvider({
@@ -55,9 +56,30 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async signIn({ user, account, profile }) {
-      // Allow sign in - PrismaAdapter will create user if needed
-      if (account?.provider === "google" && user?.id) {
-        // Store Google OAuth tokens after user is created by PrismaAdapter
+      // Always allow sign in - PrismaAdapter will create user if needed
+      // Token storage happens in jwt callback after user is created
+      return true
+    },
+    async session({ session, token }) {
+      if (session.user) {
+        session.user.id = token.sub as string
+        if (token.email) session.user.email = token.email as string
+        if (token.name) session.user.name = token.name as string
+        if (token.picture) session.user.image = token.picture as string
+      }
+      return session
+    },
+    async jwt({ token, user, account, profile }) {
+      // Initial sign in - user is available
+      if (user) {
+        token.sub = user.id
+        token.email = user.email
+        token.name = user.name
+        token.picture = user.image
+      }
+      
+      // Store Google OAuth tokens after user is created (on first sign in)
+      if (account?.provider === "google" && account.access_token && account.refresh_token && user?.id) {
         try {
           const expiresAt = account.expires_at
             ? new Date(account.expires_at * 1000)
@@ -67,13 +89,13 @@ export const authOptions: NextAuthOptions = {
             where: { userId: user.id },
             create: {
               userId: user.id,
-              accessToken: account.access_token!,
-              refreshToken: account.refresh_token!,
+              accessToken: account.access_token,
+              refreshToken: account.refresh_token,
               expiresAt,
             },
             update: {
-              accessToken: account.access_token!,
-              refreshToken: account.refresh_token!,
+              accessToken: account.access_token,
+              refreshToken: account.refresh_token,
               expiresAt,
             },
           })
@@ -82,18 +104,7 @@ export const authOptions: NextAuthOptions = {
           // Don't fail the sign-in if token save fails
         }
       }
-      return true
-    },
-    async session({ session, token }) {
-      if (session.user && token.sub) {
-        session.user.id = token.sub
-      }
-      return session
-    },
-    async jwt({ token, user, account }) {
-      if (user) {
-        token.sub = user.id
-      }
+      
       return token
     },
     async redirect({ url, baseUrl }) {

@@ -30,9 +30,10 @@ export default function LoginPage() {
 
       if (result?.error) {
         setError("Invalid email or password")
-      } else {
-        router.push("/dashboard")
-        router.refresh()
+      } else if (result?.ok) {
+        // Wait a moment for session to be set, then redirect
+        await new Promise(resolve => setTimeout(resolve, 100))
+        window.location.href = "/dashboard"
       }
     } catch (err) {
       setError("An error occurred. Please try again.")
