@@ -136,7 +136,7 @@ export async function insertBatch(
     const response = await docs.documents.batchUpdate(request)
     
     // Validate that the revision ID advanced (check for partial failure)
-    const revisionId = response.data.revisionId
+    const revisionId = (response.data as any).revisionId as string | undefined
     if (!revisionId) {
       throw new Error("No revision ID returned")
     }
