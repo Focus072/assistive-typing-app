@@ -60,6 +60,38 @@ export function JobHistory() {
     }
   }
 
+  const handlePause = async (jobId: string) => {
+    try {
+      const response = await fetch("/api/jobs/pause", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId }),
+      })
+
+      if (response.ok) {
+        await loadJobs()
+      }
+    } catch (error) {
+      console.error("Failed to pause job:", error)
+    }
+  }
+
+  const handleStop = async (jobId: string) => {
+    try {
+      const response = await fetch("/api/jobs/stop", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId }),
+      })
+
+      if (response.ok) {
+        await loadJobs()
+      }
+    } catch (error) {
+      console.error("Failed to stop job:", error)
+    }
+  }
+
   if (loading) {
     return (
       <Card>
@@ -115,15 +147,44 @@ export function JobHistory() {
                   </div>
                 )}
               </div>
-              {job.status === "paused" && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleResume(job.id)}
-                >
-                  Resume
-                </Button>
-              )}
+              <div className="flex gap-2">
+                {job.status === "running" && (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handlePause(job.id)}
+                    >
+                      Pause
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => handleStop(job.id)}
+                    >
+                      Stop
+                    </Button>
+                  </>
+                )}
+                {job.status === "paused" && (
+                  <>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleResume(job.id)}
+                    >
+                      Resume
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => handleStop(job.id)}
+                    >
+                      Stop
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
           ))}
         </div>
