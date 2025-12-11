@@ -14,7 +14,15 @@ import { Button } from "@/components/ui/button"
 import type { TypingProfile, JobStatus } from "@/types"
 import { useRouter } from "next/navigation"
 
-function DashboardInner() {
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}>
+      <DashboardContent />
+    </Suspense>
+  )
+}
+
+function DashboardContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const jobIdParam = searchParams.get("jobId")
@@ -303,13 +311,5 @@ function DashboardInner() {
         </div>
       </div>
     </div>
-  )
-}
-
-export default function DashboardPage() {
-  return (
-    <Suspense fallback={<div className="flex items-center justify-center min-h-screen">Loading...</div>}>
-      <DashboardInner />
-    </Suspense>
   )
 }
