@@ -283,14 +283,14 @@ function DashboardContent() {
 
       if (!response.ok) {
         const data = await response.json()
-        const errorMsg = data.error || "Failed to start job"
-        const details = data.details ? ` Details: ${JSON.stringify(data.details)}` : ""
+        const errorMsg = data.message || data.error || "Failed to start job"
         console.error("[Start Job] API error:", {
           status: response.status,
           error: errorMsg,
           details: data.details,
+          fullError: data,
         })
-        setError(errorMsg + details)
+        setError(errorMsg)
         toast.addToast(errorMsg, "error")
         return
       }

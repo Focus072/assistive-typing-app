@@ -10,9 +10,9 @@ const MAX_JOBS_PER_DAY = 50
 
 const startJobSchema = z.object({
   textContent: z.string().min(1).max(MAX_CHARS),
-  durationMinutes: z.number().min(10).max(360),
+  durationMinutes: z.coerce.number().min(10).max(360), // Coerce string to number
   typingProfile: z.enum(["steady", "fatigue", "burst", "micropause"]),
-  documentId: z.string(),
+  documentId: z.string().min(1), // Ensure documentId is not empty
 })
 
 export const dynamic = 'force-dynamic'
@@ -165,9 +165,32 @@ export async function POST(request: Request) {
     return NextResponse.json({ jobId: job.id })
   } catch (error: any) {
     if (error instanceof z.ZodError) {
-      console.error("[Start Job] Validation error:", error.errors)
+      console.error("[Start Job] Validation error:", JSON.stringify(error.errors, null, 2))
+      
+      // Create user-friendly error message
+      const errorMessages = error.errors.map((err: any) => {
+        const field = err.path.join('.')
+        if (err.code === 'invalid_type') {
+          return `${field}: expected ${err.expected}, got ${err.received}`
+        }
+        if (err.code === 'too_small') {
+          return `${field}: ${err.message}`
+        }
+        if (err.code === 'too_big') {
+          return `${field}: ${err.message}`
+        }
+        if (err.code === 'invalid_enum_value') {
+          return `${field}: ${err.message}. Valid values: ${err.options?.join(', ')}`
+        }
+        return `${field}: ${err.message}`
+      })
+      
       return NextResponse.json(
-        { error: "Invalid request", details: error.errors },
+        { 
+          error: "Validation failed", 
+          message: errorMessages.join('; '),
+          details: error.errors 
+        },
         { status: 400 }
       )
     }
