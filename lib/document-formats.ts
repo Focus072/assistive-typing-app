@@ -1,4 +1,5 @@
 import type { DocumentFormat } from "@/types"
+import type { FormatMetadata } from "@/components/FormatMetadataModal"
 
 export interface FormatConfig {
   name: string
@@ -127,7 +128,8 @@ function inchesToPoints(inches: number): number {
  */
 export function generateFormatRequests(
   format: DocumentFormat,
-  documentId: string
+  documentId: string,
+  metadata?: FormatMetadata
 ): any[] {
   const config = formatConfigs[format]
   const requests: any[] = []
@@ -157,26 +159,94 @@ export function generateFormatRequests(
     },
   })
 
-  // Get document length first (we'll need to apply styles to all content)
-  // For now, apply to a range that will cover initial content
-  // The range will be updated when text is inserted
-  
-  // Insert a placeholder character to set default styles
-  // We'll delete it after applying formatting
-  requests.push({
-    insertText: {
-      location: {
-        index: 1,
-      },
-      text: " ",
-    },
-  })
+  // Insert header content based on format and metadata
+  if (metadata) {
+    let headerText = ""
+    let insertIndex = 1
 
-  // Set default paragraph style for the document body
-  requests.push({
-    updateParagraphStyle: {
-      paragraphStyle: {
-        lineSpacing: config.lineSpacing * 100, // Percentage (200 = double-spaced)
+    switch (format) {
+      case "mla":
+        // MLA format: Name, Professor, Course, Date (each on new line, left-aligned)
+        if (metadata.studentName && metadata.professorName && metadata.courseName && metadata.date) {
+          headerText = `${metadata.studentName}\n${metadata.professorName}\n${metadata.courseName}\n${metadata.date}\n\n`
+        }
+        break
+      
+      case "apa":
+        // APA format: Title page with running head, title (centered, bolded), name, institution, course, professor, date
+        // All centered and double-spaced
+        if (metadata.title && metadata.studentName && metadata.institution && metadata.courseName && metadata.professorName && metadata.date) {
+          // Build title page content (centered, double-spaced)
+          // Running head will be added separately in formatting
+          headerText = `${metadata.title}\n\n${metadata.studentName}\n${metadata.institution}\n${metadata.courseName}\n${metadata.professorName}\n${metadata.date}\n\n`
+        }
+        break
+      
+      case "chicago":
+      case "harvard":
+      case "ieee":
+      case "custom":
+        // Similar to MLA for most formats
+        if (metadata.studentName && metadata.professorName && metadata.courseName && metadata.date) {
+          headerText = `${metadata.studentName}\n${metadata.professorName}\n${metadata.courseName}\n${metadata.date}\n\n`
+        }
+        break
+    }
+
+    if (headerText) {
+      let currentInsertIndex = insertIndex
+      
+      // For APA, add running head first if provided
+      if (format === "apa" && metadata.runningHead) {
+        const runningHeadText = `Running head: ${metadata.runningHead.toUpperCase()}`
+        const pageNumText = "1"
+        const runningHeadLine = runningHeadText + "\t\t" + pageNumText + "\n"
+        
+        // Insert running head at the beginning
+        requests.push({
+          insertText: {
+            location: {
+              index: currentInsertIndex,
+            },
+            text: runningHeadLine,
+          },
+        })
+
+        // Format running head: left-aligned
+        const runningHeadEndIndex = currentInsertIndex + runningHeadLine.length
+        requests.push({
+          updateParagraphStyle: {
+            paragraphStyle: {
+              alignment: "START",
+            },
+            range: {
+              startIndex: currentInsertIndex,
+              endIndex: runningHeadEndIndex,
+            },
+            fields: "alignment",
+          },
+        })
+
+        // Update insert index for title page content
+        currentInsertIndex = runningHeadEndIndex
+      }
+
+      // Insert title page content
+      requests.push({
+        insertText: {
+          location: {
+            index: currentInsertIndex,
+          },
+          text: headerText,
+        },
+      })
+
+      const headerEndIndex = currentInsertIndex + headerText.length
+      const documentEndIndex = headerEndIndex
+
+      // Apply formatting to all inserted content (this sets the style for the document)
+      // Set paragraph style (line spacing, indentation)
+      const paragraphStyle: any = {
         spaceAbove: {
           magnitude: 0,
           unit: "PT",
@@ -185,52 +255,126 @@ export function generateFormatRequests(
           magnitude: 0,
           unit: "PT",
         },
-        firstLineIndent: {
+      }
+
+      if (config.lineSpacing !== 1.0) {
+        paragraphStyle.lineSpacing = config.lineSpacing
+      }
+
+      if (config.firstLineIndent > 0) {
+        paragraphStyle.indentFirstLine = {
           magnitude: inchesToPoints(config.firstLineIndent),
           unit: "PT",
-        },
-      },
-      range: {
-        startIndex: 1,
-        endIndex: 2,
-      },
-      fields: "lineSpacing,spaceAbove,spaceBelow,firstLineIndent",
-    },
-  })
+        }
+      }
 
-  // Set default text style (font family and size) for the document
-  requests.push({
-    updateTextStyle: {
-      textStyle: {
-        fontSize: {
-          magnitude: config.fontSize,
-          unit: "PT",
-        },
-        weightedFontFamily: {
-          fontFamily: config.fontFamily,
-        },
-      },
-      range: {
-        startIndex: 1,
-        endIndex: 2,
-      },
-      fields: "fontSize,weightedFontFamily",
-    },
-  })
+      const paragraphFields = ["spaceAbove", "spaceBelow"]
+      if (config.lineSpacing !== 1.0) {
+        paragraphFields.push("lineSpacing")
+      }
+      if (config.firstLineIndent > 0) {
+        paragraphFields.push("indentFirstLine")
+      }
 
-  // Delete the placeholder character
-  requests.push({
-    deleteContentRange: {
-      range: {
-        startIndex: 1,
-        endIndex: 2,
-      },
-    },
-  })
+      // Apply paragraph formatting to all content
+      requests.push({
+        updateParagraphStyle: {
+          paragraphStyle,
+          range: {
+            startIndex: currentInsertIndex,
+            endIndex: documentEndIndex,
+          },
+          fields: paragraphFields.join(","),
+        },
+      })
 
-  // Note: Headers and page numbers are complex and require section breaks
-  // For now, we'll apply basic formatting. Users can add headers manually in Google Docs
-  // The formatting will be applied to all text that gets typed
+      // Apply text formatting (font family and size) to all content
+      requests.push({
+        updateTextStyle: {
+          textStyle: {
+            fontSize: {
+              magnitude: config.fontSize,
+              unit: "PT",
+            },
+            weightedFontFamily: {
+              fontFamily: config.fontFamily,
+            },
+          },
+          range: {
+            startIndex: currentInsertIndex,
+            endIndex: documentEndIndex,
+          },
+          fields: "fontSize,weightedFontFamily",
+        },
+      })
+
+      if (format === "apa") {
+        // APA-specific formatting: Title centered and bolded, author info centered
+        const titleStartIndex = currentInsertIndex
+        const titleEndIndex = titleStartIndex + metadata.title!.length
+        
+        // Bold and center the title
+        requests.push({
+          updateTextStyle: {
+            textStyle: {
+              bold: true,
+            },
+            range: {
+              startIndex: titleStartIndex,
+              endIndex: titleEndIndex,
+            },
+            fields: "bold",
+          },
+        })
+
+        requests.push({
+          updateParagraphStyle: {
+            paragraphStyle: {
+              alignment: "CENTER",
+            },
+            range: {
+              startIndex: titleStartIndex,
+              endIndex: titleEndIndex,
+            },
+            fields: "alignment",
+          },
+        })
+
+        // Center all author information (everything after title)
+        const authorStartIndex = titleEndIndex + 2 // +2 for \n\n
+        requests.push({
+          updateParagraphStyle: {
+            paragraphStyle: {
+              alignment: "CENTER",
+            },
+            range: {
+              startIndex: authorStartIndex,
+              endIndex: headerEndIndex,
+            },
+            fields: "alignment",
+          },
+        })
+      } else {
+        // MLA and other formats: left-aligned, no indent
+        requests.push({
+          updateParagraphStyle: {
+            paragraphStyle: {
+              alignment: "START", // Left align
+              indentFirstLine: {
+                magnitude: 0,
+                unit: "PT",
+              },
+            },
+            range: {
+              startIndex: currentInsertIndex,
+              endIndex: headerEndIndex,
+            },
+            fields: "alignment,indentFirstLine",
+          },
+        })
+      }
+    }
+  }
 
   return requests
 }
