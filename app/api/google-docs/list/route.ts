@@ -1,3 +1,6 @@
+// Suppress deprecation warnings early
+import "@/lib/suppress-warnings"
+
 import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
