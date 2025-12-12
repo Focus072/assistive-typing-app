@@ -17,8 +17,10 @@ async function handleRequest(
     // #region agent log
     fetch('http://127.0.0.1:7242/ingest/edc11742-e69a-445c-9523-36ad1186a0ce',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/auth/[...nextauth]/route.ts:9',message:'NextAuth handler entry',data:{method:req.method,url:req.url,pathname:url.pathname,isCallback,hasCode:!!url.searchParams.get('code'),hasError:!!url.searchParams.get('error')},timestamp:Date.now(),sessionId:'debug-session',runId:'run4',hypothesisId:'H'})}).catch(()=>{});
     // #endregion
+    // Unwrap params Promise for NextAuth compatibility (Next.js 16 async params)
+    const params = await context.params
     // NextAuth returns a function that handles both GET and POST
-    const response = await handler(req, context)
+    const response = await handler(req, { params })
     const responseUrl = response.headers.get('location')
     // #region agent log
     fetch('http://127.0.0.1:7242/ingest/edc11742-e69a-445c-9523-36ad1186a0ce',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/auth/[...nextauth]/route.ts:16',message:'NextAuth handler success',data:{status:response?.status,statusText:response?.statusText,redirectUrl:responseUrl,isCallback,hasErrorInRedirect:responseUrl?.includes('error=')},timestamp:Date.now(),sessionId:'debug-session',runId:'run4',hypothesisId:'H'})}).catch(()=>{});
