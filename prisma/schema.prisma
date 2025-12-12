@@ -11,36 +11,37 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
+  id            String       @id @default(cuid())
+  email         String       @unique
   emailVerified DateTime? // Required by NextAuth PrismaAdapter
-  password      String?   // Optional - Google OAuth users don't have passwords
+  password      String? // Optional - Google OAuth users don't have passwords
   name          String?
   image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime? @updatedAt // Made optional to avoid migration issues
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime?    @updatedAt // Made optional to avoid migration issues
   googleTokens  GoogleToken?
   jobs          Job[]
-  
+  documents     Document[]
+
   // NextAuth required fields
-  accounts      Account[]
-  sessions      Session[]
+  accounts Account[]
+  sessions Session[]
 }
 
 model Account {
-  id                String  @id @default(cuid())
-  userId            String
-  type              String
-  provider          String
-  providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
-  expires_at        Int?
+  id                       String  @id @default(cuid())
+  userId                   String
+  type                     String
+  provider                 String
+  providerAccountId        String
+  refresh_token            String? @db.Text
+  access_token             String? @db.Text
+  expires_at               Int?
   refresh_token_expires_in Int?
-  token_type        String?
-  scope             String?
-  id_token          String? @db.Text
-  session_state     String?
+  token_type               String?
+  scope                    String?
+  id_token                 String? @db.Text
+  session_state            String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -56,34 +57,35 @@ model Session {
 }
 
 model GoogleToken {
-  id            String   @id @default(cuid())
-  userId        String   @unique
-  accessToken   String
-  refreshToken  String
-  expiresAt     DateTime
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  accessToken  String
+  refreshToken String
+  expiresAt    DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Job {
-  id              String   @id @default(cuid())
-  userId          String
-  documentId      String
-  textContent     String   @db.Text
-  totalChars      Int
-  currentIndex    Int      @default(0)
-  durationMinutes Int
-  typingProfile   String   // steady, fatigue, burst, micropause
-  status          String   // pending, running, paused, completed, failed, stopped, expired
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  completedAt     DateTime?
-  expiresAt       DateTime // TTL for cleanup
-  inngestEventId  String?
-  lastBatchHash   String?  // Hash of last inserted batch for idempotency
-  throttleDelayMs Int      @default(500) // Adaptive throttling delay
-  errorCode       String?  // Specific error codes (GOOGLE_AUTH_REVOKED, etc.)
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  events          JobEvent[]
+  id                   String     @id @default(cuid())
+  userId               String
+  documentId           String // Google Docs document ID
+  textContent          String     @db.Text
+  totalChars           Int
+  currentIndex         Int        @default(0)
+  durationMinutes      Int
+  typingProfile        String // steady, fatigue, burst, micropause
+  status               String // pending, running, paused, completed, failed, stopped, expired
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
+  completedAt          DateTime?
+  expiresAt            DateTime // TTL for cleanup
+  inngestEventId       String?
+  lastBatchHash        String? // Hash of last inserted batch for idempotency
+  throttleDelayMs      Int        @default(500) // Adaptive throttling delay
+  errorCode            String? // Specific error codes (GOOGLE_AUTH_REVOKED, etc.)
+  user                 User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  events               JobEvent[]
+  documentAsCurrentJob Document?  @relation("DocumentCurrentJob")
 
   @@index([userId, status])
   @@index([status, createdAt])
@@ -92,7 +94,7 @@ model Job {
 model JobEvent {
   id        String   @id @default(cuid())
   jobId     String
-  type      String   // started, batch_success, paused, resumed, failed, stopped, throttled, etc.
+  type      String // started, batch_success, paused, resumed, failed, stopped, throttled, etc.
   details   String?  @db.Text // JSON or text details
   createdAt DateTime @default(now())
   job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
@@ -101,4 +103,18 @@ model JobEvent {
   @@index([createdAt])
 }
 
+model Document {
+  id           String   @id @default(cuid())
+  userId       String
+  documentId   String // Google Docs document ID
+  state        String // idle, running
+  currentJobId String?  @unique // Reference to active Job (nullable, unique)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currentJob   Job?     @relation("DocumentCurrentJob", fields: [currentJobId], references: [id], onDelete: SetNull)
 
+  @@unique([userId, documentId])
+  @@index([userId, state])
+  @@index([documentId])
+}
