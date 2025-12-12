@@ -1,3 +1,6 @@
+// Suppress deprecation warnings early
+import "./suppress-warnings"
+
 import { google } from "googleapis"
 import { getGoogleAuthClient } from "./auth"
 import { prisma } from "./prisma"

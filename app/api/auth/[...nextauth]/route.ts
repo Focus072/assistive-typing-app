@@ -1,3 +1,6 @@
+// Suppress deprecation warnings early
+import "@/lib/suppress-warnings"
+
 import NextAuth from "next-auth"
 import { authOptions } from "@/lib/auth"
 
