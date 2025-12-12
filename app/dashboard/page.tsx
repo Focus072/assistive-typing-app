@@ -288,7 +288,6 @@ function DashboardContent() {
           status: response.status,
           error: errorMsg,
           details: data.details,
-          fullError: data,
         })
         setError(errorMsg)
         toast.addToast(errorMsg, "error")
@@ -307,6 +306,7 @@ function DashboardContent() {
       toast.addToast("Job started successfully!", "success")
       router.push(`/dashboard?jobId=${data.jobId}`)
     } catch (error) {
+      console.error("[Start Job] Network error:", error)
       const errorMsg = "Failed to start job"
       setError(errorMsg)
       toast.addToast(errorMsg, "error")
