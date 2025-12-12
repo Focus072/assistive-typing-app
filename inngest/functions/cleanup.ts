@@ -10,7 +10,17 @@ export const cleanupJobs = inngest.createFunction(
     const staleJobs = await step.run("mark-stale-jobs", async () => {
       const eightHoursAgo = new Date(Date.now() - 8 * 60 * 60 * 1000)
       
-      const result = await prisma.job.updateMany({
+      // Find jobs that will be marked as stale
+      const jobsToMarkStale = await prisma.job.findMany({
+        where: {
+          status: { in: ["running", "pending"] },
+          createdAt: { lt: eightHoursAgo },
+        },
+        select: { id: true, userId: true, documentId: true },
+      })
+
+      // Mark jobs as failed
+      await prisma.job.updateMany({
         where: {
           status: { in: ["running", "pending"] },
           createdAt: { lt: eightHoursAgo },
@@ -21,14 +31,39 @@ export const cleanupJobs = inngest.createFunction(
         },
       })
 
-      return result.count
+      // Unlock documents for stale jobs
+      for (const job of jobsToMarkStale) {
+        await prisma.document.updateMany({
+          where: {
+            userId: job.userId,
+            documentId: job.documentId,
+            currentJobId: job.id,
+          },
+          data: {
+            state: "idle",
+            currentJobId: null,
+          },
+        })
+      }
+
+      return jobsToMarkStale.length
     })
 
     // Mark expired jobs (>7 days)
     const expiredJobs = await step.run("mark-expired-jobs", async () => {
       const now = new Date()
       
-      const result = await prisma.job.updateMany({
+      // Find jobs that will be expired
+      const jobsToExpire = await prisma.job.findMany({
+        where: {
+          status: { notIn: ["expired", "completed", "stopped", "failed"] },
+          expiresAt: { lt: now },
+        },
+        select: { id: true, userId: true, documentId: true },
+      })
+
+      // Mark jobs as expired
+      await prisma.job.updateMany({
         where: {
           status: { notIn: ["expired", "completed", "stopped", "failed"] },
           expiresAt: { lt: now },
@@ -38,7 +73,22 @@ export const cleanupJobs = inngest.createFunction(
         },
       })
 
-      return result.count
+      // Unlock documents for expired jobs
+      for (const job of jobsToExpire) {
+        await prisma.document.updateMany({
+          where: {
+            userId: job.userId,
+            documentId: job.documentId,
+            currentJobId: job.id,
+          },
+          data: {
+            state: "idle",
+            currentJobId: null,
+          },
+        })
+      }
+
+      return jobsToExpire.length
     })
 
     // Optionally scrub textContent from old jobs (>30 days)
