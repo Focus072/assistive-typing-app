@@ -1,8 +1,11 @@
 import { hashString } from "./utils"
 
-export const MIN_INTERVAL_MS = 500
-export const MIN_BATCH_SIZE = 10
-export const MAX_BATCH_SIZE = 25
+// Minimum delay between batches (ms) - lowered for human-like feel
+export const MIN_INTERVAL_MS = 150
+
+// Batch sizes for human-like typing (1-5 chars per batch)
+export const MIN_BATCH_SIZE = 1
+export const MAX_BATCH_SIZE = 5
 
 export interface TypingBatch {
   text: string

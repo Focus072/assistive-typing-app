@@ -33,7 +33,11 @@ export async function listDocuments(userId: string) {
   }
 }
 
-export async function createDocument(userId: string, title: string) {
+export async function createDocument(
+  userId: string, 
+  title: string,
+  format?: import("@/types").DocumentFormat
+) {
   try {
     const auth = await getGoogleAuthClient(userId)
     const drive = google.drive({ version: "v3", auth })
@@ -45,7 +49,25 @@ export async function createDocument(userId: string, title: string) {
       },
     })
 
-    return response.data.id!
+    const documentId = response.data.id!
+
+    // Apply formatting if specified
+    if (format && format !== "none") {
+      const { generateFormatRequests } = await import("./document-formats")
+      const docs = await getDocsClient(userId)
+      const requests = generateFormatRequests(format, documentId)
+      
+      if (requests.length > 0) {
+        await docs.documents.batchUpdate({
+          documentId,
+          requestBody: {
+            requests,
+          },
+        })
+      }
+    }
+
+    return documentId
   } catch (error: any) {
     if (error.code === 401 || error.code === 403) {
       throw new Error("GOOGLE_AUTH_REVOKED")
@@ -135,15 +157,12 @@ export async function insertBatch(
 
     const response = await docs.documents.batchUpdate(request)
     
-    // Validate that the revision ID advanced (check for partial failure)
+    // Get revision ID if available (not always returned by Google)
     const revisionId = (response.data as any).revisionId as string | undefined
-    if (!revisionId) {
-      throw new Error("No revision ID returned")
-    }
 
     return {
       success: true,
-      revisionId,
+      revisionId: revisionId || "success",
       insertedChars: batch.text.length,
     }
   } catch (error: any) {

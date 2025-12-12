@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { createDocument } from "@/lib/google-docs"
+import type { DocumentFormat } from "@/types"
 
 export const dynamic = 'force-dynamic'
 
@@ -16,7 +17,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const { title } = await request.json()
+    const { title, format } = await request.json()
     
     if (!title || typeof title !== "string") {
       return NextResponse.json(
@@ -25,7 +26,11 @@ export async function POST(request: Request) {
       )
     }
 
-    const documentId = await createDocument(session.user.id, title)
+    const documentId = await createDocument(
+      session.user.id, 
+      title,
+      format as DocumentFormat | undefined
+    )
     
     return NextResponse.json({ documentId })
   } catch (error: any) {

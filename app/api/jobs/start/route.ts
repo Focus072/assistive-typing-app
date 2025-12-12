@@ -6,7 +6,7 @@ import { inngest } from "@/inngest/client"
 import { z } from "zod"
 
 const MAX_CHARS = 50000
-const MAX_JOBS_PER_DAY = 5
+const MAX_JOBS_PER_DAY = 50
 
 const startJobSchema = z.object({
   textContent: z.string().min(1).max(MAX_CHARS),
