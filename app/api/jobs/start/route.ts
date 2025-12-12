@@ -38,38 +38,6 @@ export async function POST(request: Request) {
     })
     const validated = startJobSchema.parse(body)
 
-    // Check for existing running job
-    const existingJob = await prisma.job.findFirst({
-      where: {
-        userId: session.user.id,
-        status: { in: ["running", "pending"] },
-      },
-    })
-
-    if (existingJob) {
-      // If job is older than 1 hour, mark it as failed (likely stuck)
-      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
-      if (existingJob.createdAt < oneHourAgo) {
-        console.log(`[Start Job] Found stuck job ${existingJob.id}, marking as failed`)
-        await prisma.job.update({
-          where: { id: existingJob.id },
-          data: { status: "failed", errorCode: "STUCK_JOB_CLEANUP" },
-        })
-        await prisma.jobEvent.create({
-          data: {
-            jobId: existingJob.id,
-            type: "failed",
-            details: JSON.stringify({ reason: "Stuck job cleanup" }),
-          },
-        })
-      } else {
-        return NextResponse.json(
-          { error: `You already have a ${existingJob.status} job. Please stop it first or wait for it to complete.`, jobId: existingJob.id },
-          { status: 400 }
-        )
-      }
-    }
-
     // Check daily job limit
     const today = new Date()
     today.setHours(0, 0, 0, 0)
@@ -88,40 +56,122 @@ export async function POST(request: Request) {
       )
     }
 
-    // Create job
-    const expiresAt = new Date()
-    expiresAt.setDate(expiresAt.getDate() + 7) // 7 day TTL
+    // Atomic transaction: check document state and create job
+    let job
+    try {
+      job = await prisma.$transaction(async (tx) => {
+        // 1. Upsert Document, locking the row
+        const document = await tx.document.upsert({
+          where: {
+            userId_documentId: {
+              userId: session.user.id,
+              documentId: validated.documentId,
+            },
+          },
+          create: {
+            userId: session.user.id,
+            documentId: validated.documentId,
+            state: "idle",
+            currentJobId: null,
+          },
+          update: {}, // Lock row for update
+        })
 
-    const job = await prisma.job.create({
-      data: {
-        userId: session.user.id,
-        documentId: validated.documentId,
-        textContent: validated.textContent,
-        totalChars: validated.textContent.length,
-        durationMinutes: validated.durationMinutes,
-        typingProfile: validated.typingProfile,
-        status: "pending",
-        expiresAt,
-      },
-    })
+        // 2. Check for stuck job (older than 1 hour) and cleanup
+        if (document.currentJobId) {
+          const existingJob = await tx.job.findUnique({
+            where: { id: document.currentJobId },
+          })
 
-    // Create start event
-    await prisma.jobEvent.create({
-      data: {
-        jobId: job.id,
-        type: "started",
-        details: JSON.stringify({
-          durationMinutes: validated.durationMinutes,
-          typingProfile: validated.typingProfile,
-        }),
-      },
-    })
+          if (existingJob) {
+            const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
+            if (existingJob.createdAt < oneHourAgo) {
+              console.log(`[Start Job] Found stuck job ${existingJob.id}, marking as failed`)
+              await tx.job.update({
+                where: { id: existingJob.id },
+                data: { status: "failed", errorCode: "STUCK_JOB_CLEANUP" },
+              })
+              await tx.jobEvent.create({
+                data: {
+                  jobId: existingJob.id,
+                  type: "failed",
+                  details: JSON.stringify({ reason: "Stuck job cleanup" }),
+                },
+              })
+              // Unlock document
+              await tx.document.update({
+                where: { id: document.id },
+                data: { state: "idle", currentJobId: null },
+              })
+            }
+          }
+        }
 
-    // Update job to running
-    await prisma.job.update({
-      where: { id: job.id },
-      data: { status: "running" },
-    })
+        // 3. Assert state is not running
+        const freshDocument = await tx.document.findUnique({
+          where: { id: document.id },
+        })
+
+        if (freshDocument && freshDocument.state === "running") {
+          throw new Error("This document already has an active typing job. Please wait for it to complete or stop it first.")
+        }
+
+        // 4. Create job
+        const expiresAt = new Date()
+        expiresAt.setDate(expiresAt.getDate() + 7) // 7 day TTL
+
+        const newJob = await tx.job.create({
+          data: {
+            userId: session.user.id,
+            documentId: validated.documentId,
+            textContent: validated.textContent,
+            totalChars: validated.textContent.length,
+            durationMinutes: validated.durationMinutes,
+            typingProfile: validated.typingProfile,
+            status: "pending",
+            expiresAt,
+          },
+        })
+
+        // 5. Create start event
+        await tx.jobEvent.create({
+          data: {
+            jobId: newJob.id,
+            type: "started",
+            details: JSON.stringify({
+              durationMinutes: validated.durationMinutes,
+              typingProfile: validated.typingProfile,
+            }),
+          },
+        })
+
+        // 6. Update job to running
+        await tx.job.update({
+          where: { id: newJob.id },
+          data: { status: "running" },
+        })
+
+        // 7. Update Document atomically
+        await tx.document.update({
+          where: { id: freshDocument!.id },
+          data: {
+            state: "running",
+            currentJobId: newJob.id,
+          },
+        })
+
+        return newJob
+      })
+    } catch (error: any) {
+      // Handle transaction errors
+      if (error.message && error.message.includes("active typing job")) {
+        return NextResponse.json(
+          { error: error.message },
+          { status: 400 }
+        )
+      }
+      throw error
+    }
 
     // Trigger Inngest function (non-blocking failure)
     try {

@@ -65,6 +65,27 @@ export async function POST(request: Request) {
       },
     })
 
+    // Unlock document with ownership verification
+    const document = await prisma.document.findUnique({
+      where: {
+        userId_documentId: {
+          userId: session.user.id,
+          documentId: job.documentId,
+        },
+      },
+    })
+
+    // Verify ownership: currentJobId must match job.id
+    if (document && document.currentJobId === jobId) {
+      await prisma.document.update({
+        where: { id: document.id },
+        data: {
+          state: "idle",
+          currentJobId: null,
+        },
+      })
+    }
+
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error("Error stopping job:", error)

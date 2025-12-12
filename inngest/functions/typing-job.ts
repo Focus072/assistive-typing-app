@@ -10,6 +10,11 @@ async function loadJob(jobId: string) {
 }
 
 async function markCompleted(jobId: string, totalChars: number) {
+  const job = await prisma.job.findUnique({
+    where: { id: jobId },
+    select: { userId: true, documentId: true },
+  })
+
   await prisma.job.update({
     where: { id: jobId },
     data: { status: "completed", completedAt: new Date(), currentIndex: totalChars },
@@ -17,9 +22,29 @@ async function markCompleted(jobId: string, totalChars: number) {
   await prisma.jobEvent.create({
     data: { jobId, type: "completed", details: JSON.stringify({ totalChars }) },
   })
+
+  // Unlock document atomically
+  if (job) {
+    await prisma.document.updateMany({
+      where: {
+        userId: job.userId,
+        documentId: job.documentId,
+        currentJobId: jobId,
+      },
+      data: {
+        state: "idle",
+        currentJobId: null,
+      },
+    })
+  }
 }
 
 async function markFailed(jobId: string, code: string) {
+  const job = await prisma.job.findUnique({
+    where: { id: jobId },
+    select: { userId: true, documentId: true },
+  })
+
   await prisma.job.update({
     where: { id: jobId },
     data: { status: "failed", errorCode: code },
@@ -27,6 +52,21 @@ async function markFailed(jobId: string, code: string) {
   await prisma.jobEvent.create({
     data: { jobId, type: "failed", details: JSON.stringify({ error: code }) },
   })
+
+  // Unlock document atomically
+  if (job) {
+    await prisma.document.updateMany({
+      where: {
+        userId: job.userId,
+        documentId: job.documentId,
+        currentJobId: jobId,
+      },
+      data: {
+        state: "idle",
+        currentJobId: null,
+      },
+    })
+  }
 }
 
 async function ensureRunnable(jobId: string) {
@@ -35,6 +75,18 @@ async function ensureRunnable(jobId: string) {
   if (job.status !== "running") throw new Error(`Job status: ${job.status}`)
   if (job.expiresAt < new Date()) {
     await prisma.job.update({ where: { id: jobId }, data: { status: "expired" } })
+    // Unlock document when job expires
+    await prisma.document.updateMany({
+      where: {
+        userId: job.userId,
+        documentId: job.documentId,
+        currentJobId: jobId,
+      },
+      data: {
+        state: "idle",
+        currentJobId: null,
+      },
+    })
     throw new Error("Job expired")
   }
   const runtimeHours = (Date.now() - job.createdAt.getTime()) / (1000 * 60 * 60)
