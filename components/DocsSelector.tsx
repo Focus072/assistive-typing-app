@@ -61,13 +61,16 @@ export function DocsSelector({
 
     try {
       setCreating(true)
+      setError(null)
       const documentId = await onCreateNew(newDocTitle.trim())
       onChange(documentId)
       setShowNewDocInput(false)
       setNewDocTitle("")
       await loadDocuments()
-    } catch (err) {
-      setError("Failed to create document")
+    } catch (err: any) {
+      const errorMsg = err?.message || "Failed to create document"
+      setError(errorMsg)
+      console.error("Failed to create document:", err)
     } finally {
       setCreating(false)
     }

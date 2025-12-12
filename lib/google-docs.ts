@@ -6,6 +6,7 @@ import { getGoogleAuthClient } from "./auth"
 import { prisma } from "./prisma"
 import { hashString } from "./utils"
 import type { BatchInsertResult, TypingBatch } from "@/types"
+import type { FormatMetadata } from "@/components/FormatMetadataModal"
 
 const BATCH_SIZE = 20
 const MIN_INTERVAL_MS = 500
@@ -29,6 +30,11 @@ export async function listDocuments(userId: string) {
 
     return response.data.files || []
   } catch (error: any) {
+    // Handle missing Google token
+    if (error.message === "Google OAuth token not found" || error.message?.includes("Google OAuth token")) {
+      throw new Error("GOOGLE_AUTH_REVOKED")
+    }
+    // Handle Google API auth errors
     if (error.code === 401 || error.code === 403) {
       throw new Error("GOOGLE_AUTH_REVOKED")
     }
@@ -39,7 +45,8 @@ export async function listDocuments(userId: string) {
 export async function createDocument(
   userId: string, 
   title: string,
-  format?: import("@/types").DocumentFormat
+  format?: import("@/types").DocumentFormat,
+  formatMetadata?: FormatMetadata
 ) {
   try {
     const auth = await getGoogleAuthClient(userId)
@@ -58,7 +65,7 @@ export async function createDocument(
     if (format && format !== "none") {
       const { generateFormatRequests } = await import("./document-formats")
       const docs = await getDocsClient(userId)
-      const requests = generateFormatRequests(format, documentId)
+      const requests = generateFormatRequests(format, documentId, formatMetadata)
       
       if (requests.length > 0) {
         await docs.documents.batchUpdate({
@@ -72,6 +79,11 @@ export async function createDocument(
 
     return documentId
   } catch (error: any) {
+    // Handle missing Google token
+    if (error.message === "Google OAuth token not found" || error.message?.includes("Google OAuth token")) {
+      throw new Error("GOOGLE_AUTH_REVOKED")
+    }
+    // Handle Google API auth errors
     if (error.code === 401 || error.code === 403) {
       throw new Error("GOOGLE_AUTH_REVOKED")
     }
@@ -103,6 +115,11 @@ export async function getDocumentEndIndex(userId: string, documentId: string): P
 
     return lastIndex - 1 // Subtract 1 because endIndex is exclusive
   } catch (error: any) {
+    // Handle missing Google token
+    if (error.message === "Google OAuth token not found" || error.message?.includes("Google OAuth token")) {
+      throw new Error("GOOGLE_AUTH_REVOKED")
+    }
+    // Handle Google API auth errors
     if (error.code === 401 || error.code === 403) {
       throw new Error("GOOGLE_AUTH_REVOKED")
     }

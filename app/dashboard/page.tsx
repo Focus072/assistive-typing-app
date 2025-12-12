@@ -11,13 +11,14 @@ import { TypingProfileSelector } from "@/components/TypingProfileSelector"
 import { FormatSelector } from "@/components/FormatSelector"
 import { DocsSelector } from "@/components/DocsSelector"
 import { PlaybackControls } from "@/components/PlaybackControls"
-import { JobTemplates } from "@/components/JobTemplates"
+import { DocumentStats } from "@/components/DocumentStats"
 import { CommandPalette } from "@/components/CommandPalette"
 import { Confetti } from "@/components/ui/confetti"
 import { useToast } from "@/components/ui/toast"
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts"
 import { formatDuration, calculateTimeRemaining } from "@/lib/utils"
 import type { TypingProfile, JobStatus, DocumentFormat } from "@/types"
+import type { FormatMetadata } from "@/components/FormatMetadataModal"
 
 // WPM calculation based on typing profile
 function calculateWPM(totalChars: number, durationMinutes: number, profile: TypingProfile): number {
@@ -89,6 +90,7 @@ function DashboardContent() {
   const [durationMinutes, setDurationMinutes] = useState(30)
   const [typingProfile, setTypingProfile] = useState<TypingProfile>("steady")
   const [documentFormat, setDocumentFormat] = useState<DocumentFormat>("mla")
+  const [formatMetadata, setFormatMetadata] = useState<FormatMetadata | undefined>(undefined)
   const [documentId, setDocumentId] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -229,26 +231,64 @@ function DashboardContent() {
   }, [jobIdParam, loadJob, startProgressStream])
 
   const handleCreateDocument = async (title: string): Promise<string> => {
-    const response = await fetch("/api/google-docs/create", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, format: documentFormat }),
-    })
+    try {
+      const response = await fetch("/api/google-docs/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          title, 
+          format: documentFormat,
+          formatMetadata: formatMetadata,
+        }),
+      })
 
-    if (!response.ok) {
-      const data = await response.json()
-      if (data.code === "GOOGLE_AUTH_REVOKED") {
-        const errorMsg = "Please connect your Google account first"
+      if (!response.ok) {
+        let data: any = {}
+        let errorMsg = "Failed to create document"
+        
+        try {
+          const responseText = await response.text()
+          if (responseText) {
+            data = JSON.parse(responseText)
+            errorMsg = data.error || errorMsg
+          }
+        } catch (parseError) {
+          console.error("[Create Document] Failed to parse error response:", parseError)
+          errorMsg = `Server error (${response.status})`
+        }
+        
+        if (data.code === "GOOGLE_AUTH_REVOKED" || response.status === 401) {
+          errorMsg = "Please connect your Google account first"
+        }
+        
+        console.error("[Create Document] API error:", {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorMsg,
+          details: data.details || null,
+        })
+        
         setError(errorMsg)
         toast.addToast(errorMsg, "error")
-        throw new Error("Google authentication required")
+        throw new Error(errorMsg)
       }
-      throw new Error("Failed to create document")
-    }
 
-    const data = await response.json()
-    toast.addToast(`Document created with ${documentFormat.toUpperCase()} formatting`, "success")
-    return data.documentId
+      const data = await response.json()
+      toast.addToast(`Document created with ${documentFormat.toUpperCase()} formatting`, "success")
+      return data.documentId
+    } catch (error: any) {
+      // Re-throw if it's already our error
+      if (error.message && error.message !== "Failed to create document") {
+        throw error
+      }
+      
+      // Handle network errors
+      console.error("[Create Document] Network error:", error)
+      const errorMsg = "Failed to create document. Please check your connection."
+      setError(errorMsg)
+      toast.addToast(errorMsg, "error")
+      throw new Error(errorMsg)
+    }
   }
 
   const handleStart = async () => {
@@ -282,12 +322,26 @@ function DashboardContent() {
       })
 
       if (!response.ok) {
-        const data = await response.json()
-        const errorMsg = data.message || data.error || "Failed to start job"
+        let data: any = {}
+        let errorMsg = "Failed to start job"
+        
+        try {
+          const responseText = await response.text()
+          if (responseText) {
+            data = JSON.parse(responseText)
+            errorMsg = data.message || data.error || errorMsg
+          }
+        } catch (parseError) {
+          console.error("[Start Job] Failed to parse error response:", parseError)
+          errorMsg = `Server error (${response.status})`
+        }
+        
         console.error("[Start Job] API error:", {
           status: response.status,
+          statusText: response.statusText,
           error: errorMsg,
-          details: data.details,
+          details: data.details || null,
+          responseData: Object.keys(data).length > 0 ? data : null,
         })
         setError(errorMsg)
         toast.addToast(errorMsg, "error")
@@ -583,18 +637,22 @@ function DashboardContent() {
               </div>
               
               <div className="p-4 md:p-6 space-y-5 md:space-y-6">
-                <JobTemplates
-                  onSelect={(template) => {
-                    // Generate sample text based on template
-                    const sampleText = Array.from({ length: template.textLength }, (_, i) => {
-                      const words = ["Lorem", "ipsum", "dolor", "sit", "amet", "consectetur", "adipiscing", "elit", "sed", "do", "eiusmod", "tempor", "incididunt", "ut", "labore", "et", "dolore", "magna", "aliqua"]
-                      return words[i % words.length]
-                    }).join(" ") + "."
-                    
-                    setTextContent(sampleText)
-                    setDurationMinutes(template.durationMinutes)
-                    setTypingProfile(template.profile)
-                    toast.addToast(`${template.name} template applied`, "success")
+                <DocumentStats
+                  textContent={textContent}
+                  durationMinutes={durationMinutes}
+                  typingProfile={typingProfile}
+                  documentFormat={documentFormat}
+                  onClear={() => {
+                    setTextContent("")
+                    toast.addToast("Text cleared", "info")
+                  }}
+                  onCopy={async () => {
+                    try {
+                      await navigator.clipboard.writeText(textContent)
+                      toast.addToast("Text copied to clipboard", "success")
+                    } catch (error) {
+                      toast.addToast("Failed to copy text", "error")
+                    }
                   }}
                 />
 
@@ -616,7 +674,13 @@ function DashboardContent() {
 
                 <FormatSelector
                   value={documentFormat}
-                  onChange={setDocumentFormat}
+                  onChange={(format, metadata) => {
+                    setDocumentFormat(format)
+                    if (metadata) {
+                      setFormatMetadata(metadata)
+                    }
+                  }}
+                  formatMetadata={formatMetadata}
                 />
 
                 <DocsSelector

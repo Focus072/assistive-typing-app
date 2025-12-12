@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { createDocument } from "@/lib/google-docs"
 import type { DocumentFormat } from "@/types"
+import type { FormatMetadata } from "@/components/FormatMetadataModal"
 
 export const dynamic = 'force-dynamic'
 
@@ -17,7 +18,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const { title, format } = await request.json()
+    const { title, format, formatMetadata } = await request.json()
     
     if (!title || typeof title !== "string") {
       return NextResponse.json(
@@ -29,7 +30,8 @@ export async function POST(request: Request) {
     const documentId = await createDocument(
       session.user.id, 
       title,
-      format as DocumentFormat | undefined
+      format as DocumentFormat | undefined,
+      formatMetadata as FormatMetadata | undefined
     )
     
     return NextResponse.json({ documentId })
@@ -41,10 +43,30 @@ export async function POST(request: Request) {
       )
     }
     
-    console.error("Error creating document:", error)
+    console.error("Error creating document:", {
+      message: error?.message,
+      code: error?.code,
+      stack: error?.stack,
+      response: error?.response?.data,
+    })
+    
+    // Provide more specific error messages
+    let errorMessage = "Failed to create document"
+    if (error?.code === 401 || error?.code === 403) {
+      errorMessage = "Google authentication required. Please reconnect your Google account."
+    } else if (error?.code === 429) {
+      errorMessage = "Rate limit exceeded. Please try again in a moment."
+    } else if (error?.message) {
+      errorMessage = error.message
+    }
+    
     return NextResponse.json(
-      { error: "Failed to create document" },
-      { status: 500 }
+      { 
+        error: errorMessage,
+        code: error?.code,
+        details: process.env.NODE_ENV === "development" ? error?.message : undefined
+      },
+      { status: error?.code === 401 || error?.code === 403 ? 401 : 500 }
     )
   }
 }
