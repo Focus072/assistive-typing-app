@@ -1,15 +1,42 @@
 "use client"
 
+import { useState } from "react"
 import type { DocumentFormat } from "@/types"
 import { formatConfigs } from "@/lib/document-formats"
+import { FormatMetadataModal, type FormatMetadata } from "./FormatMetadataModal"
 
 interface FormatSelectorProps {
   value: DocumentFormat
-  onChange: (format: DocumentFormat) => void
+  onChange: (format: DocumentFormat, metadata?: FormatMetadata) => void
+  formatMetadata?: FormatMetadata
 }
 
-export function FormatSelector({ value, onChange }: FormatSelectorProps) {
-  const formats: DocumentFormat[] = ["none", "mla", "apa", "chicago", "harvard", "ieee"]
+export function FormatSelector({ value, onChange, formatMetadata }: FormatSelectorProps) {
+  const formats: DocumentFormat[] = ["none", "mla"]
+  const [showModal, setShowModal] = useState(false)
+  const [pendingFormat, setPendingFormat] = useState<DocumentFormat | null>(null)
+
+  const handleFormatClick = (format: DocumentFormat) => {
+    if (format === "none") {
+      onChange(format)
+      return
+    }
+
+    // Always show modal for formats that require metadata
+    // This allows users to:
+    // 1. Fill metadata when first selecting a format
+    // 2. Edit metadata by clicking the format again
+    // 3. Provide metadata when switching formats
+    setPendingFormat(format)
+    setShowModal(true)
+  }
+
+  const handleMetadataSave = (metadata: FormatMetadata) => {
+    if (pendingFormat) {
+      onChange(pendingFormat, metadata)
+      setPendingFormat(null)
+    }
+  }
 
   return (
     <div className="space-y-3">
@@ -28,7 +55,7 @@ export function FormatSelector({ value, onChange }: FormatSelectorProps) {
           return (
             <button
               key={format}
-              onClick={() => onChange(format)}
+              onClick={() => handleFormatClick(format)}
               className={`relative p-3 md:p-4 rounded-lg text-left transition-all group touch-manipulation active:scale-95 ${
                 isSelected
                   ? 'bg-black border-black border-2'
@@ -66,9 +93,16 @@ export function FormatSelector({ value, onChange }: FormatSelectorProps) {
       
       {value !== "none" && (
         <div className="px-3 py-2 rounded-lg bg-gray-100 border border-black">
-          <p className="text-xs text-black">
-            <strong>{formatConfigs[value].name}:</strong> {formatConfigs[value].description}
-          </p>
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs text-black">
+              <strong>{formatConfigs[value].name}:</strong> {formatConfigs[value].description}
+            </p>
+            {formatMetadata && (
+              <span className="text-xs px-2 py-0.5 rounded bg-green-100 text-green-800 border border-green-300">
+                ✓ Configured
+              </span>
+            )}
+          </div>
           <div className="mt-1 text-xs text-gray-700 space-y-0.5">
             <p>• Font: {formatConfigs[value].fontFamily}, {formatConfigs[value].fontSize}pt</p>
             <p>• Line spacing: {formatConfigs[value].lineSpacing === 2.0 ? "Double" : formatConfigs[value].lineSpacing === 1.5 ? "1.5" : "Single"}</p>
@@ -76,9 +110,25 @@ export function FormatSelector({ value, onChange }: FormatSelectorProps) {
             {formatConfigs[value].firstLineIndent > 0 && (
               <p>• First line indent: {formatConfigs[value].firstLineIndent}"</p>
             )}
+            {formatMetadata && (
+              <p className="text-green-700 mt-1 pt-1 border-t border-gray-300">
+                • Header: {formatMetadata.studentName}, {formatMetadata.courseName}
+              </p>
+            )}
           </div>
         </div>
       )}
+
+      <FormatMetadataModal
+        isOpen={showModal}
+        format={pendingFormat || value}
+        onClose={() => {
+          setShowModal(false)
+          setPendingFormat(null)
+        }}
+        onSave={handleMetadataSave}
+        initialMetadata={formatMetadata}
+      />
     </div>
   )
 }
