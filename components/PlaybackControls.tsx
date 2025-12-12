@@ -1,5 +1,6 @@
 "use client"
 
+import React from "react"
 import type { JobStatus } from "@/types"
 
 interface PlaybackControlsProps {
@@ -23,11 +24,45 @@ export function PlaybackControls({
   const isPaused = status === "paused"
   const canControl = isRunning || isPaused
 
+  // Debug: Log what button is being rendered
+  React.useEffect(() => {
+    console.log("[PlaybackControls] Rendered with:", {
+      status,
+      disabled,
+      isRunning,
+      isPaused,
+      canControl,
+      showStartButton: status === "pending" || status === "stopped" || status === "failed" || status === "expired" || status === "completed",
+      hasOnStart: typeof onStart === "function",
+    })
+  }, [status, disabled, isRunning, isPaused, canControl, onStart])
+
+  const handleStartClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    console.log("[PlaybackControls] Start button clicked", {
+      disabled,
+      status,
+      event: e,
+      onStart: typeof onStart,
+    })
+    e.preventDefault()
+    e.stopPropagation()
+    if (!disabled && onStart) {
+      console.log("[PlaybackControls] Calling onStart handler")
+      onStart()
+    } else {
+      console.warn("[PlaybackControls] Start button click ignored", {
+        disabled,
+        hasOnStart: !!onStart,
+      })
+    }
+  }
+
   return (
     <div className="flex flex-col sm:flex-row gap-3" role="group" aria-label="Playback controls">
       {status === "pending" || status === "stopped" || status === "failed" || status === "expired" || status === "completed" ? (
         <button
-          onClick={onStart}
+          type="button"
+          onClick={handleStartClick}
           disabled={disabled}
           className="flex-1 flex items-center justify-center gap-2 px-4 md:px-6 py-3 md:py-4 rounded-lg bg-black text-white font-semibold shadow-sm hover:bg-gray-900 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 transition-all touch-manipulation"
           aria-label="Start typing"

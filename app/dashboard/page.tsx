@@ -222,6 +222,17 @@ function DashboardContent() {
   }, [])
 
   useEffect(() => {
+    console.log("[Dashboard] Component state:", {
+      jobIdParam,
+      currentJobId,
+      jobStatus,
+      loading,
+      textContent: textContent ? `${textContent.substring(0, 30)}...` : "EMPTY",
+      documentId: documentId || "EMPTY",
+    })
+  }, [jobIdParam, currentJobId, jobStatus, loading, textContent, documentId])
+
+  useEffect(() => {
     if (jobIdParam) {
       loadJob(jobIdParam)
       startProgressStream(jobIdParam)
@@ -252,8 +263,21 @@ function DashboardContent() {
   }
 
   const handleStart = async () => {
+    // Debug logging
+    console.log("[Start Job] handleStart called", {
+      textContent: textContent ? `${textContent.substring(0, 50)}...` : "EMPTY",
+      textContentLength: textContent?.length || 0,
+      documentId: documentId || "EMPTY",
+      durationMinutes,
+      typingProfile,
+      currentJobId,
+      jobStatus,
+      loading,
+    })
+
     if (!textContent.trim()) {
       const errorMsg = "Please enter text to type"
+      console.warn("[Start Job] Validation failed: No text content")
       setError(errorMsg)
       toast.addToast(errorMsg, "warning")
       return
@@ -261,6 +285,7 @@ function DashboardContent() {
 
     if (!documentId) {
       const errorMsg = "Please select or create a Google Document"
+      console.warn("[Start Job] Validation failed: No document ID")
       setError(errorMsg)
       toast.addToast(errorMsg, "warning")
       return
@@ -268,6 +293,8 @@ function DashboardContent() {
 
     setLoading(true)
     setError(null)
+
+    console.log("[Start Job] Making API call to /api/jobs/start")
 
     try {
       const response = await fetch("/api/jobs/start", {
@@ -279,6 +306,11 @@ function DashboardContent() {
           typingProfile,
           documentId,
         }),
+      })
+
+      console.log("[Start Job] API response received", {
+        status: response.status,
+        ok: response.ok,
       })
 
       if (!response.ok) {
@@ -296,6 +328,7 @@ function DashboardContent() {
       }
 
       const data = await response.json()
+      console.log("[Start Job] Success:", { jobId: data.jobId })
       setCurrentJobId(data.jobId)
       setJobStatus("running")
       setTotalChars(textContent.length)
@@ -307,6 +340,7 @@ function DashboardContent() {
       toast.addToast("Job started successfully!", "success")
       router.push(`/dashboard?jobId=${data.jobId}`)
     } catch (error) {
+      console.error("[Start Job] Network error:", error)
       const errorMsg = "Failed to start job"
       setError(errorMsg)
       toast.addToast(errorMsg, "error")
@@ -633,6 +667,14 @@ function DashboardContent() {
                   onStop={handleStop}
                   disabled={loading}
                 />
+                {/* Debug info */}
+                {process.env.NODE_ENV === 'development' && (
+                  <div className="text-xs text-gray-500 mt-2 p-2 bg-gray-50 rounded">
+                    Debug: status={jobStatus}, loading={loading ? 'true' : 'false'}, 
+                    hasText={textContent ? 'yes' : 'no'}, 
+                    hasDoc={documentId ? 'yes' : 'no'}
+                  </div>
+                )}
               </div>
             </div>
           </div>
