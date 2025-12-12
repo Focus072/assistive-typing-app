@@ -22,10 +22,10 @@ export const metadata: Metadata = {
     statusBarStyle: "black-translucent",
     title: "TypeFlow",
   },
-  icons: {
-    icon: "/icon-192.png",
-    apple: "/icon-192.png",
-  },
+  // icons: {
+  //   icon: "/icon-192.png",
+  //   apple: "/icon-192.png",
+  // },
 }
 
 export default function RootLayout({

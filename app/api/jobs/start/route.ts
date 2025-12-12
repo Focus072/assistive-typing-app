@@ -29,6 +29,13 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
+    console.log("[Start Job] Received request:", {
+      hasTextContent: !!body.textContent,
+      textContentLength: body.textContent?.length,
+      durationMinutes: body.durationMinutes,
+      typingProfile: body.typingProfile,
+      hasDocumentId: !!body.documentId,
+    })
     const validated = startJobSchema.parse(body)
 
     // Check for existing running job
@@ -40,10 +47,27 @@ export async function POST(request: Request) {
     })
 
     if (existingJob) {
-      return NextResponse.json(
-        { error: "You already have a running job" },
-        { status: 400 }
-      )
+      // If job is older than 1 hour, mark it as failed (likely stuck)
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
+      if (existingJob.createdAt < oneHourAgo) {
+        console.log(`[Start Job] Found stuck job ${existingJob.id}, marking as failed`)
+        await prisma.job.update({
+          where: { id: existingJob.id },
+          data: { status: "failed", errorCode: "STUCK_JOB_CLEANUP" },
+        })
+        await prisma.jobEvent.create({
+          data: {
+            jobId: existingJob.id,
+            type: "failed",
+            details: JSON.stringify({ reason: "Stuck job cleanup" }),
+          },
+        })
+      } else {
+        return NextResponse.json(
+          { error: `You already have a ${existingJob.status} job. Please stop it first or wait for it to complete.`, jobId: existingJob.id },
+          { status: 400 }
+        )
+      }
     }
 
     // Check daily job limit
@@ -101,17 +125,38 @@ export async function POST(request: Request) {
 
     // Trigger Inngest function (non-blocking failure)
     try {
+      // Log configuration for debugging
+      const hasEventKey = !!process.env.INNGEST_EVENT_KEY
+      const baseURL = process.env.INNGEST_BASE_URL
+      console.log("[Inngest] Sending event:", {
+        hasEventKey,
+        baseURL: baseURL ? (baseURL.includes('localhost') ? 'local' : 'custom') : 'default (Inngest Cloud)',
+        jobId: job.id,
+      })
+
       await inngest.send({
         name: "job/start",
         data: { jobId: job.id },
       })
+      
+      console.log("[Inngest] Event sent successfully")
     } catch (err: any) {
-      console.error("Inngest dispatch failed (job still created and running):", err)
+      console.error("Inngest dispatch failed (job still created and running):", {
+        error: err?.message,
+        stack: err?.stack,
+        hasEventKey: !!process.env.INNGEST_EVENT_KEY,
+        baseURL: process.env.INNGEST_BASE_URL,
+        statusCode: err?.status,
+      })
       await prisma.jobEvent.create({
         data: {
           jobId: job.id,
           type: "start_dispatch_failed",
-          details: JSON.stringify({ message: err?.message ?? "unknown error" }),
+          details: JSON.stringify({ 
+            message: err?.message ?? "unknown error",
+            statusCode: err?.status,
+            hasEventKey: !!process.env.INNGEST_EVENT_KEY,
+          }),
         },
       })
       // keep status running; UI can retry if needed
@@ -120,15 +165,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ jobId: job.id })
   } catch (error: any) {
     if (error instanceof z.ZodError) {
+      console.error("[Start Job] Validation error:", error.errors)
       return NextResponse.json(
         { error: "Invalid request", details: error.errors },
         { status: 400 }
       )
     }
     
-    console.error("Error starting job:", error)
+    console.error("[Start Job] Error:", {
+      message: error?.message,
+      stack: error?.stack,
+      name: error?.name,
+    })
     return NextResponse.json(
-      { error: "Failed to start job" },
+      { error: "Failed to start job", message: error?.message },
       { status: 500 }
     )
   }
