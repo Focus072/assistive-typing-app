@@ -2,9 +2,11 @@
 
 import { useState } from "react"
 import { signIn } from "next-auth/react"
+import Link from "next/link"
 
 export function LandingPage() {
   const [loading, setLoading] = useState(false)
+  const [email, setEmail] = useState("")
 
   const handleGoogleSignIn = async () => {
     setLoading(true)
@@ -15,171 +17,485 @@ export function LandingPage() {
     }
   }
 
+  const handleEmailSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    handleGoogleSignIn()
+  }
+
   return (
     <div className="min-h-screen bg-white">
-      {/* Hero Section */}
-      <section className="max-w-4xl mx-auto px-6 py-24 md:py-32">
-        <div className="text-center space-y-6">
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-black leading-tight">
-            Turn any text into natural human typing in Google Docs.
-          </h1>
-          <p className="text-xl md:text-2xl text-black/80 max-w-2xl mx-auto">
-            Realistic pacing. No copy-paste. Looks like you typed it.
-          </p>
-          <div className="pt-8 space-y-4">
+      {/* Header */}
+      <header className="bg-black text-white">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="text-2xl font-bold">typingisboring</div>
+          <nav className="hidden md:flex items-center gap-6">
+            <Link href="#features" className="hover:text-gray-300 transition-colors">Features</Link>
+            <Link href="#solutions" className="hover:text-gray-300 transition-colors">Solutions</Link>
+            <Link href="#resources" className="hover:text-gray-300 transition-colors">Resources</Link>
+            <Link href="#pricing" className="hover:text-gray-300 transition-colors">Pricing</Link>
+          </nav>
+          <div className="flex items-center gap-4">
             <button
               onClick={handleGoogleSignIn}
-              disabled={loading}
-              className="px-8 py-4 bg-black text-white font-semibold rounded-lg hover:bg-black/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-3 mx-auto"
+              className="text-white hover:text-gray-300 transition-colors"
             >
-              {loading ? (
-                <>
-                  <div className="w-5 h-5 border-2 border-white/30 rounded-full animate-spin border-t-white" />
-                  Signing in...
-                </>
-              ) : (
-                <>
-                  <svg className="w-5 h-5" viewBox="0 0 24 24">
-                    <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                    <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                    <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                    <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                  </svg>
-                  Sign in with Google
-                </>
-              )}
+              Sign in
             </button>
-            <p className="text-sm text-black/60">
-              Takes ~10 seconds · Free to start
+            <button
+              onClick={handleGoogleSignIn}
+              className="px-4 py-2 bg-white text-black font-semibold rounded hover:bg-gray-100 transition-colors"
+            >
+              Get started
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Hero Section - Black Background */}
+      <section className="bg-black text-white py-20 md:py-32">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            <div className="space-y-6">
+              <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-tight">
+                Sync up. Speed up. Stand out.
+              </h1>
+              <p className="text-xl md:text-2xl text-gray-300">
+                typingisboring is a typing automation platform that helps you transform text into natural, human-like typing in Google Docs.
+              </p>
+              <form onSubmit={handleEmailSubmit} className="flex gap-3 max-w-md">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Work email"
+                  className="flex-1 px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-white"
+                />
+                <button
+                  type="submit"
+                  className="px-6 py-3 bg-white text-black font-semibold rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  Get started
+                </button>
+              </form>
+            </div>
+            <div className="bg-white rounded-lg p-8 min-h-[400px] flex items-center justify-center">
+              <div className="text-center space-y-4 text-black">
+                <svg className="w-24 h-24 mx-auto text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <p className="text-gray-600">Google Docs typing preview</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Client Logos */}
+      <section className="py-12 border-b border-black/10">
+        <div className="max-w-7xl mx-auto px-6">
+          <p className="text-center text-gray-600 mb-8">Trusted by students, writers, and professionals worldwide</p>
+          <div className="flex flex-wrap items-center justify-center gap-8 md:gap-12 opacity-60">
+            <div className="text-2xl font-semibold text-black">Students</div>
+            <div className="text-2xl font-semibold text-black">Writers</div>
+            <div className="text-2xl font-semibold text-black">Professionals</div>
+            <div className="text-2xl font-semibold text-black">Researchers</div>
+            <div className="text-2xl font-semibold text-black">Content Creators</div>
+          </div>
+        </div>
+      </section>
+
+      {/* Results Section */}
+      <section className="py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-6">
+          <h2 className="text-4xl md:text-5xl font-bold text-black text-center mb-16">
+            We don't just talk about results, we show them.
+          </h2>
+          <div className="grid md:grid-cols-3 gap-12">
+            <div className="text-center">
+              <div className="text-6xl font-bold text-black mb-4">50%</div>
+              <p className="text-xl text-gray-700 mb-2">faster document creation</p>
+              <Link href="#" className="text-black underline">Learn more</Link>
+            </div>
+            <div className="text-center">
+              <div className="text-6xl font-bold text-black mb-4">100K+</div>
+              <p className="text-xl text-gray-700 mb-2">documents typed</p>
+              <Link href="#" className="text-black underline">Learn more</Link>
+            </div>
+            <div className="text-center">
+              <div className="text-6xl font-bold text-black mb-4">10K+</div>
+              <p className="text-xl text-gray-700 mb-2">active users</p>
+              <Link href="#" className="text-black underline">Learn more</Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* AI-powered Workflows */}
+      <section className="py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-6 text-center">
+          <h2 className="text-4xl md:text-5xl font-bold text-black mb-6">
+            Intelligent typing workflows that move you forward.
+          </h2>
+          <button
+            onClick={handleGoogleSignIn}
+            className="px-8 py-4 bg-black text-white font-semibold rounded-lg hover:bg-black/90 transition-colors"
+          >
+            Explore features
+          </button>
+        </div>
+      </section>
+
+      {/* Solutions Section */}
+      <section className="py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-6">
+          <h2 className="text-4xl md:text-5xl font-bold text-black text-center mb-16">
+            Essays that impress. Documents that deliver. Notes that matter.
+          </h2>
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div className="p-8 border border-black/10 rounded-lg hover:border-black transition-colors">
+              <h3 className="text-2xl font-bold text-black mb-4">Academic Writing</h3>
+              <p className="text-gray-700 mb-4">Transform drafts into polished essays and assignments.</p>
+              <Link href="#" className="text-black underline">Learn more</Link>
+            </div>
+            <div className="p-8 border border-black/10 rounded-lg hover:border-black transition-colors">
+              <h3 className="text-2xl font-bold text-black mb-4">Content Creation</h3>
+              <p className="text-gray-700 mb-4">Speed up long-form writing and documentation.</p>
+              <Link href="#" className="text-black underline">Learn more</Link>
+            </div>
+            <div className="p-8 border border-black/10 rounded-lg hover:border-black transition-colors">
+              <h3 className="text-2xl font-bold text-black mb-4">Note Transcription</h3>
+              <p className="text-gray-700 mb-4">Convert handwritten notes into digital documents.</p>
+              <Link href="#" className="text-black underline">Learn more</Link>
+            </div>
+            <div className="p-8 border border-black/10 rounded-lg hover:border-black transition-colors">
+              <h3 className="text-2xl font-bold text-black mb-4">Accessibility</h3>
+              <p className="text-gray-700 mb-4">Support users with typing fatigue or disabilities.</p>
+              <Link href="#" className="text-black underline">Learn more</Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Solutions for Teams */}
+      <section className="py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-6">
+          <h2 className="text-4xl md:text-5xl font-bold text-black text-center mb-12">
+            Solutions for high performing individuals.
+          </h2>
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <button className="p-6 border-2 border-black rounded-lg text-black font-semibold hover:bg-black hover:text-white transition-colors text-left">
+              Students & Academics
+            </button>
+            <button className="p-6 border-2 border-black rounded-lg text-black font-semibold hover:bg-black hover:text-white transition-colors text-left">
+              Writers & Authors
+            </button>
+            <button className="p-6 border-2 border-black rounded-lg text-black font-semibold hover:bg-black hover:text-white transition-colors text-left">
+              Content Teams
+            </button>
+            <button className="p-6 border-2 border-black rounded-lg text-black font-semibold hover:bg-black hover:text-white transition-colors text-left">
+              Researchers
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Feature Sections */}
+      <section className="py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-6 space-y-20">
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            <div>
+              <h2 className="text-4xl font-bold text-black mb-4">
+                Real-time typing simulation
+              </h2>
+              <p className="text-xl text-gray-700 mb-6">
+                Watch your text appear character-by-character with natural human pacing, pauses, and variation.
+              </p>
+              <button
+                onClick={handleGoogleSignIn}
+                className="px-6 py-3 bg-black text-white font-semibold rounded-lg hover:bg-black/90 transition-colors"
+              >
+                Learn more
+              </button>
+            </div>
+            <div className="bg-gray-100 rounded-lg p-8 min-h-[300px] flex items-center justify-center">
+              <div className="text-center text-gray-500">Feature preview</div>
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            <div className="md:order-2">
+              <h2 className="text-4xl font-bold text-black mb-4">
+                Customizable typing profiles
+              </h2>
+              <p className="text-xl text-gray-700 mb-6">
+                Choose from steady, burst, fatigue, or micropause profiles to match your natural typing style.
+              </p>
+              <button
+                onClick={handleGoogleSignIn}
+                className="px-6 py-3 bg-black text-white font-semibold rounded-lg hover:bg-black/90 transition-colors"
+              >
+                Learn more
+              </button>
+            </div>
+            <div className="bg-gray-100 rounded-lg p-8 min-h-[300px] flex items-center justify-center md:order-1">
+              <div className="text-center text-gray-500">Feature preview</div>
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            <div>
+              <h2 className="text-4xl font-bold text-black mb-4">
+                Format support & templates
+              </h2>
+              <p className="text-xl text-gray-700 mb-6">
+                Support for MLA, APA, and other academic formats with automatic header insertion and formatting.
+              </p>
+              <button
+                onClick={handleGoogleSignIn}
+                className="px-6 py-3 bg-black text-white font-semibold rounded-lg hover:bg-black/90 transition-colors"
+              >
+                Learn more
+              </button>
+            </div>
+            <div className="bg-gray-100 rounded-lg p-8 min-h-[300px] flex items-center justify-center">
+              <div className="text-center text-gray-500">Feature preview</div>
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            <div className="md:order-2">
+              <h2 className="text-4xl font-bold text-black mb-4">
+                Secure Google integration
+              </h2>
+              <p className="text-xl text-gray-700 mb-6">
+                Uses your own Google account with per-document safety locks. No copy-paste history, completely private.
+              </p>
+              <button
+                onClick={handleGoogleSignIn}
+                className="px-6 py-3 bg-black text-white font-semibold rounded-lg hover:bg-black/90 transition-colors"
+              >
+                Learn more
+              </button>
+            </div>
+            <div className="bg-gray-100 rounded-lg p-8 min-h-[300px] flex items-center justify-center md:order-1">
+              <div className="text-center text-gray-500">Feature preview</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Alignment & Transformation - Black Background */}
+      <section className="bg-black text-white py-20 md:py-32">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            <div className="space-y-6">
+              <h2 className="text-5xl md:text-6xl font-bold leading-tight">
+                Seeing is how automation fuels productivity.
+              </h2>
+              <p className="text-xl text-gray-300">
+                typingisboring is a typing automation platform that helps you transform text into natural, human-like typing in Google Docs. It provides realistic typing simulation with customizable profiles, fostering efficiency and driving productivity.
+              </p>
+              <button
+                onClick={handleGoogleSignIn}
+                className="px-8 py-4 bg-white text-black font-semibold rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                Get started
+              </button>
+            </div>
+            <div className="bg-white/10 rounded-lg p-8 min-h-[400px] flex items-center justify-center">
+              <div className="text-center text-gray-400">Visual representation</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Customer Testimonials */}
+      <section className="py-20 bg-white">
+        <div className="max-w-4xl mx-auto px-6">
+          <h2 className="text-4xl md:text-5xl font-bold text-black text-center mb-16">
+            What our users say.
+          </h2>
+          <div className="bg-white border-2 border-black rounded-lg p-8 md:p-12">
+            <p className="text-xl text-gray-700 mb-8 leading-relaxed">
+              "typingisboring has been an indispensable tool for my academic work, especially when dealing with long essays and research papers. It allows me to transform my drafts into polished documents seamlessly, fostering a sense of productivity that's hard to achieve otherwise. The realistic typing simulation and powerful formatting features make it a joy to use, and it has truly transformed the way I work."
             </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-semibold text-black">Sarah Chen</p>
+                <p className="text-gray-600">Graduate Student, Stanford University</p>
+              </div>
+              <div className="flex gap-2">
+                <button className="p-2 hover:bg-gray-100 rounded transition-colors">
+                  <svg className="w-6 h-6 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <button className="p-2 hover:bg-gray-100 rounded transition-colors">
+                  <svg className="w-6 h-6 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div className="text-center mt-8">
+            <button
+              onClick={handleGoogleSignIn}
+              className="px-6 py-3 bg-black text-white font-semibold rounded-lg hover:bg-black/90 transition-colors"
+            >
+              Read more stories
+            </button>
           </div>
         </div>
       </section>
 
-      {/* How It Works */}
-      <section className="max-w-4xl mx-auto px-6 py-16 md:py-24 border-t border-black/10">
-        <h2 className="text-3xl md:text-4xl font-bold text-black text-center mb-12">
-          How It Works
-        </h2>
-        <div className="grid md:grid-cols-3 gap-8 md:gap-12">
-          <div className="text-center space-y-4">
-            <div className="w-16 h-16 mx-auto bg-black rounded-lg flex items-center justify-center">
-              <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-              </svg>
+      {/* Latest Insights */}
+      <section className="py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-6">
+          <h2 className="text-4xl md:text-5xl font-bold text-black text-center mb-16">
+            Latest insights and updates.
+          </h2>
+          <div className="grid md:grid-cols-3 gap-8">
+            <div className="border border-black/10 rounded-lg overflow-hidden hover:border-black transition-colors">
+              <div className="bg-black text-white px-4 py-2 text-sm font-semibold inline-block">Product</div>
+              <div className="p-6">
+                <h3 className="text-xl font-bold text-black mb-2">How to optimize your typing workflow</h3>
+                <p className="text-gray-700 mb-4">Learn best practices for transforming your text efficiently.</p>
+                <Link href="#" className="text-black underline">Read more</Link>
+              </div>
             </div>
-            <p className="text-lg text-black font-medium">Paste text</p>
+            <div className="border border-black/10 rounded-lg overflow-hidden hover:border-black transition-colors">
+              <div className="bg-black text-white px-4 py-2 text-sm font-semibold inline-block">Tips</div>
+              <div className="p-6">
+                <h3 className="text-xl font-bold text-black mb-2">5 ways to improve document quality</h3>
+                <p className="text-gray-700 mb-4">Discover techniques for creating professional documents.</p>
+                <Link href="#" className="text-black underline">Read more</Link>
+              </div>
+            </div>
+            <div className="border border-black/10 rounded-lg overflow-hidden hover:border-black transition-colors">
+              <div className="bg-black text-white px-4 py-2 text-sm font-semibold inline-block">Features</div>
+              <div className="p-6">
+                <h3 className="text-xl font-bold text-black mb-2">The future of typing automation</h3>
+                <p className="text-gray-700 mb-4">Explore upcoming features and improvements.</p>
+                <Link href="#" className="text-black underline">Read more</Link>
+              </div>
+            </div>
           </div>
-          <div className="text-center space-y-4">
-            <div className="w-16 h-16 mx-auto bg-black rounded-lg flex items-center justify-center">
-              <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-              </svg>
-            </div>
-            <p className="text-lg text-black font-medium">Choose typing style + speed</p>
-          </div>
-          <div className="text-center space-y-4">
-            <div className="w-16 h-16 mx-auto bg-black rounded-lg flex items-center justify-center">
-              <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
-            <p className="text-lg text-black font-medium">Watch it type in Google Docs</p>
+          <div className="text-center mt-12">
+            <button
+              onClick={handleGoogleSignIn}
+              className="px-6 py-3 bg-black text-white font-semibold rounded-lg hover:bg-black/90 transition-colors"
+            >
+              View all insights
+            </button>
           </div>
         </div>
       </section>
 
-      {/* Why This Exists */}
-      <section className="max-w-4xl mx-auto px-6 py-16 md:py-24 border-t border-black/10">
-        <h2 className="text-3xl md:text-4xl font-bold text-black text-center mb-12">
-          Why This Exists
-        </h2>
-        <div className="max-w-2xl mx-auto space-y-6">
-          <div className="flex items-start gap-4">
-            <div className="w-2 h-2 rounded-full bg-black mt-2 flex-shrink-0" />
-            <p className="text-lg text-black">Types with human pauses and variation</p>
-          </div>
-          <div className="flex items-start gap-4">
-            <div className="w-2 h-2 rounded-full bg-black mt-2 flex-shrink-0" />
-            <p className="text-lg text-black">No copy/paste history</p>
-          </div>
-          <div className="flex items-start gap-4">
-            <div className="w-2 h-2 rounded-full bg-black mt-2 flex-shrink-0" />
-            <p className="text-lg text-black">Uses your own Google account</p>
-          </div>
-          <div className="flex items-start gap-4">
-            <div className="w-2 h-2 rounded-full bg-black mt-2 flex-shrink-0" />
-            <p className="text-lg text-black">Per-document safety lock (no duplicates)</p>
-          </div>
-        </div>
-      </section>
-
-      {/* Live Preview */}
-      <section className="max-w-4xl mx-auto px-6 py-16 md:py-24 border-t border-black/10">
-        <div className="space-y-6">
-          <div className="aspect-video bg-gray-100 border-2 border-black/20 rounded-lg flex items-center justify-center">
-            <div className="text-center space-y-2">
-              <svg className="w-16 h-16 mx-auto text-black/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-              </svg>
-              <p className="text-sm text-black/60">Video/GIF placeholder</p>
-            </div>
-          </div>
-          <p className="text-center text-lg text-black/80">
-            This is what professors, editors, and Docs see.
+      {/* Designed for Businesses */}
+      <section className="bg-gray-100 py-20">
+        <div className="max-w-7xl mx-auto px-6 text-center">
+          <h2 className="text-4xl md:text-5xl font-bold text-black mb-4">
+            Designed for users of all types.
+          </h2>
+          <p className="text-xl text-gray-700 mb-8">
+            From students to professionals, typingisboring scales with your needs.
           </p>
-        </div>
-      </section>
-
-      {/* Use Cases */}
-      <section className="max-w-4xl mx-auto px-6 py-16 md:py-24 border-t border-black/10">
-        <h2 className="text-3xl md:text-4xl font-bold text-black text-center mb-12">
-          Use Cases
-        </h2>
-        <div className="grid md:grid-cols-2 gap-6 max-w-2xl mx-auto">
-          <div className="text-center">
-            <p className="text-lg text-black">Essays & assignments</p>
-          </div>
-          <div className="text-center">
-            <p className="text-lg text-black">Drafting long docs</p>
-          </div>
-          <div className="text-center">
-            <p className="text-lg text-black">Re-typing handwritten notes</p>
-          </div>
-          <div className="text-center">
-            <p className="text-lg text-black">Accessibility / fatigue support</p>
+          <div className="flex flex-wrap justify-center gap-4">
+            <button
+              onClick={handleGoogleSignIn}
+              className="px-8 py-4 bg-black text-white font-semibold rounded-lg hover:bg-black/90 transition-colors"
+            >
+              Get started
+            </button>
+            <button className="px-8 py-4 bg-white border-2 border-black text-black font-semibold rounded-lg hover:bg-gray-50 transition-colors">
+              Contact support
+            </button>
           </div>
         </div>
       </section>
 
       {/* Final CTA */}
-      <section className="max-w-4xl mx-auto px-6 py-16 md:py-24 border-t border-black/10">
-        <div className="text-center space-y-6">
+      <section className="py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-6 text-center">
+          <h2 className="text-4xl md:text-5xl font-bold text-black mb-8">
+            Ready to see what everyone's talking about?
+          </h2>
+          <div className="flex justify-center gap-6 mb-8">
+            <a href="#" className="text-black hover:text-gray-600 transition-colors">
+              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+              </svg>
+            </a>
+            <a href="#" className="text-black hover:text-gray-600 transition-colors">
+              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/>
+              </svg>
+            </a>
+            <a href="#" className="text-black hover:text-gray-600 transition-colors">
+              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+              </svg>
+            </a>
+          </div>
           <button
             onClick={handleGoogleSignIn}
-            disabled={loading}
-            className="px-8 py-4 bg-black text-white font-semibold rounded-lg hover:bg-black/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-3 mx-auto"
+            className="px-8 py-4 bg-black text-white font-semibold rounded-lg hover:bg-black/90 transition-colors"
           >
-            {loading ? (
-              <>
-                <div className="w-5 h-5 border-2 border-white/30 rounded-full animate-spin border-t-white" />
-                Signing in...
-              </>
-            ) : (
-              <>
-                <svg className="w-5 h-5" viewBox="0 0 24 24">
-                  <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                  <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                  <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                  <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                </svg>
-                Sign in with Google → Start typing
-              </>
-            )}
+            Get started
           </button>
         </div>
       </section>
+
+      {/* Footer */}
+      <footer className="bg-white border-t border-black/10 py-12">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="grid md:grid-cols-5 gap-8 mb-8">
+            <div>
+              <div className="text-3xl font-bold text-black mb-4">typingisboring</div>
+              <p className="text-sm text-gray-600">© 2025 typingisboring. All rights reserved.</p>
+            </div>
+            <div>
+              <h4 className="font-semibold text-black mb-4">Product</h4>
+              <ul className="space-y-2 text-sm text-gray-600">
+                <li><Link href="#" className="hover:text-black">Features</Link></li>
+                <li><Link href="#" className="hover:text-black">Integrations</Link></li>
+                <li><Link href="#" className="hover:text-black">Templates</Link></li>
+                <li><Link href="#" className="hover:text-black">Pricing</Link></li>
+                <li><Link href="#" className="hover:text-black">Security</Link></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold text-black mb-4">Solutions</h4>
+              <ul className="space-y-2 text-sm text-gray-600">
+                <li><Link href="#" className="hover:text-black">Students</Link></li>
+                <li><Link href="#" className="hover:text-black">Writers</Link></li>
+                <li><Link href="#" className="hover:text-black">Professionals</Link></li>
+                <li><Link href="#" className="hover:text-black">Researchers</Link></li>
+                <li><Link href="#" className="hover:text-black">Accessibility</Link></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold text-black mb-4">Resources</h4>
+              <ul className="space-y-2 text-sm text-gray-600">
+                <li><Link href="#" className="hover:text-black">Blog</Link></li>
+                <li><Link href="#" className="hover:text-black">Help Center</Link></li>
+                <li><Link href="#" className="hover:text-black">Support</Link></li>
+                <li><Link href="#" className="hover:text-black">Documentation</Link></li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-semibold text-black mb-4">Company</h4>
+              <ul className="space-y-2 text-sm text-gray-600">
+                <li><Link href="#" className="hover:text-black">About</Link></li>
+                <li><Link href="#" className="hover:text-black">Contact</Link></li>
+                <li><Link href="#" className="hover:text-black">Terms</Link></li>
+                <li><Link href="#" className="hover:text-black">Privacy</Link></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }
-
