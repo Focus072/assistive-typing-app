@@ -555,6 +555,7 @@ export function DocsSelector({
                             // Pre-calculate position before opening menu
                             if (newMenuState && menuButtonRefs.current[doc.id]) {
                               const button = menuButtonRefs.current[doc.id];
+                              if (!button) return;
                               const buttonRect = button.getBoundingClientRect();
                               const viewportHeight = window.innerHeight;
                               const estimatedMenuHeight = 120;

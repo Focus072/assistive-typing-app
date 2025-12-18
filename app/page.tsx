@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { SignInPage } from "@/components/ui/sign-in-flow-1"
+import SignInPageClient from "@/components/SignInPageClient"
 
 export const metadata: Metadata = {
   title: "typingisboring - Natural typing for Google Docs",
@@ -28,5 +28,5 @@ export const metadata: Metadata = {
 export default function HomePage() {
   // Render the full 21st.dev sign-in flow (with auth-aware navbar)
   // on the main home page.
-  return <SignInPage />
+  return <SignInPageClient />
 }

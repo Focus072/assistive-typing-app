@@ -1,9 +1,9 @@
-import { SignInPage } from "@/components/ui/sign-in-flow-1"
+import SignInPageClient from "@/components/SignInPageClient"
 
 export default function TestHomepage() {
   return (
     <div className="w-full min-h-screen bg-black">
-      <SignInPage />
+      <SignInPageClient />
     </div>
   )
 }
