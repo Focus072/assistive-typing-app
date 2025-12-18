@@ -74,7 +74,7 @@ export default function CookiesPage() {
           <section className="space-y-4">
             <h2 className="text-xl font-semibold text-white">6. Do Not Track</h2>
             <p>
-              typingisboring does not respond to "Do Not Track" signals. We do not track users across websites or
+              typingisboring does not respond to &quot;Do Not Track&quot; signals. We do not track users across websites or
               use tracking cookies for advertising purposes.
             </p>
           </section>

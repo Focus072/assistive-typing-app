@@ -40,11 +40,14 @@ export function useFocusTrap(isOpen: boolean, triggerRef?: React.RefObject<HTMLE
 
     container.addEventListener("keydown", handleTabKey)
 
+    // Capture trigger ref value for cleanup
+    const triggerElement = triggerRef?.current
+
     return () => {
       container.removeEventListener("keydown", handleTabKey)
       // Return focus to trigger when modal closes
-      if (triggerRef?.current) {
-        triggerRef.current.focus()
+      if (triggerElement) {
+        triggerElement.focus()
       }
     }
   }, [isOpen, triggerRef])

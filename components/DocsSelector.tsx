@@ -410,7 +410,7 @@ export function DocsSelector({
         </svg>
         Google Doc
         <span className="text-xs font-normal opacity-70">
-          Choose where we'll type
+          Choose where we&apos;ll type
         </span>
       </label>
 

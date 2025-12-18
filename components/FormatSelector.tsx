@@ -210,14 +210,14 @@ export function FormatSelector({
                     : customFormatConfig.lineSpacing}
                 </p>
                 <p>
-                  • Margins: {customFormatConfig.margins.top}" top,{" "}
-                  {customFormatConfig.margins.right}" right,{" "}
-                  {customFormatConfig.margins.bottom}" bottom,{" "}
-                  {customFormatConfig.margins.left}" left
+                  • Margins: {customFormatConfig.margins.top}&quot; top,{" "}
+                  {customFormatConfig.margins.right}&quot; right,{" "}
+                  {customFormatConfig.margins.bottom}&quot; bottom,{" "}
+                  {customFormatConfig.margins.left}&quot; left
                 </p>
                 {customFormatConfig.firstLineIndent > 0 && (
                   <p>
-                    • First line indent: {customFormatConfig.firstLineIndent}"
+                    • First line indent: {customFormatConfig.firstLineIndent}&quot;
                   </p>
                 )}
               </>
@@ -235,10 +235,10 @@ export function FormatSelector({
                     ? "1.5"
                     : "Single"}
                 </p>
-                <p>• Margins: {formatConfigs[value].margins.top}" all around</p>
+                <p>• Margins: {formatConfigs[value].margins.top}&quot; all around</p>
                 {formatConfigs[value].firstLineIndent > 0 && (
                   <p>
-                    • First line indent: {formatConfigs[value].firstLineIndent}"
+                    • First line indent: {formatConfigs[value].firstLineIndent}&quot;
                   </p>
                 )}
                 {formatMetadata && (

@@ -52,7 +52,7 @@ export default function TermsPage() {
           <section className="space-y-4">
             <h2 className="text-xl font-semibold text-white">5. Limitation of Liability</h2>
             <p>
-              typingisboring is provided "as is" without warranties. We are not liable for any damages arising from
+              typingisboring is provided &quot;as is&quot; without warranties. We are not liable for any damages arising from
               your use of the service.
             </p>
           </section>

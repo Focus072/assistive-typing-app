@@ -128,9 +128,9 @@ export function TextPreview({ text, format, formatMetadata }: TextPreviewProps) 
         }`}>
           <span>Line spacing: {config.lineSpacing === 2.0 ? 'Double' : config.lineSpacing === 1.5 ? '1.5' : 'Single'}</span>
           {config.firstLineIndent > 0 && (
-            <span>• First line indent: {config.firstLineIndent}"</span>
+            <span>• First line indent: {config.firstLineIndent}&quot;</span>
           )}
-          <span>• Margins: {config.margins.top}" all around</span>
+          <span>• Margins: {config.margins.top}&quot; all around</span>
         </div>
       </div>
     </div>

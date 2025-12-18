@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { useDashboardTheme } from "../layout"
 
@@ -21,11 +21,7 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true)
   const [timeRange, setTimeRange] = useState<"7d" | "30d" | "all">("30d")
 
-  useEffect(() => {
-    loadStats()
-  }, [timeRange])
-
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     try {
       setLoading(true)
       const response = await fetch(`/api/jobs/stats?range=${timeRange}`)
@@ -38,7 +34,11 @@ export default function AnalyticsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [timeRange])
+
+  useEffect(() => {
+    loadStats()
+  }, [loadStats])
 
   if (loading) {
     return (

@@ -34,14 +34,14 @@ export default function PrivacyPage() {
             </ul>
           </section>
           <section className="space-y-4">
-            <h2 className="text-xl font-semibold text-white">2. What We Don't Store</h2>
+            <h2 className="text-xl font-semibold text-white">2. What We Don&apos;t Store</h2>
             <p>
               We do not store:
             </p>
             <ul className="list-disc list-inside space-y-2 ml-4">
               <li>Your document content after typing completes</li>
               <li>Your Google OAuth tokens (handled by NextAuth)</li>
-              <li>Any personal information beyond what's necessary for the service</li>
+              <li>Any personal information beyond what&apos;s necessary for the service</li>
             </ul>
           </section>
           <section className="space-y-4">
@@ -106,7 +106,7 @@ export default function PrivacyPage() {
             </p>
           </section>
           <section className="space-y-4">
-            <h2 className="text-xl font-semibold text-white">8. Children's Privacy</h2>
+            <h2 className="text-xl font-semibold text-white">8. Children&apos;s Privacy</h2>
             <p>
               typingisboring is not intended for users under the age of 13. We do not knowingly collect personal
               information from children under 13. If you believe we have collected information from a child under 13,
@@ -117,7 +117,7 @@ export default function PrivacyPage() {
             <h2 className="text-xl font-semibold text-white">9. Changes to This Policy</h2>
             <p>
               We may update this Privacy Policy from time to time. We will notify you of any material changes by
-              posting the new policy on this page and updating the "Last updated" date.
+              posting the new policy on this page and updating the &quot;Last updated&quot; date.
             </p>
           </section>
           <div className="pt-8 border-t border-white/10">

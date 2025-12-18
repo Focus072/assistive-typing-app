@@ -257,7 +257,7 @@ export function DocumentPreviewModal({
                 : "Single"}
             </span>
             {config.firstLineIndent > 0 && (
-              <span>Indent: {config.firstLineIndent}"</span>
+              <span>Indent: {config.firstLineIndent}&quot;</span>
             )}
           </div>
           <button

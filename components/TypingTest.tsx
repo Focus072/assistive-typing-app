@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { useDashboardTheme } from "@/app/dashboard/layout"
 import { useFocusTrap } from "@/hooks/useFocusTrap"
 
@@ -41,7 +41,7 @@ export function TypingTest({ isOpen, onClose, onComplete }: TypingTestProps) {
   }, [started])
 
   // Bulletproof WPM calculation (industry-standard)
-  const calculateWPM = (): number => {
+  const calculateWPM = useCallback((): number => {
     if (!startTime || !userInput) return 0
     
     const elapsedMs = Date.now() - startTime
@@ -55,7 +55,7 @@ export function TypingTest({ isOpen, onClose, onComplete }: TypingTestProps) {
     // WPM = (correct characters ÷ 5) ÷ minutes
     const wpm = Math.round((correctChars / 5) / minutes || 0)
     return wpm
-  }
+  }, [startTime, userInput])
 
   // Calculate accuracy (derived, never mutated)
   const calculateAccuracy = (): number => {
@@ -84,7 +84,7 @@ export function TypingTest({ isOpen, onClose, onComplete }: TypingTestProps) {
       setWpm(calculateWPM())
     }, 100)
     return () => clearInterval(interval)
-  }, [started, startTime, userInput, testFinished])
+  }, [started, startTime, userInput, testFinished, calculateWPM])
 
   // Completion logic: ONLY when userInput.length === TARGET_TEXT.length
   const isComplete = userInput.length === TARGET_TEXT.length
@@ -95,7 +95,7 @@ export function TypingTest({ isOpen, onClose, onComplete }: TypingTestProps) {
       const finalWPM = calculateWPM()
       setWpm(finalWPM)
     }
-  }, [isComplete, testFinished, started])
+  }, [isComplete, testFinished, started, calculateWPM])
 
   const handleStart = () => {
     setStarted(true)
@@ -242,9 +242,9 @@ export function TypingTest({ isOpen, onClose, onComplete }: TypingTestProps) {
                     isDark ? "text-white/70" : "text-black/70"
                   }`}>
                     <li>Type the text below as accurately as possible</li>
-                    <li>Don't worry about mistakes - just type naturally</li>
+                    <li>Don&apos;t worry about mistakes - just type naturally</li>
                     <li>Your WPM will be calculated automatically</li>
-                    <li>Click "Start Test" when you're ready</li>
+                    <li>Click &quot;Start Test&quot; when you&apos;re ready</li>
                   </ul>
                 </div>
               </div>
