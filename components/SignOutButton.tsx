@@ -3,8 +3,12 @@
 import { signOut } from "next-auth/react"
 
 export function SignOutButton() {
-  const handleSignOut = () => {
-    signOut({ callbackUrl: "/login" })
+  const handleSignOut = async () => {
+    // Clear session and redirect to home page
+    await signOut({ 
+      callbackUrl: "/",
+      redirect: true 
+    })
   }
 
   return (

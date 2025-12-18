@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
+import { useDashboardTheme } from "../layout"
 
 interface JobStats {
   totalJobs: number
@@ -15,6 +16,7 @@ interface JobStats {
 }
 
 export default function AnalyticsPage() {
+  const { isDark } = useDashboardTheme()
   const [stats, setStats] = useState<JobStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [timeRange, setTimeRange] = useState<"7d" | "30d" | "all">("30d")
@@ -32,7 +34,7 @@ export default function AnalyticsPage() {
         setStats(data)
       }
     } catch (error) {
-      console.error("Failed to load stats:", error)
+      // Error handled by UI state
     } finally {
       setLoading(false)
     }
@@ -44,7 +46,9 @@ export default function AnalyticsPage() {
         <div className="flex items-center gap-4">
           <Link 
             href="/dashboard"
-            className="flex items-center gap-2 text-gray-600 hover:text-black transition-colors"
+            className={`flex items-center gap-2 transition-colors ${
+              isDark ? "text-white/60 hover:text-white" : "text-black/60 hover:text-black"
+            }`}
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -53,7 +57,9 @@ export default function AnalyticsPage() {
           </Link>
         </div>
         <div className="flex items-center justify-center py-20">
-          <div className="w-8 h-8 border-2 border-gray-300 rounded-full animate-spin border-t-black" />
+          <div className={`w-8 h-8 border-2 rounded-full animate-spin ${
+            isDark ? "border-white/20 border-t-white" : "border-black/20 border-t-black"
+          }`} />
         </div>
       </div>
     )
@@ -65,7 +71,9 @@ export default function AnalyticsPage() {
         <div className="flex items-center gap-4">
           <Link 
             href="/dashboard"
-            className="flex items-center gap-2 text-gray-600 hover:text-black transition-colors"
+            className={`flex items-center gap-2 transition-colors ${
+              isDark ? "text-white/60 hover:text-white" : "text-black/60 hover:text-black"
+            }`}
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -73,8 +81,10 @@ export default function AnalyticsPage() {
             Back to Dashboard
           </Link>
         </div>
-        <div className="glass-card rounded-2xl p-12 text-center">
-          <p className="text-gray-600">No analytics data available</p>
+        <div className={`rounded-xl p-12 text-center border ${
+          isDark ? "bg-[#101010] border-[#333] text-white/60" : "bg-white border-black/10 text-black/60"
+        }`}>
+          <p>No analytics data available</p>
         </div>
       </div>
     )
@@ -88,7 +98,9 @@ export default function AnalyticsPage() {
           <div className="flex items-center gap-4 mb-2">
             <Link 
               href="/dashboard"
-              className="flex items-center gap-2 text-gray-600 hover:text-black transition-colors"
+              className={`flex items-center gap-2 transition-colors ${
+                isDark ? "text-white/60 hover:text-white" : "text-black/60 hover:text-black"
+              }`}
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -96,22 +108,32 @@ export default function AnalyticsPage() {
               Back to Dashboard
             </Link>
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold text-black">
-            <span className="gradient-text">Analytics</span>
+          <h1 className={`text-3xl md:text-4xl font-bold ${
+            isDark ? "text-white" : "text-black"
+          }`}>
+            Analytics
           </h1>
-          <p className="text-gray-600 mt-2">Track your typing activity and performance</p>
+          <p className={`mt-2 ${
+            isDark ? "text-white/60" : "text-black/60"
+          }`}>Track your typing activity and performance</p>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           {(["7d", "30d", "all"] as const).map((range) => (
             <button
               key={range}
               onClick={() => setTimeRange(range)}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                 timeRange === range
-                  ? "bg-black border border-black text-white"
-                  : "bg-white border border-black text-black hover:bg-gray-50"
+                  ? isDark
+                    ? "bg-white text-black border border-white"
+                    : "bg-black text-white border border-black"
+                  : isDark
+                  ? "bg-white/5 border border-white/20 text-white hover:bg-white/10"
+                  : "bg-white border border-black/20 text-black hover:bg-gray-50"
               }`}
+              aria-pressed={timeRange === range}
+              aria-label={`Filter by ${range === "7d" ? "7 days" : range === "30d" ? "30 days" : "all time"}`}
             >
               {range === "7d" ? "7 Days" : range === "30d" ? "30 Days" : "All Time"}
             </button>
@@ -166,20 +188,37 @@ export default function AnalyticsPage() {
       {/* Charts */}
       <div className="grid gap-6 md:grid-cols-2">
         {/* Profile Distribution */}
-        <div className="glass-card rounded-2xl p-6">
-          <h2 className="text-lg font-semibold text-black mb-4">Jobs by Profile</h2>
+        <div className={`rounded-xl p-6 border ${
+          isDark ? "bg-[#101010] border-[#333]" : "bg-white border-black/10"
+        }`}>
+          <h2 className={`text-lg font-semibold mb-4 ${
+            isDark ? "text-white" : "text-black"
+          }`}>Jobs by Profile</h2>
           <div className="space-y-3">
             {Object.entries(stats.jobsByProfile).map(([profile, count]) => (
               <div key={profile} className="flex items-center justify-between">
-                <span className="text-gray-700 capitalize">{profile}</span>
+                <span className={`capitalize ${
+                  isDark ? "text-white/70" : "text-black/70"
+                }`}>{profile}</span>
                 <div className="flex items-center gap-3">
-                  <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div className={`w-24 h-2 rounded-full overflow-hidden ${
+                    isDark ? "bg-white/10" : "bg-gray-200"
+                  }`}>
                     <div
-                      className="h-full bg-black rounded-full"
+                      className={`h-full rounded-full ${
+                        isDark ? "bg-white" : "bg-black"
+                      }`}
                       style={{ width: `${(count / stats.totalJobs) * 100}%` }}
+                      role="progressbar"
+                      aria-valuenow={count}
+                      aria-valuemin={0}
+                      aria-valuemax={stats.totalJobs}
+                      aria-label={`${profile} profile: ${count} jobs`}
                     />
                   </div>
-                  <span className="text-black font-medium w-8 text-right">{count}</span>
+                  <span className={`font-medium w-8 text-right ${
+                    isDark ? "text-white" : "text-black"
+                  }`}>{count}</span>
                 </div>
               </div>
             ))}
@@ -187,23 +226,40 @@ export default function AnalyticsPage() {
         </div>
 
         {/* Daily Activity */}
-        <div className="glass-card rounded-2xl p-6">
-          <h2 className="text-lg font-semibold text-black mb-4">Daily Activity</h2>
+        <div className={`rounded-xl p-6 border ${
+          isDark ? "bg-[#101010] border-[#333]" : "bg-white border-black/10"
+        }`}>
+          <h2 className={`text-lg font-semibold mb-4 ${
+            isDark ? "text-white" : "text-black"
+          }`}>Daily Activity</h2>
           <div className="space-y-2">
             {stats.jobsByDay.slice(-7).map((day, idx) => {
               const maxCount = Math.max(...stats.jobsByDay.map(d => d.count))
               return (
                 <div key={idx} className="flex items-center gap-3">
-                  <span className="text-gray-600 text-xs w-16">
+                  <span className={`text-xs w-16 ${
+                    isDark ? "text-white/60" : "text-black/60"
+                  }`}>
                     {new Date(day.date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
                   </span>
-                  <div className="flex-1 h-6 bg-gray-200 rounded-full overflow-hidden">
+                  <div className={`flex-1 h-6 rounded-full overflow-hidden ${
+                    isDark ? "bg-white/10" : "bg-gray-200"
+                  }`}>
                     <div
-                      className="h-full bg-black rounded-full transition-all"
+                      className={`h-full rounded-full transition-all ${
+                        isDark ? "bg-white" : "bg-black"
+                      }`}
                       style={{ width: `${maxCount > 0 ? (day.count / maxCount) * 100 : 0}%` }}
+                      role="progressbar"
+                      aria-valuenow={day.count}
+                      aria-valuemin={0}
+                      aria-valuemax={maxCount}
+                      aria-label={`${new Date(day.date).toLocaleDateString()}: ${day.count} jobs`}
                     />
                   </div>
-                  <span className="text-black text-sm w-8 text-right">{day.count}</span>
+                  <span className={`text-sm w-8 text-right ${
+                    isDark ? "text-white" : "text-black"
+                  }`}>{day.count}</span>
                 </div>
               )
             })}
@@ -225,15 +281,25 @@ function StatCard({
   icon: React.ReactNode
   color: "violet" | "fuchsia" | "cyan" | "emerald"
 }) {
+  const { isDark } = useDashboardTheme()
+  
   return (
-    <div className="rounded-xl md:rounded-2xl p-4 md:p-5 bg-white border border-black shadow-sm">
+    <div className={`rounded-xl md:rounded-2xl p-4 md:p-5 border shadow-sm ${
+      isDark ? "bg-[#101010] border-[#333]" : "bg-white border-black/10"
+    }`}>
       <div className="flex items-center gap-3 mb-3">
-        <div className="w-10 h-10 rounded-xl bg-black flex items-center justify-center text-white">
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+          isDark ? "bg-white/10 text-white" : "bg-black/5 text-black"
+        }`}>
           {icon}
         </div>
       </div>
-      <p className="text-xl md:text-2xl font-bold text-black">{value}</p>
-      <p className="text-xs md:text-sm text-gray-600 mt-1">{label}</p>
+      <p className={`text-xl md:text-2xl font-bold ${
+        isDark ? "text-white" : "text-black"
+      }`}>{value}</p>
+      <p className={`text-xs md:text-sm mt-1 ${
+        isDark ? "text-white/60" : "text-black/60"
+      }`}>{label}</p>
     </div>
   )
 }

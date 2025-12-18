@@ -1,6 +1,7 @@
 "use client"
 
 import { createContext, useContext, useState, useCallback, useEffect } from "react"
+import { useDashboardTheme } from "@/app/dashboard/layout"
 
 type ToastType = "success" | "error" | "info" | "warning"
 
@@ -65,6 +66,7 @@ function ToastContainer({ toasts, removeToast }: { toasts: Toast[]; removeToast:
 }
 
 function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
+  const { isDark } = useDashboardTheme()
   const [progress, setProgress] = useState(100)
 
   useEffect(() => {
@@ -107,10 +109,18 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
   }
 
   const colors = {
-    success: "bg-emerald-50 border-emerald-200 text-emerald-900",
-    error: "bg-red-50 border-red-200 text-red-900",
-    info: "bg-gray-100 border-black text-black",
-    warning: "bg-amber-50 border-amber-200 text-amber-900",
+    success: isDark 
+      ? "bg-emerald-500/20 border-emerald-500/40 text-emerald-200"
+      : "bg-emerald-50 border-emerald-200 text-emerald-900",
+    error: isDark
+      ? "bg-red-500/20 border-red-500/40 text-red-200"
+      : "bg-red-50 border-red-200 text-red-900",
+    info: isDark
+      ? "bg-white/10 border-white/20 text-white"
+      : "bg-gray-100 border-black text-black",
+    warning: isDark
+      ? "bg-amber-500/20 border-amber-500/40 text-amber-200"
+      : "bg-amber-50 border-amber-200 text-amber-900",
   }
 
   return (
@@ -127,7 +137,9 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
         </div>
         <button
           onClick={onClose}
-          className="flex-shrink-0 text-white/50 hover:text-white transition-colors"
+          className={`flex-shrink-0 transition-colors ${
+            isDark ? "text-white/50 hover:text-white" : "text-black/50 hover:text-black"
+          }`}
           aria-label="Close"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -136,9 +148,13 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
         </button>
       </div>
       {toast.duration && toast.duration > 0 && (
-        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white/10 rounded-b-xl overflow-hidden">
+        <div className={`absolute bottom-0 left-0 right-0 h-0.5 rounded-b-xl overflow-hidden ${
+          isDark ? "bg-white/10" : "bg-black/10"
+        }`}>
           <div
-            className="h-full bg-white/30 transition-all"
+            className={`h-full transition-all ${
+              isDark ? "bg-white/30" : "bg-black/30"
+            }`}
             style={{ width: `${progress}%` }}
           />
         </div>

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/components/ui/toast"
+import { useDashboardTheme } from "@/app/dashboard/layout"
 
 interface Command {
   id: string
@@ -36,6 +37,7 @@ export function CommandPalette({
 }: CommandPaletteProps) {
   const router = useRouter()
   const toast = useToast()
+  const { isDark } = useDashboardTheme()
   const [search, setSearch] = useState("")
   const [selectedIndex, setSelectedIndex] = useState(0)
 
@@ -204,16 +206,26 @@ export function CommandPalette({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center pt-[20vh] px-4 bg-black/50"
+      className={`fixed inset-0 z-50 flex items-start justify-center pt-[20vh] px-4 ${
+        isDark ? "bg-black/50" : "bg-black/30"
+      }`}
       onClick={onClose}
     >
       <div
-        className="w-full max-w-2xl bg-white border border-black rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95"
+        className={`w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 border ${
+          isDark
+            ? "bg-[#111] border-white/20"
+            : "bg-white border-black/20"
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="p-4 border-b border-black">
+        <div className={`p-4 border-b ${
+          isDark ? "border-white/10" : "border-black/10"
+        }`}>
           <div className="flex items-center gap-3">
-            <svg className="w-5 h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className={`w-5 h-5 ${
+              isDark ? "text-white/50" : "text-gray-500"
+            }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <input
@@ -224,10 +236,18 @@ export function CommandPalette({
                 setSearch(e.target.value)
                 setSelectedIndex(0)
               }}
-              className="flex-1 bg-transparent border-0 text-black placeholder:text-gray-400 focus:outline-none text-lg"
+              className={`flex-1 bg-transparent border-0 focus:outline-none text-lg ${
+                isDark
+                  ? "text-white placeholder:text-white/40"
+                  : "text-black placeholder:text-gray-400"
+              }`}
               autoFocus
             />
-            <kbd className="hidden md:inline-flex items-center gap-1 px-2 py-1 rounded bg-gray-100 border border-black text-xs text-black">
+            <kbd className={`hidden md:inline-flex items-center gap-1 px-2 py-1 rounded border text-xs ${
+              isDark
+                ? "bg-white/10 border-white/20 text-white/80"
+                : "bg-gray-100 border-black/20 text-black"
+            }`}>
               Esc
             </kbd>
           </div>
@@ -236,7 +256,9 @@ export function CommandPalette({
         <div className="max-h-[60vh] overflow-y-auto">
           {Object.entries(groupedCommands).map(([category, cmds]) => (
             <div key={category}>
-              <div className="px-4 py-2 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+              <div className={`px-4 py-2 text-xs font-semibold uppercase tracking-wider ${
+                isDark ? "text-white/60" : "text-gray-600"
+              }`}>
                 {category}
               </div>
               {cmds.map((cmd, idx) => {
@@ -248,18 +270,30 @@ export function CommandPalette({
                     onClick={cmd.action}
                     className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${
                       isSelected
-                        ? "bg-black text-white"
+                        ? isDark
+                          ? "bg-white text-black"
+                          : "bg-black text-white"
+                        : isDark
+                        ? "text-white hover:bg-white/5"
                         : "text-black hover:bg-gray-50"
                     }`}
                   >
-                    <div className={`flex-shrink-0 ${isSelected ? "text-white" : "text-black"}`}>
+                    <div className={`flex-shrink-0 ${
+                      isSelected
+                        ? isDark ? "text-black" : "text-white"
+                        : isDark ? "text-white" : "text-black"
+                    }`}>
                       {cmd.icon}
                     </div>
                     <div className="flex-1">
                       <div className="font-medium">{cmd.label}</div>
                     </div>
                     {cmd.shortcut && (
-                      <kbd className="hidden md:inline-flex items-center gap-1 px-2 py-1 rounded bg-gray-100 border border-black text-xs text-black">
+                      <kbd className={`hidden md:inline-flex items-center gap-1 px-2 py-1 rounded border text-xs ${
+                        isDark
+                          ? "bg-white/10 border-white/20 text-white/80"
+                          : "bg-gray-100 border-black/20 text-black"
+                      }`}>
                         {cmd.shortcut}
                       </kbd>
                     )}
@@ -270,7 +304,9 @@ export function CommandPalette({
           ))}
 
           {filteredCommands.length === 0 && (
-            <div className="p-8 text-center text-gray-600">
+            <div className={`p-8 text-center ${
+              isDark ? "text-white/60" : "text-gray-600"
+            }`}>
               <p>No commands found</p>
             </div>
           )}

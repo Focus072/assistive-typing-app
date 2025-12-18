@@ -1,6 +1,6 @@
 ﻿"use client"
 
-import { useState, useEffect, useCallback, useRef, Suspense } from "react"
+import { useState, useEffect, useCallback, useRef, Suspense, use } from "react"
 import { useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
@@ -9,20 +9,29 @@ import { TextInput } from "@/components/TextInput"
 import { TimeSelector } from "@/components/TimeSelector"
 import { TypingProfileSelector } from "@/components/TypingProfileSelector"
 import { FormatSelector } from "@/components/FormatSelector"
+import type { CustomFormatConfig } from "@/components/CustomFormatModal"
 import { DocsSelector } from "@/components/DocsSelector"
 import { PlaybackControls } from "@/components/PlaybackControls"
 import { DocumentStats } from "@/components/DocumentStats"
-import { CommandPalette } from "@/components/CommandPalette"
 import { Confetti } from "@/components/ui/confetti"
+import { DocumentPreviewModal } from "@/components/DocumentPreviewModal"
+import { FormatMetadataModal } from "@/components/FormatMetadataModal"
+import { CustomFormatModal } from "@/components/CustomFormatModal"
 import { useToast } from "@/components/ui/toast"
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts"
 import { formatDuration, calculateTimeRemaining } from "@/lib/utils"
+import { useDashboardTheme } from "./layout"
 import type { TypingProfile, JobStatus, DocumentFormat } from "@/types"
 import type { FormatMetadata } from "@/components/FormatMetadataModal"
 
 // WPM calculation based on typing profile
-function calculateWPM(totalChars: number, durationMinutes: number, profile: TypingProfile): number {
+function calculateWPM(totalChars: number, durationMinutes: number, profile: TypingProfile, testWPM?: number): number {
   if (totalChars <= 0 || durationMinutes <= 0) return 0
+  
+  // For typing-test profile, use the test WPM directly
+  if (profile === "typing-test" && testWPM) {
+    return testWPM
+  }
   
   const baseWPM = (totalChars / 5) / durationMinutes
   
@@ -31,6 +40,7 @@ function calculateWPM(totalChars: number, durationMinutes: number, profile: Typi
     fatigue: { min: 0.6, max: 1.0 },
     burst: { min: 0.8, max: 1.2 },
     micropause: { min: 0.7, max: 0.9 },
+    "typing-test": { min: 0.9, max: 1.1 }, // Fallback if no testWPM
   }
   
   const modifier = profileModifiers[profile]
@@ -43,14 +53,27 @@ function calculateCurrentWPM(
   currentIndex: number, 
   totalChars: number, 
   elapsedMinutes: number, 
-  profile: TypingProfile
+  profile: TypingProfile,
+  testWPM?: number
 ): number {
   if (currentIndex <= 0 || elapsedMinutes <= 0) return 0
   const actualWPM = (currentIndex / 5) / elapsedMinutes
   return Math.round(actualWPM)
 }
 
-export default function DashboardPage() {
+export default function DashboardPage({
+  params = Promise.resolve({}),
+  searchParams = Promise.resolve({}),
+}: {
+  params?: Promise<Record<string, string>>
+  searchParams?: Promise<Record<string, string | string[] | undefined>>
+}) {
+  // Unwrap params/searchParams to prevent Next.js 16 enumeration errors
+  // We don't actually use them, but unwrapping prevents React from trying to serialize the Promise
+  // This must be done unconditionally at the top level to prevent enumeration
+  use(params)
+  use(searchParams)
+  
   return (
     <Suspense fallback={<DashboardSkeleton />}>
       <DashboardContent />
@@ -61,7 +84,7 @@ export default function DashboardPage() {
 function DashboardSkeleton() {
   return (
     <div className="space-y-8 animate-pulse">
-      <div className="h-12 w-64 bg-white/5 rounded-lg" />
+      <div className="h-12 w-64 bg-white/10 rounded-lg" />
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="h-96 bg-white/5 rounded-2xl" />
         <div className="lg:col-span-2 h-96 bg-white/5 rounded-2xl" />
@@ -74,36 +97,53 @@ function DashboardContent() {
   const router = useRouter()
   const { data: session, status } = useSession()
   const searchParams = useSearchParams()
+  // Extract value immediately to avoid Next.js 16 enumeration issues
   const jobIdParam = searchParams.get("jobId")
   const toast = useToast()
+  const { isDark } = useDashboardTheme()
   const [showConfetti, setShowConfetti] = useState(false)
-  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false)
+  const [showPreviewModal, setShowPreviewModal] = useState(false)
+  const [showMetadataModal, setShowMetadataModal] = useState(false)
+  const [showCustomFormatModal, setShowCustomFormatModal] = useState(false)
 
-  // Redirect to login if not authenticated
+  // Redirect to home page if not authenticated
   useEffect(() => {
     if (status === "unauthenticated") {
-      router.push("/login")
+      router.push("/")
     }
   }, [status, router])
 
   const [textContent, setTextContent] = useState("")
   const [durationMinutes, setDurationMinutes] = useState(30)
   const [typingProfile, setTypingProfile] = useState<TypingProfile>("steady")
+  const [testWPM, setTestWPM] = useState<number | undefined>(undefined)
   const [documentFormat, setDocumentFormat] = useState<DocumentFormat>("mla")
   const [formatMetadata, setFormatMetadata] = useState<FormatMetadata | undefined>(undefined)
+  const [customFormatConfig, setCustomFormatConfig] = useState<CustomFormatConfig | undefined>(undefined)
   const [documentId, setDocumentId] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showAdvanced, setShowAdvanced] = useState(false)
+  const [showTextInput, setShowTextInput] = useState(false)
+
+  // Show text input if text exists
+  useEffect(() => {
+    if (textContent && !showTextInput) {
+      setShowTextInput(true)
+    }
+  }, [textContent, showTextInput])
 
   // Job state
   const [currentJobId, setCurrentJobId] = useState<string | null>(jobIdParam)
   const currentJobIdRef = useRef<string | null>(jobIdParam)
+  const progressStreamRef = useRef<EventSource | null>(null)
   const [jobStatus, setJobStatus] = useState<JobStatus>("pending")
   const [currentIndex, setCurrentIndex] = useState(0)
   const [totalChars, setTotalChars] = useState(0)
   const [jobDurationMinutes, setJobDurationMinutes] = useState(30)
   const [timeRemaining, setTimeRemaining] = useState(30)
   const [jobTypingProfile, setJobTypingProfile] = useState<TypingProfile>("steady")
+  const [jobTestWPM, setJobTestWPM] = useState<number | undefined>(undefined)
   const [jobStartTime, setJobStartTime] = useState<Date | null>(null)
   const [prevStatus, setPrevStatus] = useState<JobStatus>("pending")
 
@@ -134,11 +174,6 @@ function DashboardContent() {
   // Keyboard shortcuts
   useKeyboardShortcuts([
     {
-      key: "k",
-      meta: true,
-      handler: () => setCommandPaletteOpen(true),
-    },
-    {
       key: "Enter",
       ctrl: true,
       handler: () => {
@@ -160,9 +195,7 @@ function DashboardContent() {
     {
       key: "Escape",
       handler: () => {
-        if (commandPaletteOpen) {
-          setCommandPaletteOpen(false)
-        } else if (currentJobId && (jobStatus === "running" || jobStatus === "paused")) {
+        if (currentJobId && (jobStatus === "running" || jobStatus === "paused")) {
           handleStop()
         }
       },
@@ -182,16 +215,26 @@ function DashboardContent() {
         setJobDurationMinutes(job.durationMinutes)
         setDocumentId(job.documentId)
         setJobTypingProfile(job.typingProfile as TypingProfile)
+        setJobTestWPM(job.testWPM ? Number(job.testWPM) : undefined)
         setJobStartTime(new Date(job.createdAt))
       }
     } catch (error) {
-      console.error("Failed to load job:", error)
       toast.addToast("Failed to load job", "error")
     }
   }, [toast])
 
   const startProgressStream = useCallback((id: string) => {
+    // Close any existing stream first
+    if (progressStreamRef.current) {
+      progressStreamRef.current.close()
+      progressStreamRef.current = null
+    }
+
     const eventSource = new EventSource(`/api/progress/stream?jobId=${id}`)
+    progressStreamRef.current = eventSource
+    let reconnectAttempts = 0
+    const maxReconnectAttempts = 10
+    const reconnectDelay = 2000
 
     eventSource.onmessage = (event) => {
       try {
@@ -201,27 +244,44 @@ function DashboardContent() {
         setTotalChars(data.totalChars)
         setJobDurationMinutes(data.durationMinutes)
 
+        // Reset reconnect attempts on successful message
+        reconnectAttempts = 0
+
+        // Close stream if job is finished
         if (["completed", "stopped", "failed", "expired"].includes(data.status)) {
           eventSource.close()
+          progressStreamRef.current = null
         }
       } catch (error) {
-        console.error("Failed to parse progress update:", error)
+        // Silently handle parse errors - invalid data will be ignored
       }
     }
 
     eventSource.onerror = () => {
       eventSource.close()
-      setTimeout(() => {
-        if (currentJobIdRef.current) {
-          startProgressStream(currentJobIdRef.current)
-        }
-      }, 2000)
+      progressStreamRef.current = null
+
+      // Only reconnect if job is still active and we haven't exceeded max attempts
+      if (currentJobIdRef.current && reconnectAttempts < maxReconnectAttempts) {
+        reconnectAttempts++
+        const delay = reconnectDelay * Math.min(reconnectAttempts, 5) // Exponential backoff, max 10s
+        
+        setTimeout(() => {
+          // Double-check job is still active before reconnecting
+          if (currentJobIdRef.current === id) {
+            startProgressStream(id)
+          }
+        }, delay)
+      } else if (reconnectAttempts >= maxReconnectAttempts) {
+        toast.addToast("Lost connection to job progress. Refresh the page to reconnect.", "warning")
+      }
     }
 
     return () => {
       eventSource.close()
+      progressStreamRef.current = null
     }
-  }, [])
+  }, [toast])
 
   useEffect(() => {
     if (jobIdParam) {
@@ -239,6 +299,7 @@ function DashboardContent() {
           title, 
           format: documentFormat,
           formatMetadata: formatMetadata,
+          customFormatConfig: customFormatConfig,
         }),
       })
 
@@ -253,20 +314,12 @@ function DashboardContent() {
             errorMsg = data.error || errorMsg
           }
         } catch (parseError) {
-          console.error("[Create Document] Failed to parse error response:", parseError)
           errorMsg = `Server error (${response.status})`
         }
         
         if (data.code === "GOOGLE_AUTH_REVOKED" || response.status === 401) {
           errorMsg = "Please connect your Google account first"
         }
-        
-        console.error("[Create Document] API error:", {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorMsg,
-          details: data.details || null,
-        })
         
         setError(errorMsg)
         toast.addToast(errorMsg, "error")
@@ -283,7 +336,6 @@ function DashboardContent() {
       }
       
       // Handle network errors
-      console.error("[Create Document] Network error:", error)
       const errorMsg = "Failed to create document. Please check your connection."
       setError(errorMsg)
       toast.addToast(errorMsg, "error")
@@ -318,6 +370,7 @@ function DashboardContent() {
           durationMinutes,
           typingProfile,
           documentId,
+          testWPM: typingProfile === "typing-test" ? testWPM : undefined,
         }),
       })
 
@@ -332,17 +385,9 @@ function DashboardContent() {
             errorMsg = data.message || data.error || errorMsg
           }
         } catch (parseError) {
-          console.error("[Start Job] Failed to parse error response:", parseError)
           errorMsg = `Server error (${response.status})`
         }
         
-        console.error("[Start Job] API error:", {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorMsg,
-          details: data.details || null,
-          responseData: Object.keys(data).length > 0 ? data : null,
-        })
         setError(errorMsg)
         toast.addToast(errorMsg, "error")
         return
@@ -354,13 +399,13 @@ function DashboardContent() {
       setTotalChars(textContent.length)
       setJobDurationMinutes(durationMinutes)
       setJobTypingProfile(typingProfile)
+      setJobTestWPM(testWPM)
       setJobStartTime(new Date())
       startProgressStream(data.jobId)
       
       toast.addToast("Job started successfully!", "success")
       router.push(`/dashboard?jobId=${data.jobId}`)
     } catch (error) {
-      console.error("[Start Job] Network error:", error)
       const errorMsg = "Failed to start job"
       setError(errorMsg)
       toast.addToast(errorMsg, "error")
@@ -450,10 +495,16 @@ function DashboardContent() {
     : 0
   
   const displayWPM = jobStatus === "running" && elapsedMinutes > 0.1
-    ? calculateCurrentWPM(currentIndex, totalChars, elapsedMinutes, jobTypingProfile)
-    : calculateWPM(totalChars, jobDurationMinutes, jobTypingProfile)
+    ? calculateCurrentWPM(currentIndex, totalChars, elapsedMinutes, jobTypingProfile, jobTestWPM)
+    : calculateWPM(totalChars, jobDurationMinutes, jobTypingProfile, jobTestWPM)
 
-  const estimatedWPM = calculateWPM(textContent.length || 1000, durationMinutes, typingProfile)
+  const estimatedWPM = calculateWPM(textContent.length || 1000, durationMinutes, typingProfile, testWPM)
+
+  const wordCount = textContent.trim() ? textContent.trim().split(/\s+/).length : 0
+  const inlineDuration = formatDuration(durationMinutes)
+  const inlineProfileLabel = typingProfile === "typing-test" && testWPM
+    ? `${testWPM} WPM`
+    : typingProfile.charAt(0).toUpperCase() + typingProfile.slice(1).replace("-", " ")
 
   const statusConfig: Record<JobStatus, { color: string; bg: string; label: string }> = {
     pending: { color: "text-yellow-900", bg: "bg-yellow-50", label: "Pending" },
@@ -468,71 +519,86 @@ function DashboardContent() {
   return (
     <>
       {showConfetti && <Confetti onComplete={() => setShowConfetti(false)} />}
-      <CommandPalette
-        isOpen={commandPaletteOpen}
-        onClose={() => setCommandPaletteOpen(false)}
-        onStartJob={handleStart}
-        onPauseJob={handlePause}
-        onResumeJob={handleResume}
-        onStopJob={handleStop}
-        hasActiveJob={!!currentJobId}
-        jobStatus={jobStatus}
+      <DocumentPreviewModal
+        isOpen={showPreviewModal}
+        onClose={() => setShowPreviewModal(false)}
+        text={textContent}
+        format={documentFormat}
+        formatMetadata={formatMetadata}
+        customFormatConfig={customFormatConfig}
+      />
+      <FormatMetadataModal
+        isOpen={showMetadataModal}
+        format={documentFormat}
+        onClose={() => setShowMetadataModal(false)}
+        onSave={(metadata) => {
+          setFormatMetadata(metadata)
+          setShowMetadataModal(false)
+        }}
+        initialMetadata={formatMetadata}
+      />
+      <CustomFormatModal
+        isOpen={showCustomFormatModal}
+        onClose={() => setShowCustomFormatModal(false)}
+        onSave={(config) => {
+          setCustomFormatConfig(config)
+          setShowCustomFormatModal(false)
+        }}
+        initialConfig={customFormatConfig}
       />
       
-      <div className="space-y-6 md:space-y-8">
-        {/* Hero Section - Mobile Optimized */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex-1 min-w-0">
-            <h1 className="text-3xl md:text-4xl font-bold text-black">
-              TypeFlow Dashboard
-            </h1>
-            <p className="text-gray-600 mt-2 text-sm md:text-base">
-              Transform your text into natural, human-like typing.
-            </p>
-          </div>
-          
-          <div className="flex items-center gap-3 flex-wrap">
-            <button
-              onClick={() => setCommandPaletteOpen(true)}
-              className="hidden md:flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-black text-black hover:bg-gray-50 transition-all text-sm"
-              title="Open command palette (Cmd+K)"
-            >
-              <kbd className="hidden lg:inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white border border-black text-xs">
-                ⌘K
-              </kbd>
-            </button>
-            
-            <Link
-              href="/dashboard/history"
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white border border-black text-black hover:bg-gray-50 transition-all text-sm"
-            >
-              <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span className="hidden sm:inline">History</span>
-            </Link>
-            
-            {currentJobId && (
-              <div className={`flex items-center gap-2 md:gap-3 px-3 md:px-5 py-2 md:py-3 rounded-lg ${statusConfig[jobStatus].bg} border border-black`}>
-                <div className={`w-2 h-2 md:w-3 md:h-3 rounded-full ${statusConfig[jobStatus].color.replace('text-', 'bg-')} ${jobStatus === 'running' ? 'animate-pulse' : ''}`} />
-                <span className={`font-semibold text-sm md:text-base ${statusConfig[jobStatus].color}`}>
+          <div className="space-y-4 md:space-y-6 pb-6">
+
+          {currentJobId && (
+            <div className="flex flex-wrap items-center gap-3">
+              <div className={`flex items-center gap-2 px-3 py-2 rounded-full border ${
+                isDark
+                  ? "bg-white/5 border-white/10"
+                  : "bg-black/5 border-black/10"
+              }`}>
+                <div className={`w-2 h-2 rounded-full ${statusConfig[jobStatus].color.replace('text-', 'bg-')} ${jobStatus === 'running' ? 'animate-pulse' : ''}`} />
+                <span className={`font-semibold text-sm ${
+                  isDark ? "text-white" : "text-black"
+                }`}>
                   {statusConfig[jobStatus].label}
                 </span>
               </div>
-            )}
-          </div>
-        </div>
+              <div className={`text-xs md:text-sm ${
+                isDark ? "text-white/60" : "text-black/60"
+              }`}>
+                {jobStatus === "running"
+                  ? `Typing at ~${displayWPM} WPM${jobTypingProfile === "typing-test" && jobTestWPM ? ` (test: ${jobTestWPM} WPM)` : ""}`
+                  : jobStatus === "paused"
+                  ? "Paused"
+                  : jobStatus === "completed"
+                  ? "Completed"
+                  : "Pending"}
+              </div>
+            </div>
+          )}
 
         {/* Error Alert - Mobile Optimized */}
         {error && (
-          <div className="rounded-lg bg-red-50 border border-red-800 p-4 flex items-start gap-3" role="alert">
-            <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
-              <svg className="w-4 h-4 md:w-5 md:h-5 text-red-900" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className={`rounded-lg border p-4 flex items-start gap-3 ${
+            isDark
+              ? "bg-red-900/20 border-red-500/70"
+              : "bg-red-50 border-red-300"
+          }`} role="alert">
+            <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+              isDark ? "bg-red-500/20" : "bg-red-100"
+            }`}>
+              <svg className={`w-4 h-4 md:w-5 md:h-5 ${
+                isDark ? "text-red-300" : "text-red-600"
+              }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
             </div>
-            <p className="text-red-900 text-sm md:text-base flex-1">{error}</p>
-            <button onClick={() => setError(null)} className="text-red-900 hover:text-red-700 flex-shrink-0">
+            <p className={`text-sm md:text-base flex-1 ${
+              isDark ? "text-red-100" : "text-red-800"
+            }`}>{error}</p>
+            <button onClick={() => setError(null)} className={`flex-shrink-0 ${
+              isDark ? "text-red-200 hover:text-red-100" : "text-red-600 hover:text-red-700"
+            }`}>
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
@@ -540,9 +606,9 @@ function DashboardContent() {
           </div>
         )}
 
-        {/* Stats Cards - Mobile Grid */}
+        {/* Stats Cards - Simplified */}
         {currentJobId && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
             <StatCard
               label="Progress"
               value={`${progress.toFixed(1)}%`}
@@ -576,7 +642,9 @@ function DashboardContent() {
             <StatCard
               label="Speed"
               value={`${displayWPM} WPM`}
-              subtext={jobTypingProfile.charAt(0).toUpperCase() + jobTypingProfile.slice(1)}
+              subtext={jobTypingProfile === "typing-test" && jobTestWPM 
+                ? `${jobTestWPM} WPM`
+                : jobTypingProfile.charAt(0).toUpperCase() + jobTypingProfile.slice(1).replace("-", " ")}
               icon={
                 <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -587,178 +655,558 @@ function DashboardContent() {
           </div>
         )}
 
-        {/* Progress Bar - Mobile Optimized */}
+        {/* Progress Bar - Simplified */}
         {currentJobId && (
-          <div className="bg-white border border-black rounded-lg p-4 md:p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-3 md:mb-4">
-              <span className="text-black text-sm md:text-base">Overall Progress</span>
-              <span className="text-black font-mono text-sm md:text-base">{progress.toFixed(1)}%</span>
+          <div
+            className="space-y-3"
+            role="region"
+            aria-label="Job progress"
+          >
+            <div className="flex items-center justify-between">
+              <span className={`text-sm ${
+                isDark ? "text-white" : "text-black"
+              }`}>
+                Progress
+              </span>
+              <span className={`font-mono text-sm ${
+                isDark ? "text-white" : "text-black"
+              }`}>
+                {progress.toFixed(1)}%
+              </span>
             </div>
-            <div className="relative h-3 md:h-4 bg-gray-100 rounded-full overflow-hidden">
+            <div 
+              className={`relative h-2 rounded-full overflow-hidden ${
+                isDark ? "bg-white/10" : "bg-black/10"
+              }`}
+              role="progressbar"
+              aria-valuenow={currentIndex}
+              aria-valuemin={0}
+              aria-valuemax={totalChars}
+              aria-label={`Typing progress: ${progress.toFixed(1)}% complete`}
+            >
               <div 
-                className="absolute inset-y-0 left-0 bg-black rounded-full transition-all duration-500 ease-out"
+                className={`absolute inset-y-0 left-0 rounded-full transition-all duration-500 ease-out ${
+                  isDark ? "bg-white" : "bg-black"
+                }`}
                 style={{ width: `${progress}%` }}
               />
             </div>
             {jobStatus === "running" && (
-              <p className="text-xs md:text-sm text-gray-600 mt-2 md:mt-3 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-green-500 animate-pulse" />
-                Typing at ~{displayWPM} WPM
+              <p className={`text-xs flex items-center gap-2 ${
+                isDark ? "text-white/60" : "text-black/60"
+              }`}>
+                <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${
+                  isDark ? "bg-green-400" : "bg-green-600"
+                }`} />
+                Typing at ~{displayWPM} WPM{jobTypingProfile === "typing-test" && jobTestWPM ? ` (test: ${jobTestWPM} WPM)` : ""}
               </p>
             )}
           </div>
         )}
 
-        {/* Main Grid - Mobile Stack, Desktop Side-by-Side */}
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* Left Column - New Job Form */}
-          <div className="space-y-6 order-2 lg:order-1">
-            <div className="bg-white border border-black rounded-lg overflow-hidden shadow-sm">
-              <div className="p-4 md:p-6 border-b border-black flex items-center justify-between flex-wrap gap-3">
-                <h2 className="text-lg md:text-xl font-semibold text-black flex items-center gap-2 md:gap-3">
-                  <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-black flex items-center justify-center">
-                    <svg className="w-3.5 h-3.5 md:w-4 md:h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                    </svg>
-                  </div>
-                  New Typing Job
-                </h2>
-                
-                {textContent.length > 0 && (
-                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-black border border-black">
-                    <svg className="w-3.5 h-3.5 md:w-4 md:h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                    <span className="text-xs md:text-sm text-white">
-                      ~{estimatedWPM} WPM
-                    </span>
+        {/* Main Layout - Simplified Flow */}
+        <div className="space-y-4 md:space-y-6">
+          {/* Text Input Section - Collapsible */}
+          <div className="space-y-2 md:space-y-3">
+            {!showTextInput && !textContent && (
+              <button
+                type="button"
+                onClick={() => setShowTextInput(true)}
+                className={`w-full flex items-center justify-between gap-2 px-4 py-3 rounded-lg border transition-colors ${
+                  isDark
+                    ? "bg-white/5 border-white/10 text-white hover:bg-white/10"
+                    : "bg-black/5 border-black/10 text-black hover:bg-black/10"
+                }`}
+              >
+                <span className="text-sm font-medium">Add text to type</span>
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 4v16m8-8H4"
+                  />
+                </svg>
+              </button>
+            )}
+            
+            {(showTextInput || textContent) && (
+              <>
+                {!textContent && (
+                  <div className="flex items-center justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setShowTextInput(false)}
+                      className={`flex items-center gap-2 text-xs transition-colors ${
+                        isDark
+                          ? "text-white/50 hover:text-white/70"
+                          : "text-black/50 hover:text-black/70"
+                      }`}
+                    >
+                      <svg
+                        className="w-3.5 h-3.5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                      <span>Cancel</span>
+                    </button>
                   </div>
                 )}
-              </div>
-              
-              <div className="p-4 md:p-6 space-y-5 md:space-y-6">
-                <DocumentStats
-                  textContent={textContent}
-                  durationMinutes={durationMinutes}
-                  typingProfile={typingProfile}
-                  documentFormat={documentFormat}
-                  onClear={() => {
-                    setTextContent("")
-                    toast.addToast("Text cleared", "info")
-                  }}
-                  onCopy={async () => {
-                    try {
-                      await navigator.clipboard.writeText(textContent)
-                      toast.addToast("Text copied to clipboard", "success")
-                    } catch (error) {
-                      toast.addToast("Failed to copy text", "error")
-                    }
-                  }}
-                />
-
+                
                 <TextInput
                   value={textContent}
                   onChange={setTextContent}
                   maxChars={50000}
                 />
 
-                <TimeSelector
-                  value={durationMinutes}
-                  onChange={setDurationMinutes}
-                />
+                <div
+                  className={`flex flex-wrap items-center justify-between gap-2 text-xs ${
+                    isDark ? "text-white/50" : "text-black/50"
+                  }`}
+                >
+                  <span>
+                    {wordCount.toLocaleString()}{" "}
+                    {wordCount === 1 ? "word" : "words"}
+                    {showAdvanced && wordCount > 0 && (
+                      <>
+                        {" "}
+                        · {inlineDuration} · {inlineProfileLabel}
+                      </>
+                    )}
+                  </span>
+                  {textContent && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(textContent)
+                          toast.addToast("Text copied to clipboard", "success")
+                        } catch {
+                          toast.addToast("Failed to copy text", "error")
+                        }
+                      }}
+                      className={`text-xs underline-offset-2 hover:underline ${
+                        isDark
+                          ? "text-white/60 hover:text-white/80"
+                          : "text-black/60 hover:text-black/80"
+                      }`}
+                    >
+                      Copy
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
 
-                <TypingProfileSelector
-                  value={typingProfile}
-                  onChange={setTypingProfile}
-                />
+          {/* Document Selection - Primary (more prominent on mobile) */}
+          <div className={`pt-4 md:pt-4 border-t ${
+            isDark ? "border-white/10" : "border-black/10"
+          }`}>
+            <DocsSelector
+              value={documentId}
+              onChange={setDocumentId}
+              onCreateNew={handleCreateDocument}
+            />
+          </div>
 
+          {/* Tier 1: Core Options - Always Visible */}
+          <div className={`pt-4 border-t ${
+            isDark ? "border-white/10" : "border-black/10"
+          } space-y-4`}>
+            <TimeSelector
+              value={durationMinutes}
+              onChange={setDurationMinutes}
+            />
+
+            <TypingProfileSelector
+              value={typingProfile}
+              onChange={(profile, wpm) => {
+                setTypingProfile(profile)
+                setTestWPM(wpm)
+                if (profile !== "typing-test") {
+                  setTestWPM(undefined)
+                }
+              }}
+              testWPM={testWPM}
+            />
+          </div>
+
+          {/* Tier 2: Advanced Options - Collapsed by default */}
+          <div className={`pt-4 border-t ${
+            isDark ? "border-white/5" : "border-black/5"
+          }`}>
+            <button
+              type="button"
+              onClick={() => setShowAdvanced((v) => !v)}
+              className={`flex items-center gap-2 text-xs transition-colors w-full ${
+                isDark
+                  ? "text-white/50 hover:text-white/70"
+                  : "text-black/50 hover:text-black/70"
+              }`}
+            >
+              <svg
+                className={`w-3.5 h-3.5 transition-transform ${
+                  showAdvanced ? "rotate-90" : ""
+                }`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 5l7 7-7 7"
+                />
+              </svg>
+              <span>
+                {showAdvanced
+                  ? "Hide advanced options"
+                  : "Advanced options"}
+              </span>
+            </button>
+
+            {showAdvanced && (
+              <div className="mt-4 space-y-4">
                 <FormatSelector
                   value={documentFormat}
-                  onChange={(format, metadata) => {
+                  onChange={(format, metadata, customConfig) => {
                     setDocumentFormat(format)
                     if (metadata) {
                       setFormatMetadata(metadata)
                     }
+                    if (customConfig) {
+                      setCustomFormatConfig(customConfig)
+                    }
+                    if (format !== "custom") {
+                      setCustomFormatConfig(undefined)
+                    }
+                    if (format === "none" || format === "custom") {
+                      setFormatMetadata(undefined)
+                    }
                   }}
                   formatMetadata={formatMetadata}
+                  customFormatConfig={customFormatConfig}
                 />
 
-                <DocsSelector
-                  value={documentId}
-                  onChange={setDocumentId}
-                  onCreateNew={handleCreateDocument}
-                />
+                {documentFormat === "mla" && (
+                  <button
+                    onClick={() => setShowMetadataModal(true)}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors text-sm ${
+                      formatMetadata && 
+                      formatMetadata.studentName && 
+                      formatMetadata.professorName && 
+                      formatMetadata.courseName && 
+                      formatMetadata.date &&
+                      formatMetadata.title
+                        ? isDark
+                          ? "bg-green-500/10 border-green-500/30 text-green-300 hover:bg-green-500/20"
+                          : "bg-green-50 border-green-300 text-green-700 hover:bg-green-100"
+                        : isDark
+                        ? "bg-amber-500/10 border-amber-500/30 text-amber-300 hover:bg-amber-500/20"
+                        : "bg-amber-50 border-amber-300 text-amber-700 hover:bg-amber-100"
+                    }`}
+                    aria-label="Configure MLA format requirements"
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
+                    </svg>
+                    <span className="text-sm font-medium">
+                      {formatMetadata && 
+                      formatMetadata.studentName && 
+                      formatMetadata.professorName && 
+                      formatMetadata.courseName && 
+                      formatMetadata.date &&
+                      formatMetadata.title
+                        ? "MLA Configured"
+                        : "Configure MLA"}
+                    </span>
+                  </button>
+                )}
 
+                {/* Preview formatted text - only show if formatting is not "none" */}
+                {textContent && documentFormat !== "none" && (
+                  <button
+                    onClick={() => setShowPreviewModal(true)}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors text-sm ${
+                      isDark
+                        ? "bg-white/10 border-white/20 text-white hover:bg-white/20"
+                        : "bg-black/5 border-black/20 text-black hover:bg-black/10"
+                    }`}
+                    aria-label="Preview document"
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                      />
+                    </svg>
+                    <span className="text-sm font-medium">Preview formatted text</span>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {documentId && (
+            <div className="space-y-4 hidden md:block">
+              {/* Start Typing Controls - Above Live Preview */}
+              <div className="space-y-3">
+                {/* Summary line */}
+                {textContent.trim() && documentId && (
+                  <div className={`flex items-center gap-2 text-xs px-3 py-2 rounded-lg border ${
+                    isDark 
+                      ? "bg-white/5 border-white/10 text-white/70" 
+                      : "bg-black/5 border-black/10 text-black/70"
+                  }`}>
+                    <span className="font-medium">
+                      {formatDuration(durationMinutes)}
+                    </span>
+                    <span>·</span>
+                    <span className="capitalize">{typingProfile === "typing-test" && testWPM ? `${testWPM} WPM` : typingProfile}</span>
+                    {documentFormat !== "none" && (
+                      <>
+                        <span>·</span>
+                        <span className="uppercase">{documentFormat === "mla" ? "MLA" : documentFormat === "custom" ? "Custom" : ""}</span>
+                      </>
+                    )}
+                  </div>
+                )}
+                
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <h3 className={`text-base font-medium mb-1 ${
+                      isDark ? "text-white" : "text-black"
+                    }`}>
+                      Live preview
+                    </h3>
+                    <p className={`text-xs ${
+                      isDark ? "text-white/50" : "text-black/50"
+                    }`}>
+                      {textContent.trim() && documentId 
+                        ? "Ready to start typing into your document"
+                        : "Select a document and add text to begin"}
+                    </p>
+                  </div>
+                <div className="flex items-center gap-3">
+                  <PlaybackControls
+                    status={jobStatus}
+                    onStart={handleStart}
+                    onPause={handlePause}
+                    onResume={handleResume}
+                    onStop={handleStop}
+                    disabled={loading || !textContent.trim() || !documentId}
+                  />
+                  <a
+                    href={`https://docs.google.com/document/d/${documentId}/edit`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`text-sm flex items-center gap-1.5 px-3 py-2 rounded-lg border transition-colors ${
+                      isDark
+                        ? "text-white/70 hover:text-white border-white/20 hover:bg-white/10"
+                        : "text-black/70 hover:text-black border-black/20 hover:bg-black/5"
+                    }`}
+                  >
+                    <span>Open in Google Docs</span>
+                    <svg
+                      className="w-3.5 h-3.5"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                      />
+                    </svg>
+                  </a>
+                </div>
+                </div>
+              </div>
+              <div className={`relative rounded-lg overflow-hidden border ${
+                isDark ? "border-white/10" : "border-black/10"
+              }`}>
+                <iframe
+                  src={`https://docs.google.com/document/d/${documentId}/edit?embedded=true`}
+                  className="w-full h-[600px] lg:h-[700px] border-0 bg-white"
+                  title="Google Doc Preview"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                />
+                {jobStatus === "running" && (
+                  <div className={`absolute bottom-3 right-3 flex items-center gap-2 px-3 py-1.5 rounded-full border backdrop-blur-sm ${
+                    isDark
+                      ? "bg-black/80 border-white/10"
+                      : "bg-white/95 border-black/10"
+                  }`}>
+                    <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${
+                      isDark ? "bg-green-400" : "bg-green-600"
+                    }`} />
+                    <span className={`text-xs font-medium ${
+                      isDark ? "text-white" : "text-black"
+                    }`}>
+                      {displayWPM} WPM
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          
+          {/* Mobile: Simple link to open document */}
+          {documentId && (
+            <div className="md:hidden">
+              <a
+                href={`https://docs.google.com/document/d/${documentId}/edit`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg border transition-colors ${
+                  isDark
+                    ? "bg-white/10 border-white/20 text-white hover:bg-white/20"
+                    : "bg-black/5 border-black/20 text-black hover:bg-black/10"
+                }`}
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                  />
+                </svg>
+                <span className="text-sm font-medium">Open in Google Docs</span>
+              </a>
+            </div>
+          )}
+        </div>
+      </div>
+      
+      {/* Bottom action bar - Mobile only, not sticky */}
+      {(() => {
+        const isReady = textContent.trim() && documentId
+        const isRunning = jobStatus === "running" || jobStatus === "paused"
+        
+        return (
+          <div
+            className={`border-t backdrop-blur-md transition-all ${
+              isDark
+                ? "border-white/10 bg-black/90"
+                : "border-black/10 bg-white/98"
+            } ${
+              // On mobile, only show prominently when ready or running
+              isReady || isRunning
+                ? "md:block"
+                : "hidden md:block"
+            }`}
+          >
+            <div className="container mx-auto px-4 md:px-6 py-3 md:py-4 flex flex-col gap-2 md:gap-3 md:flex-row md:items-center md:justify-between">
+              {/* Status text - hidden on mobile when ready, shown on desktop */}
+              <div
+                className={`text-xs hidden md:block ${
+                  isDark ? "text-white/50" : "text-black/50"
+                }`}
+              >
+                {wordCount > 0 && (
+                  <>
+                    {wordCount.toLocaleString()} {wordCount === 1 ? "word" : "words"}
+                    {showAdvanced && (
+                      <>
+                        {" "}· {inlineDuration} · {inlineProfileLabel}
+                      </>
+                    )}
+                    {!documentId && " · Select a document"}
+                  </>
+                )}
+                {wordCount === 0 && !documentId && (
+                  <span>Add text and select a document to start</span>
+                )}
+                {wordCount === 0 && documentId && (
+                  <span>Add text to start typing</span>
+                )}
+              </div>
+              {/* PlaybackControls only on mobile - desktop has it above live preview */}
+              <div className="md:hidden">
                 <PlaybackControls
                   status={jobStatus}
                   onStart={handleStart}
                   onPause={handlePause}
                   onResume={handleResume}
                   onStop={handleStop}
-                  disabled={loading}
+                  disabled={loading || !textContent.trim() || !documentId}
                 />
               </div>
             </div>
           </div>
-
-          {/* Right Column - Google Doc Preview */}
-          <div className="space-y-6 order-1 lg:order-2">
-              {documentId ? (
-              <div className="bg-white border border-black rounded-lg overflow-hidden shadow-sm">
-                <div className="p-3 md:p-4 border-b border-black flex items-center justify-between flex-wrap gap-2">
-                  <h2 className="text-base md:text-lg font-semibold text-black flex items-center gap-2 md:gap-3">
-                    <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-black flex items-center justify-center">
-                      <svg className="w-3.5 h-3.5 md:w-4 md:h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                    </div>
-                    <span className="hidden sm:inline">Live Document Preview</span>
-                    <span className="sm:hidden">Preview</span>
-                  </h2>
-                  <a 
-                    href={`https://docs.google.com/document/d/${documentId}/edit`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs md:text-sm text-black hover:text-gray-700 flex items-center gap-1 md:gap-2"
-                  >
-                    <span className="hidden sm:inline">Open in Google Docs</span>
-                    <span className="sm:hidden">Open</span>
-                    <svg className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                    </svg>
-                  </a>
-                </div>
-                <div className="relative">
-                  <iframe
-                    src={`https://docs.google.com/document/d/${documentId}/edit?embedded=true`}
-                    className="w-full h-[400px] md:h-[500px] lg:h-[600px] border-0 bg-white"
-                    title="Google Doc Preview"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  />
-                  {jobStatus === "running" && (
-                    <div className="absolute bottom-3 md:bottom-4 right-3 md:right-4 flex items-center gap-2 px-3 md:px-4 py-1.5 md:py-2 rounded-full bg-black border border-black shadow-sm">
-                      <div className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-green-500 animate-pulse" />
-                      <span className="text-xs md:text-sm text-white font-medium">{displayWPM} WPM</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="bg-white border border-black rounded-lg p-8 md:p-12 text-center shadow-sm">
-                <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-gray-100 flex items-center justify-center mx-auto mb-4 md:mb-6">
-                  <svg className="w-8 h-8 md:w-10 md:h-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                </div>
-                <h3 className="text-lg md:text-xl font-semibold text-black mb-2">No Document Selected</h3>
-                <p className="text-gray-600 text-sm md:text-base max-w-sm mx-auto">
-                  Select or create a Google Document to see the live preview here
-                </p>
-              </div>
-            )}
+        )
+      })()}
+      
+      {/* Mobile: Floating action button when ready but not running */}
+      {(() => {
+        const isReady = textContent.trim() && documentId && jobStatus !== "running" && jobStatus !== "paused" && jobStatus !== "completed"
+        
+        return isReady ? (
+          <div className="fixed bottom-20 right-4 z-20 md:hidden">
+            <button
+              type="button"
+              onClick={handleStart}
+              disabled={loading}
+              className={`w-14 h-14 rounded-full shadow-lg flex items-center justify-center font-semibold active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 transition-all touch-manipulation ${
+                isDark
+                  ? "bg-white text-black hover:bg-white/90"
+                  : "bg-black text-white hover:bg-gray-900"
+              }`}
+              aria-label="Start typing"
+            >
+              <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </button>
           </div>
-        </div>
-      </div>
+        ) : null
+      })()}
     </>
   )
 }
@@ -773,18 +1221,34 @@ interface StatCardProps {
 }
 
 function StatCard({ label, value, subtext, icon, color }: StatCardProps) {
+  const { isDark } = useDashboardTheme()
+  
   return (
-    <div className="rounded-lg p-3 md:p-5 bg-white border border-black shadow-sm">
-      <div className="flex items-center gap-2 md:gap-3 mb-2 md:mb-3">
-        <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-black text-white flex items-center justify-center">
+    <div className="space-y-1">
+      <div className="flex items-center gap-2">
+        <div className={`w-5 h-5 flex items-center justify-center ${
+          isDark ? "text-white/60" : "text-black/60"
+        }`}>
           {icon}
         </div>
+        <span className={`text-xs ${
+          isDark ? "text-white/60" : "text-black/60"
+        }`}>
+          {label}
+        </span>
       </div>
-      <p className="text-lg md:text-2xl font-bold text-black break-words">{value}</p>
-      <div className="flex items-center justify-between mt-1">
-        <p className="text-xs md:text-sm text-gray-600">{label}</p>
-        {subtext && <p className="text-xs text-gray-500 hidden sm:inline">{subtext}</p>}
-      </div>
+      <p className={`text-base md:text-lg font-semibold ${
+        isDark ? "text-white" : "text-black"
+      }`}>
+        {value}
+      </p>
+      {subtext && (
+        <p className={`text-xs ${
+          isDark ? "text-white/50" : "text-black/50"
+        }`}>
+          {subtext}
+        </p>
+      )}
     </div>
   )
 }

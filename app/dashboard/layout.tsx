@@ -4,7 +4,33 @@ import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { SignOutButton } from "@/components/SignOutButton"
-import { useEffect } from "react"
+import { useEffect, useState, createContext, useContext } from "react"
+
+// Theme Context
+interface DashboardThemeContextType {
+  isDark: boolean
+  theme: "dark" | "light" | "system"
+  setTheme: (theme: "dark" | "light" | "system") => void
+}
+
+const DashboardThemeContext = createContext<DashboardThemeContextType | undefined>(undefined)
+
+export function useDashboardTheme() {
+  const context = useContext(DashboardThemeContext)
+  // Return default values when used outside DashboardLayout (e.g., in toast notifications)
+  if (!context) {
+    // Default to light theme when outside dashboard context
+    const isDark = typeof window !== "undefined" 
+      ? window.matchMedia("(prefers-color-scheme: dark)").matches 
+      : false
+    return {
+      isDark,
+      theme: "system" as const,
+      setTheme: () => {}, // No-op when outside context
+    }
+  }
+  return context
+}
 
 export default function DashboardLayout({
   children,
@@ -13,12 +39,29 @@ export default function DashboardLayout({
 }) {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const [theme, setThemeState] = useState<"dark" | "light" | "system">("dark")
 
   useEffect(() => {
     if (status === "unauthenticated") {
-      router.push("/login")
+      router.push("/")
     }
   }, [status, router])
+
+  // Load theme from localStorage
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme") as "dark" | "light" | "system" | null
+    if (savedTheme) {
+      setThemeState(savedTheme)
+    }
+  }, [])
+
+  // Determine if dark mode based on theme and system preference
+  const isDark = theme === "dark" || (theme === "system" && typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches)
+
+  const setTheme = (newTheme: "dark" | "light" | "system") => {
+    setThemeState(newTheme)
+    localStorage.setItem("theme", newTheme)
+  }
 
   // Show loading state while checking session
   if (status === "loading") {
@@ -38,48 +81,134 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Header - Mobile Optimized */}
-      <header className="relative z-10 border-b border-black bg-white shadow-sm">
-        <div className="container mx-auto flex h-16 md:h-20 items-center justify-between px-4 md:px-6">
-          <Link href="/dashboard" className="flex items-center gap-2 md:gap-3 group flex-shrink-0">
-            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl bg-black flex items-center justify-center shadow-sm group-hover:bg-gray-900 transition-colors">
-              <svg className="w-4 h-4 md:w-6 md:h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-              </svg>
+    <DashboardThemeContext.Provider value={{ isDark, theme, setTheme }}>
+      <div className={`min-h-screen relative flex flex-col ${
+        isDark ? "bg-black text-white" : "bg-gray-50 text-black"
+      }`}>
+        {/* Subtle background to match landing aesthetic */}
+        {isDark ? (
+          <>
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(0,0,0,1)_0%,_transparent_100%)] pointer-events-none" />
+            <div className="absolute top-0 left-0 right-0 h-1/3 bg-gradient-to-b from-black to-transparent pointer-events-none" />
+          </>
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-b from-white via-gray-50/50 to-white pointer-events-none" />
+        )}
+
+        {/* Header - Fixed */}
+        <header className={`sticky top-0 z-50 border-b backdrop-blur-md ${
+          isDark ? "border-[#333] bg-black/80" : "border-black/10 bg-white/95"
+        }`}>
+          <div className="container mx-auto flex h-16 md:h-20 items-center justify-between px-4 md:px-6 gap-4">
+            {/* Left: Logo */}
+            <Link 
+              href="/dashboard" 
+              className="flex items-center gap-2 md:gap-3 group flex-shrink-0 min-w-0"
+              aria-label="Dashboard home"
+            >
+              <div className={`w-9 h-9 md:w-11 md:h-11 rounded-lg md:rounded-xl flex items-center justify-center shadow-sm transition-all flex-shrink-0 ${
+                isDark
+                  ? "bg-white/10 group-hover:bg-white/20"
+                  : "bg-black text-white group-hover:bg-black/90"
+              }`}>
+                <svg className="w-5 h-5 md:w-6 md:h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </div>
+              <div className="hidden sm:block min-w-0">
+                <h1 className={`text-base md:text-lg font-semibold truncate ${
+                  isDark ? "text-white" : "text-black"
+                }`}>
+                  typingisboring
+                </h1>
+                <p className={`text-xs hidden md:block truncate ${
+                  isDark ? "text-white/50" : "text-black/60"
+                }`}>
+                  Natural typing for Google Docs
+                </p>
+              </div>
+            </Link>
+            
+            {/* Right: Actions */}
+            <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
+              {/* Home Link */}
+              <Link 
+                href="/" 
+                className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors ${
+                  isDark
+                    ? "text-white/70 hover:text-white hover:bg-white/10"
+                    : "text-black/70 hover:text-black hover:bg-black/5"
+                }`}
+                aria-label="Go to home page"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                </svg>
+                <span className="text-sm">Home</span>
+              </Link>
+              
+              {/* History Link */}
+              <Link 
+                href="/dashboard/history" 
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors ${
+                  isDark
+                    ? "text-white/70 hover:text-white hover:bg-white/10"
+                    : "text-black/70 hover:text-black hover:bg-black/5"
+                }`}
+                aria-label="View typing history"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="text-sm hidden sm:inline">History</span>
+              </Link>
+              
+              {/* Theme Toggle */}
+              <button
+                onClick={() => setTheme(isDark ? "light" : "dark")}
+                className={`p-2 rounded-lg transition-colors flex-shrink-0 ${
+                  isDark
+                    ? "bg-white/10 hover:bg-white/20 text-white"
+                    : "bg-black/5 hover:bg-black/10 text-black"
+                }`}
+                aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+              >
+                {isDark ? (
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                  </svg>
+                )}
+              </button>
+              
+              {/* Email Badge - Desktop Only */}
+              <div className={`hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full border flex-shrink-0 ${
+                isDark
+                  ? "bg-white/5 border-white/15"
+                  : "bg-black/5 border-black/15"
+              }`}>
+                <div className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
+                <span className={`text-xs text-sm truncate max-w-[180px] ${
+                  isDark ? "text-white" : "text-black"
+                }`}>
+                  {session.user?.email}
+                </span>
+              </div>
+              
+              {/* Sign Out */}
+              <SignOutButton />
             </div>
-            <div className="hidden sm:block">
-              <h1 className="text-lg md:text-xl font-bold text-black">TypeFlow</h1>
-              <p className="text-xs text-gray-600 hidden md:block">Assistive Typing Engine</p>
-            </div>
-          </Link>
-          
-          <div className="flex items-center gap-2 md:gap-6">
-            <div className="hidden lg:flex items-center gap-2 px-3 md:px-4 py-1.5 md:py-2 rounded-full bg-gray-100 border border-black">
-              <div className="w-2 h-2 rounded-full bg-green-500" />
-              <span className="text-xs md:text-sm text-black truncate max-w-[150px]">{session.user?.email}</span>
-            </div>
-            <SignOutButton />
           </div>
-        </div>
-      </header>
+        </header>
       
       {/* Main content - Mobile Optimized */}
-      <main className="relative z-10 container mx-auto px-4 md:px-6 py-4 md:py-8 pb-20 md:pb-8">
+      <main className="relative z-10 container mx-auto px-4 md:px-6 py-4 md:py-8 pb-8 min-h-[calc(100vh-8rem)]">
         {children}
       </main>
-      
-      {/* Footer - Mobile Optimized */}
-      <footer className="relative z-10 border-t border-black bg-white py-4 md:py-6 mt-8 md:mt-12">
-        <div className="container mx-auto px-4 md:px-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs md:text-sm text-gray-600">
-          <p className="text-center sm:text-left">© 2024 TypeFlow. Assistive technology for everyone.</p>
-          <div className="flex items-center gap-2 md:gap-4 flex-wrap justify-center">
-            <span>Powered by AI</span>
-            <div className="w-1 h-1 rounded-full bg-black" />
-            <span>Google Docs Integration</span>
-          </div>
-        </div>
-      </footer>
-    </div>
+      </div>
+    </DashboardThemeContext.Provider>
   )
 }

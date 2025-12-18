@@ -22,7 +22,7 @@ export async function listDocuments(userId: string) {
     const drive = google.drive({ version: "v3", auth })
     
     const response = await drive.files.list({
-      q: "mimeType='application/vnd.google-apps.document'",
+      q: "mimeType='application/vnd.google-apps.document' and trashed=false",
       fields: "files(id, name, modifiedTime)",
       orderBy: "modifiedTime desc",
       pageSize: 20,
@@ -46,7 +46,8 @@ export async function createDocument(
   userId: string, 
   title: string,
   format?: import("@/types").DocumentFormat,
-  formatMetadata?: FormatMetadata
+  formatMetadata?: FormatMetadata,
+  customFormatConfig?: import("@/components/CustomFormatModal").CustomFormatConfig
 ) {
   try {
     const auth = await getGoogleAuthClient(userId)
@@ -63,9 +64,9 @@ export async function createDocument(
 
     // Apply formatting if specified
     if (format && format !== "none") {
-      const { generateFormatRequests } = await import("./document-formats")
+      const { generateFormatRequests, formatConfigs } = await import("./document-formats")
       const docs = await getDocsClient(userId)
-      const requests = generateFormatRequests(format, documentId, formatMetadata)
+      const requests = generateFormatRequests(format, documentId, formatMetadata, customFormatConfig)
       
       if (requests.length > 0) {
         await docs.documents.batchUpdate({
@@ -75,9 +76,66 @@ export async function createDocument(
           },
         })
       }
+
     }
 
     return documentId
+  } catch (error: any) {
+    // Handle missing Google token
+    if (error.message === "Google OAuth token not found" || error.message?.includes("Google OAuth token")) {
+      throw new Error("GOOGLE_AUTH_REVOKED")
+    }
+    // Handle Google API auth errors
+    if (error.code === 401 || error.code === 403) {
+      throw new Error("GOOGLE_AUTH_REVOKED")
+    }
+    throw error
+  }
+}
+
+export async function renameDocument(
+  userId: string,
+  documentId: string,
+  newTitle: string
+) {
+  try {
+    const auth = await getGoogleAuthClient(userId)
+    const drive = google.drive({ version: "v3", auth })
+
+    await drive.files.update({
+      fileId: documentId,
+      requestBody: {
+        name: newTitle,
+      },
+    })
+  } catch (error: any) {
+    // Handle missing Google token
+    if (error.message === "Google OAuth token not found" || error.message?.includes("Google OAuth token")) {
+      throw new Error("GOOGLE_AUTH_REVOKED")
+    }
+    // Handle Google API auth errors
+    if (error.code === 401 || error.code === 403) {
+      throw new Error("GOOGLE_AUTH_REVOKED")
+    }
+    throw error
+  }
+}
+
+export async function deleteDocument(
+  userId: string,
+  documentId: string
+) {
+  try {
+    const auth = await getGoogleAuthClient(userId)
+    const drive = google.drive({ version: "v3", auth })
+
+    // Move to trash instead of hard delete for safety
+    await drive.files.update({
+      fileId: documentId,
+      requestBody: {
+        trashed: true,
+      },
+    })
   } catch (error: any) {
     // Handle missing Google token
     if (error.message === "Google OAuth token not found" || error.message?.includes("Google OAuth token")) {
@@ -269,5 +327,6 @@ export async function resetThrottling(jobId: string) {
     data: { throttleDelayMs: MIN_INTERVAL_MS },
   })
 }
+
 
 

@@ -28,6 +28,7 @@ function calculateEstimatedWPM(
     fatigue: 0.8,
     burst: 1.1,
     micropause: 0.85,
+    "typing-test": 1.0, // Will use actual test WPM if available
   }
   
   const modifier = profileModifiers[profile]
@@ -144,4 +145,5 @@ export function DocumentStats({
     </div>
   )
 }
+
 

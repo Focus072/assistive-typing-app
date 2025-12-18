@@ -37,7 +37,9 @@ export async function GET() {
 
     return NextResponse.json({ jobs })
   } catch (error) {
-    console.error("Error fetching jobs:", error)
+    if (process.env.NODE_ENV === "development") {
+      console.error("Error fetching jobs:", error)
+    }
     return NextResponse.json(
       { error: "Failed to fetch jobs" },
       { status: 500 }

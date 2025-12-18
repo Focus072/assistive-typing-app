@@ -26,7 +26,9 @@ prisma.$use(async (params, next) => {
     // #region agent log
     fetch('http://127.0.0.1:7242/ingest/edc11742-e69a-445c-9523-36ad1186a0ce',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/prisma.ts:23',message:'Prisma query error',data:{model:params.model,action:params.action,errorCode:error?.code,errorMessage:error?.message,errorMeta:error?.meta},timestamp:Date.now(),sessionId:'debug-session',runId:'run5',hypothesisId:'I'})}).catch(()=>{});
     // #endregion
-    console.error("[Prisma] Error:", { model: params.model, action: params.action, error })
+    if (process.env.NODE_ENV === "development") {
+      console.error("[Prisma] Error:", { model: params.model, action: params.action, error })
+    }
     throw error
   }
 })

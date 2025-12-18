@@ -1,5 +1,6 @@
 import type { DocumentFormat } from "@/types"
 import type { FormatMetadata } from "@/components/FormatMetadataModal"
+import type { CustomFormatConfig } from "@/components/CustomFormatModal"
 
 export interface FormatConfig {
   name: string
@@ -14,10 +15,6 @@ export interface FormatConfig {
     left: number
   }
   firstLineIndent: number // in inches (0 = no indent)
-  header?: {
-    content: string
-    alignment: "LEFT" | "CENTER" | "RIGHT"
-  }
   titlePage?: boolean
   pageNumbers?: {
     position: "TOP_RIGHT" | "TOP_CENTER" | "BOTTOM_CENTER" | "BOTTOM_RIGHT"
@@ -43,14 +40,6 @@ export const formatConfigs: Record<DocumentFormat, FormatConfig> = {
     lineSpacing: 2.0, // Double-spaced
     margins: { top: 1, right: 1, bottom: 1, left: 1 },
     firstLineIndent: 0.5, // Half-inch indent for paragraphs
-    header: {
-      content: "Last Name {page}",
-      alignment: "RIGHT",
-    },
-    pageNumbers: {
-      position: "TOP_RIGHT",
-      startFrom: 1,
-    },
   },
   apa: {
     name: "APA Format",
@@ -129,9 +118,13 @@ function inchesToPoints(inches: number): number {
 export function generateFormatRequests(
   format: DocumentFormat,
   documentId: string,
-  metadata?: FormatMetadata
+  metadata?: FormatMetadata,
+  customConfig?: CustomFormatConfig
 ): any[] {
-  const config = formatConfigs[format]
+  // Use custom config if format is custom, otherwise use default config
+  const config = format === "custom" && customConfig
+    ? { ...formatConfigs[format], ...customConfig }
+    : formatConfigs[format]
   const requests: any[] = []
 
   // Set document margins (in points) - apply to entire document
@@ -159,6 +152,9 @@ export function generateFormatRequests(
     },
   })
 
+  // Note: Headers need to be created after document creation when we have the document structure
+  // This will be handled in a separate function that gets called after document creation
+
   // Insert header content based on format and metadata
   if (metadata) {
     let headerText = ""
@@ -166,9 +162,13 @@ export function generateFormatRequests(
 
     switch (format) {
       case "mla":
-        // MLA format: Name, Professor, Course, Date (each on new line, left-aligned)
+        // MLA format: Name, Professor, Course, Date, Title (each on new line, left-aligned)
         if (metadata.studentName && metadata.professorName && metadata.courseName && metadata.date) {
-          headerText = `${metadata.studentName}\n${metadata.professorName}\n${metadata.courseName}\n${metadata.date}\n\n`
+          let mlaHeader = `${metadata.studentName}\n${metadata.professorName}\n${metadata.courseName}\n${metadata.date}\n`
+          if (metadata.title) {
+            mlaHeader += `\n${metadata.title}\n`
+          }
+          headerText = mlaHeader + `\n`
         }
         break
       
@@ -354,8 +354,90 @@ export function generateFormatRequests(
             fields: "alignment",
           },
         })
+      } else if (format === "mla") {
+        // MLA format: Name, Professor, Course, Date left-aligned, Title centered
+        // Calculate where the title starts
+        const namePart = `${metadata.studentName}\n${metadata.professorName}\n${metadata.courseName}\n${metadata.date}\n`
+        const titleStartIndex = currentInsertIndex + namePart.length + 1 // +1 for the extra \n before title
+        const titleEndIndex = metadata.title ? titleStartIndex + metadata.title.length : titleStartIndex
+        
+        // Left-align name, professor, course, date
+        requests.push({
+          updateParagraphStyle: {
+            paragraphStyle: {
+              alignment: "START", // Left align
+              indentFirstLine: {
+                magnitude: 0,
+                unit: "PT",
+              },
+            },
+            range: {
+              startIndex: currentInsertIndex,
+              endIndex: titleStartIndex,
+            },
+            fields: "alignment,indentFirstLine",
+          },
+        })
+        
+        // Center the title if it exists
+        if (metadata.title) {
+          requests.push({
+            updateParagraphStyle: {
+              paragraphStyle: {
+                alignment: "CENTER",
+                indentFirstLine: {
+                  magnitude: 0,
+                  unit: "PT",
+                },
+              },
+              range: {
+                startIndex: titleStartIndex,
+                endIndex: titleEndIndex + 1, // +1 for the \n after title
+              },
+              fields: "alignment,indentFirstLine",
+            },
+          })
+          
+          // Left-align everything after title (the blank line and body text)
+          if (titleEndIndex + 1 < headerEndIndex) {
+            requests.push({
+              updateParagraphStyle: {
+                paragraphStyle: {
+                  alignment: "START",
+                  indentFirstLine: {
+                    magnitude: 0,
+                    unit: "PT",
+                  },
+                },
+                range: {
+                  startIndex: titleEndIndex + 1,
+                  endIndex: headerEndIndex,
+                },
+                fields: "alignment,indentFirstLine",
+              },
+            })
+          }
+        } else {
+          // No title, just left-align everything
+          requests.push({
+            updateParagraphStyle: {
+              paragraphStyle: {
+                alignment: "START",
+                indentFirstLine: {
+                  magnitude: 0,
+                  unit: "PT",
+                },
+              },
+              range: {
+                startIndex: currentInsertIndex,
+                endIndex: headerEndIndex,
+              },
+              fields: "alignment,indentFirstLine",
+            },
+          })
+        }
       } else {
-        // MLA and other formats: left-aligned, no indent
+        // Other formats: left-aligned, no indent
         requests.push({
           updateParagraphStyle: {
             paragraphStyle: {

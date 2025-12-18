@@ -73,7 +73,8 @@ model Job {
   totalChars           Int
   currentIndex         Int        @default(0)
   durationMinutes      Int
-  typingProfile        String // steady, fatigue, burst, micropause
+  typingProfile        String // steady, fatigue, burst, micropause, typing-test
+  testWPM              Int? // WPM from typing test (for typing-test profile)
   status               String // pending, running, paused, completed, failed, stopped, expired
   createdAt            DateTime   @default(now())
   updatedAt            DateTime   @updatedAt

@@ -2,8 +2,14 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { z } from "zod"
+import { logger } from "@/lib/logger"
 
 export const dynamic = 'force-dynamic'
+
+const pauseJobSchema = z.object({
+  jobId: z.string().min(1, "Job ID is required"),
+})
 
 export async function POST(request: Request) {
   try {
@@ -16,14 +22,9 @@ export async function POST(request: Request) {
       )
     }
 
-    const { jobId } = await request.json()
-    
-    if (!jobId) {
-      return NextResponse.json(
-        { error: "Job ID is required" },
-        { status: 400 }
-      )
-    }
+    const body = await request.json()
+    const validated = pauseJobSchema.parse(body)
+    const { jobId } = validated
 
     // Verify ownership
     const job = await prisma.job.findUnique({
@@ -65,9 +66,21 @@ export async function POST(request: Request) {
       },
     })
 
+    // Log job pause event
+    logger.job.pause(jobId, session.user.id)
+
     return NextResponse.json({ success: true })
-  } catch (error) {
-    console.error("Error pausing job:", error)
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: "Validation failed", message: error.errors.map(e => e.message).join("; ") },
+        { status: 400 }
+      )
+    }
+    
+    if (process.env.NODE_ENV === "development") {
+      console.error("Error pausing job:", error?.message)
+    }
     return NextResponse.json(
       { error: "Failed to pause job" },
       { status: 500 }

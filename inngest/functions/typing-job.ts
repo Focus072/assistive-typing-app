@@ -4,6 +4,7 @@ import { buildBatchPlan } from "@/lib/typing-engine"
 import { insertBatch, deleteText, handleThrottling, resetThrottling } from "@/lib/google-docs"
 import type { TypingProfile } from "@/types"
 import { MIN_INTERVAL_MS } from "@/lib/batching"
+import { logger } from "@/lib/logger"
 
 async function loadJob(jobId: string) {
   return prisma.job.findUnique({ where: { id: jobId } })
@@ -22,6 +23,11 @@ async function markCompleted(jobId: string, totalChars: number) {
   await prisma.jobEvent.create({
     data: { jobId, type: "completed", details: JSON.stringify({ totalChars }) },
   })
+
+  // Log job completion
+  if (job) {
+    logger.job.complete(jobId, job.userId, { totalChars })
+  }
 
   // Unlock document atomically
   if (job) {
@@ -52,6 +58,11 @@ async function markFailed(jobId: string, code: string) {
   await prisma.jobEvent.create({
     data: { jobId, type: "failed", details: JSON.stringify({ error: code }) },
   })
+
+  // Log job failure
+  if (job) {
+    logger.job.fail(jobId, job.userId, code)
+  }
 
   // Unlock document atomically
   if (job) {
@@ -107,13 +118,33 @@ export const typingJob = inngest.createFunction(
 
     const next = await step.run("process-next-batch", async () => {
       const fresh = await ensureRunnable(jobId)
-      const plan = buildBatchPlan(
-        fresh.textContent,
-        fresh.currentIndex,
-        fresh.totalChars,
-        fresh.durationMinutes,
-        fresh.typingProfile as TypingProfile
-      )
+      
+      let plan
+      try {
+        plan = buildBatchPlan(
+          fresh.textContent,
+          fresh.currentIndex,
+          fresh.totalChars,
+          fresh.durationMinutes,
+          fresh.typingProfile as TypingProfile,
+          fresh.testWPM ? Number(fresh.testWPM) : undefined
+        )
+      } catch (error: any) {
+        // Catch validation errors and mark job as failed
+        logger.job.fail(jobId, fresh.userId, "ENGINE_VALIDATION_ERROR")
+        await markFailed(jobId, "ENGINE_VALIDATION_ERROR")
+        await prisma.jobEvent.create({
+          data: {
+            jobId,
+            type: "failed",
+            details: JSON.stringify({ 
+              error: error?.message || "Unknown validation error",
+              errorCode: "ENGINE_VALIDATION_ERROR"
+            }),
+          },
+        })
+        return { done: true }
+      }
 
       if (!plan.batch) {
         await markCompleted(jobId, fresh.totalChars)
@@ -210,13 +241,33 @@ export const typingBatch = inngest.createFunction(
 
     const next = await step.run("process-next-batch", async () => {
       const fresh = await ensureRunnable(jobId)
-      const plan = buildBatchPlan(
-        fresh.textContent,
-        fresh.currentIndex,
-        fresh.totalChars,
-        fresh.durationMinutes,
-        fresh.typingProfile as TypingProfile
-      )
+      
+      let plan
+      try {
+        plan = buildBatchPlan(
+          fresh.textContent,
+          fresh.currentIndex,
+          fresh.totalChars,
+          fresh.durationMinutes,
+          fresh.typingProfile as TypingProfile,
+          fresh.testWPM ? Number(fresh.testWPM) : undefined
+        )
+      } catch (error: any) {
+        // Catch validation errors and mark job as failed
+        logger.job.fail(jobId, fresh.userId, "ENGINE_VALIDATION_ERROR")
+        await markFailed(jobId, "ENGINE_VALIDATION_ERROR")
+        await prisma.jobEvent.create({
+          data: {
+            jobId,
+            type: "failed",
+            details: JSON.stringify({ 
+              error: error?.message || "Unknown validation error",
+              errorCode: "ENGINE_VALIDATION_ERROR"
+            }),
+          },
+        })
+        return { done: true }
+      }
 
       if (!plan.batch) {
         await markCompleted(jobId, fresh.totalChars)

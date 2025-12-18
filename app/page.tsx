@@ -1,31 +1,32 @@
-"use client"
+import type { Metadata } from "next"
+import { SignInPage } from "@/components/ui/sign-in-flow-1"
 
-import { useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { useSession } from "next-auth/react"
-import { LandingPage } from "@/components/LandingPage"
+export const metadata: Metadata = {
+  title: "typingisboring - Natural typing for Google Docs",
+  description: "Paste your text, pick a document, and watch it type itself with natural pacing. Automate typing into Google Docs with human-like rhythm.",
+  openGraph: {
+    title: "typingisboring - Natural typing for Google Docs",
+    description: "Paste your text, pick a document, and watch it type itself with natural pacing.",
+    type: "website",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "typingisboring",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "typingisboring - Natural typing for Google Docs",
+    description: "Paste your text, pick a document, and watch it type itself with natural pacing.",
+    images: ["/og-image.png"],
+  },
+}
 
 export default function HomePage() {
-  const router = useRouter()
-  const { data: session, status } = useSession()
-
-  useEffect(() => {
-    if (status === "loading") return // Wait for session to load
-    
-    if (session) {
-      router.push("/dashboard")
-    }
-  }, [session, status, router])
-
-  // Show landing page for logged-out users
-  if (status === "unauthenticated") {
-    return <LandingPage />
-  }
-
-  // Show loading state while checking session
-  return (
-    <div className="min-h-screen bg-white flex items-center justify-center">
-      <div className="w-8 h-8 border-2 border-black/30 rounded-full animate-spin border-t-black" />
-    </div>
-  )
+  // Render the full 21st.dev sign-in flow (with auth-aware navbar)
+  // on the main home page.
+  return <SignInPage />
 }

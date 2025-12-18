@@ -30,7 +30,9 @@ export async function GET() {
       )
     }
     
-    console.error("Error listing documents:", error)
+    if (process.env.NODE_ENV === "development") {
+      console.error("Error listing documents:", error)
+    }
     return NextResponse.json(
       { error: "Failed to list documents" },
       { status: 500 }

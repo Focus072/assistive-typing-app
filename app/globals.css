@@ -65,15 +65,15 @@
 
 @layer utilities {
   .glass {
-    @apply bg-white border border-black shadow-sm;
+    @apply bg-[#111111] border border-[#333333] shadow-sm;
   }
   
   .glass-card {
-    @apply bg-white border border-black shadow-md;
+    @apply bg-[#111111] border border-[#333333] shadow-md;
   }
   
   .gradient-text {
-    @apply text-black;
+    @apply text-white;
   }
   
   .gradient-border {
@@ -156,6 +156,34 @@
   transition-duration: 150ms;
 }
 
+/* Focus states for accessibility */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+/* Dark mode focus */
+.dark button:focus-visible,
+.dark a:focus-visible,
+.dark input:focus-visible,
+.dark textarea:focus-visible,
+.dark select:focus-visible {
+  outline-color: white;
+}
+
+/* Light mode focus */
+button:focus-visible:not(.dark),
+a:focus-visible:not(.dark),
+input:focus-visible:not(.dark),
+textarea:focus-visible:not(.dark),
+select:focus-visible:not(.dark) {
+  outline-color: black;
+}
+
 /* Mobile optimizations */
 @media (max-width: 768px) {
   /* Larger touch targets */
@@ -200,6 +228,30 @@
   --background: 0 0% 0%;
   --foreground: 0 0% 100%;
   --border: 0 0% 50%;
+}
+
+/* Subtle typing indicator dots for status card */
+@keyframes typing-dot {
+  0%, 60%, 100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-1px);
+  }
+}
+
+.status-typing-dot {
+  animation: typing-dot 1.4s ease-in-out infinite;
+}
+
+.status-typing-dot:nth-child(2) {
+  animation-delay: 0.16s;
+}
+
+.status-typing-dot:nth-child(3) {
+  animation-delay: 0.32s;
 }
 
 /* PWA safe area insets for mobile */

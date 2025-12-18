@@ -66,10 +66,14 @@ export const authOptions: NextAuthOptions = {
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
       authorization: {
         params: {
+          // Minimal scopes required for typing into Google Docs:
+          // - openid, email, profile: Standard OAuth user info
+          // - documents: Read/write access to Google Docs
+          // - drive.file: Access only to files created by this app (most restrictive)
           scope:
             "openid email profile https://www.googleapis.com/auth/documents https://www.googleapis.com/auth/drive.file",
-          access_type: "offline",
-          prompt: "consent",
+          access_type: "offline", // Required to get refresh token
+          prompt: "consent", // Always show consent screen to ensure refresh token
         },
       },
       // Allow account linking for same email across providers
@@ -82,24 +86,17 @@ export const authOptions: NextAuthOptions = {
       fetch('http://127.0.0.1:7242/ingest/edc11742-e69a-445c-9523-36ad1186a0ce',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/auth.ts:61',message:'signIn callback entry',data:{hasUser:!!user,userEmail:user?.email,userId:user?.id,hasAccount:!!account,provider:account?.provider,hasAccessToken:!!account?.access_token,hasRefreshToken:!!account?.refresh_token,providerAccountId:account?.providerAccountId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
       // #endregion
       // PrismaAdapter handles user/account creation automatically
-      // Just log for debugging and always allow sign-in
+      // Always allow sign-in
       try {
-        if (account?.provider === "google") {
-          console.log("[NextAuth] Google OAuth signIn callback:", { 
-            email: user?.email,
-            userId: user?.id,
-            hasAccessToken: !!account?.access_token,
-            hasRefreshToken: !!account?.refresh_token,
-            providerAccountId: account?.providerAccountId
-          })
-        }
         // Always return true - PrismaAdapter handles the rest
         // #region agent log
         fetch('http://127.0.0.1:7242/ingest/edc11742-e69a-445c-9523-36ad1186a0ce',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/auth.ts:75',message:'signIn callback returning true',data:{userId:user?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
         // #endregion
         return true
       } catch (error: any) {
-        console.error("[NextAuth] Error in signIn callback:", error)
+        if (process.env.NODE_ENV === "development") {
+          console.error("[NextAuth] Error in signIn callback:", error)
+        }
         // #region agent log
         fetch('http://127.0.0.1:7242/ingest/edc11742-e69a-445c-9523-36ad1186a0ce',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/auth.ts:78',message:'signIn callback error caught',data:{errorMessage:error?.message,errorStack:error?.stack},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
         // #endregion
@@ -130,16 +127,6 @@ export const authOptions: NextAuthOptions = {
           token.email = user.email || undefined
           token.name = user.name || undefined
           token.picture = user.image || undefined
-          
-          // Log for debugging OAuth
-          if (account?.provider === "google") {
-            console.log("[NextAuth] JWT callback - Google OAuth:", {
-              userId: user.id,
-              email: user.email,
-              hasAccount: !!account,
-              hasAccessToken: !!account?.access_token
-            })
-          }
         } else {
           // #region agent log
           fetch('http://127.0.0.1:7242/ingest/edc11742-e69a-445c-9523-36ad1186a0ce',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/auth.ts:109',message:'jwt callback no user object',data:{tokenSub:token.sub},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
@@ -158,7 +145,9 @@ export const authOptions: NextAuthOptions = {
         return token
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error)
-        console.error("[NextAuth] Error in jwt callback:", error)
+        if (process.env.NODE_ENV === "development") {
+          console.error("[NextAuth] Error in jwt callback:", error)
+        }
         // #region agent log
         fetch('http://127.0.0.1:7242/ingest/edc11742-e69a-445c-9523-36ad1186a0ce',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/auth.ts:114',message:'jwt callback error caught',data:{errorMessage},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
         // #endregion
@@ -173,7 +162,7 @@ export const authOptions: NextAuthOptions = {
     },
   },
   pages: {
-    signIn: "/login",
+    signIn: "/", // Redirect to home page instead of separate login page
   },
   events: {
     async signIn({ account, profile, user }) {
@@ -204,10 +193,11 @@ export const authOptions: NextAuthOptions = {
           // #region agent log
           fetch('http://127.0.0.1:7242/ingest/edc11742-e69a-445c-9523-36ad1186a0ce',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/auth.ts:257',message:'events.signIn token saved successfully',data:{userId:user.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
           // #endregion
-          console.log("[NextAuth] Google token saved successfully for user:", user.id)
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error)
-          console.error("[NextAuth] Error saving Google token in events (non-blocking):", error)
+          if (process.env.NODE_ENV === "development") {
+            console.error("[NextAuth] Error saving Google token in events (non-blocking):", error)
+          }
           // #region agent log
           fetch('http://127.0.0.1:7242/ingest/edc11742-e69a-445c-9523-36ad1186a0ce',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/auth.ts:261',message:'events.signIn token save error',data:{errorMessage,userId:user?.id},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
           // #endregion
@@ -222,8 +212,22 @@ export const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days - persistent sessions
+    updateAge: 24 * 60 * 60, // Update session every 24 hours
   },
   secret: process.env.NEXTAUTH_SECRET,
+  cookies: {
+    sessionToken: {
+      name: `next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+        maxAge: 30 * 24 * 60 * 60, // 30 days
+      },
+    },
+  },
 }
 
 export async function getGoogleAuthClient(userId: string) {

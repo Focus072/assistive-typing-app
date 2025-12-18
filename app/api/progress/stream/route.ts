@@ -19,16 +19,25 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const jobId = searchParams.get("jobId")
     
-    if (!jobId) {
+    if (!jobId || jobId.trim().length === 0) {
       return NextResponse.json(
         { error: "Job ID is required" },
         { status: 400 }
       )
     }
 
-    // Verify ownership
+    // Verify ownership - only return job metadata, never textContent
     const job = await prisma.job.findUnique({
       where: { id: jobId },
+      select: {
+        id: true,
+        userId: true,
+        status: true,
+        currentIndex: true,
+        totalChars: true,
+        durationMinutes: true,
+        // Explicitly exclude textContent for privacy
+      },
     })
 
     if (!job || job.userId !== session.user.id) {
@@ -57,11 +66,19 @@ export async function GET(request: Request) {
           durationMinutes: job.durationMinutes,
         })
 
-        // Poll for updates
+        // Poll for updates - only fetch non-sensitive fields
         const interval = setInterval(async () => {
           try {
             const updatedJob = await prisma.job.findUnique({
               where: { id: jobId },
+              select: {
+                id: true,
+                status: true,
+                currentIndex: true,
+                totalChars: true,
+                durationMinutes: true,
+                // Explicitly exclude textContent for privacy
+              },
             })
 
             if (!updatedJob) {
@@ -84,7 +101,10 @@ export async function GET(request: Request) {
               controller.close()
             }
           } catch (error) {
-            console.error("Error polling job:", error)
+            // Log error but continue polling
+            if (process.env.NODE_ENV === "development") {
+              console.error("Error polling job:", error)
+            }
             clearInterval(interval)
             controller.close()
           }
@@ -106,7 +126,9 @@ export async function GET(request: Request) {
       },
     })
   } catch (error) {
-    console.error("Error streaming progress:", error)
+    if (process.env.NODE_ENV === "development") {
+      console.error("Error streaming progress:", error)
+    }
     return NextResponse.json(
       { error: "Failed to stream progress" },
       { status: 500 }

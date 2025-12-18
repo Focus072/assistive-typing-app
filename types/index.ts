@@ -1,4 +1,4 @@
-export type TypingProfile = "steady" | "fatigue" | "burst" | "micropause"
+export type TypingProfile = "steady" | "fatigue" | "burst" | "micropause" | "typing-test"
 
 export type JobStatus = "pending" | "running" | "paused" | "completed" | "failed" | "stopped" | "expired"
 

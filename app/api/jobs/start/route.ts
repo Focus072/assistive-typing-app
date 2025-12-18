@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { inngest } from "@/inngest/client"
 import { z } from "zod"
+import { logger } from "@/lib/logger"
 
 const MAX_CHARS = 50000
 const MAX_JOBS_PER_DAY = 50
@@ -11,8 +12,9 @@ const MAX_JOBS_PER_DAY = 50
 const startJobSchema = z.object({
   textContent: z.string().min(1).max(MAX_CHARS),
   durationMinutes: z.coerce.number().min(10).max(360), // Coerce string to number
-  typingProfile: z.enum(["steady", "fatigue", "burst", "micropause"]),
+  typingProfile: z.enum(["steady", "fatigue", "burst", "micropause", "typing-test"]),
   documentId: z.string().min(1), // Ensure documentId is not empty
+  testWPM: z.coerce.number().min(1).max(300).optional(), // WPM from typing test
 })
 
 export const dynamic = 'force-dynamic'
@@ -29,14 +31,20 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    console.log("[Start Job] Received request:", {
-      hasTextContent: !!body.textContent,
-      textContentLength: body.textContent?.length,
-      durationMinutes: body.durationMinutes,
-      typingProfile: body.typingProfile,
-      hasDocumentId: !!body.documentId,
-    })
     const validated = startJobSchema.parse(body)
+
+    // Validate typing-test profile requires testWPM
+    if (validated.typingProfile === "typing-test" && !validated.testWPM) {
+      return NextResponse.json(
+        { error: "testWPM is required when typingProfile is 'typing-test'" },
+        { status: 400 }
+      )
+    }
+    
+    // Ignore testWPM for non-typing-test profiles
+    if (validated.typingProfile !== "typing-test" && validated.testWPM) {
+      validated.testWPM = undefined
+    }
 
     // Check daily job limit
     const today = new Date()
@@ -86,7 +94,6 @@ export async function POST(request: Request) {
           if (existingJob) {
             const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
             if (existingJob.createdAt < oneHourAgo) {
-              console.log(`[Start Job] Found stuck job ${existingJob.id}, marking as failed`)
               await tx.job.update({
                 where: { id: existingJob.id },
                 data: { status: "failed", errorCode: "STUCK_JOB_CLEANUP" },
@@ -128,6 +135,7 @@ export async function POST(request: Request) {
             totalChars: validated.textContent.length,
             durationMinutes: validated.durationMinutes,
             typingProfile: validated.typingProfile,
+            testWPM: validated.testWPM ? Number(validated.testWPM) : null,
             status: "pending",
             expiresAt,
           },
@@ -162,6 +170,14 @@ export async function POST(request: Request) {
 
         return newJob
       })
+      
+      // Log job start event
+      logger.job.start(job.id, session.user.id, {
+        documentId: validated.documentId,
+        totalChars: validated.textContent.length,
+        durationMinutes: validated.durationMinutes,
+        typingProfile: validated.typingProfile,
+      })
     } catch (error: any) {
       // Handle transaction errors
       if (error.message && error.message.includes("active typing job")) {
@@ -175,29 +191,18 @@ export async function POST(request: Request) {
 
     // Trigger Inngest function (non-blocking failure)
     try {
-      // Log configuration for debugging
-      const hasEventKey = !!process.env.INNGEST_EVENT_KEY
-      const baseURL = process.env.INNGEST_BASE_URL
-      console.log("[Inngest] Sending event:", {
-        hasEventKey,
-        baseURL: baseURL ? (baseURL.includes('localhost') ? 'local' : 'custom') : 'default (Inngest Cloud)',
-        jobId: job.id,
-      })
-
       await inngest.send({
         name: "job/start",
         data: { jobId: job.id },
       })
-      
-      console.log("[Inngest] Event sent successfully")
     } catch (err: any) {
-      console.error("Inngest dispatch failed (job still created and running):", {
-        error: err?.message,
-        stack: err?.stack,
-        hasEventKey: !!process.env.INNGEST_EVENT_KEY,
-        baseURL: process.env.INNGEST_BASE_URL,
-        statusCode: err?.status,
-      })
+      // Log error but don't block job creation
+      if (process.env.NODE_ENV === "development") {
+        console.error("Inngest dispatch failed (job still created and running):", {
+          error: err?.message,
+          statusCode: err?.status,
+        })
+      }
       await prisma.jobEvent.create({
         data: {
           jobId: job.id,
@@ -215,8 +220,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ jobId: job.id })
   } catch (error: any) {
     if (error instanceof z.ZodError) {
-      console.error("[Start Job] Validation error:", JSON.stringify(error.errors, null, 2))
-      
       // Create user-friendly error message
       const errorMessages = error.errors.map((err: any) => {
         const field = err.path.join('.')
@@ -245,11 +248,13 @@ export async function POST(request: Request) {
       )
     }
     
-    console.error("[Start Job] Error:", {
-      message: error?.message,
-      stack: error?.stack,
-      name: error?.name,
-    })
+    // Log error details only in development
+    if (process.env.NODE_ENV === "development") {
+      console.error("[Start Job] Error:", {
+        message: error?.message,
+        name: error?.name,
+      })
+    }
     return NextResponse.json(
       { error: "Failed to start job", message: error?.message },
       { status: 500 }

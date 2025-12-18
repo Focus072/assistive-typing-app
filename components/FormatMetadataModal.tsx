@@ -8,7 +8,7 @@ export interface FormatMetadata {
   professorName: string
   courseName: string
   date: string
-  title?: string // For APA title page
+  title?: string // For MLA title and APA title page
   institution?: string // For APA affiliation/institution
   runningHead?: string // For APA running head
 }
@@ -23,7 +23,7 @@ interface FormatMetadataModalProps {
 
 const formatFields: Record<DocumentFormat, Array<keyof FormatMetadata>> = {
   none: [],
-  mla: ["studentName", "professorName", "courseName", "date"],
+  mla: ["studentName", "professorName", "courseName", "date", "title"],
   apa: ["title", "studentName", "institution", "courseName", "professorName", "date", "runningHead"],
   chicago: ["studentName", "professorName", "courseName", "date"],
   harvard: ["studentName", "professorName", "courseName", "date"],

@@ -7,8 +7,8 @@ export default function RegisterPage() {
   const router = useRouter()
 
   useEffect(() => {
-    // Redirect to login since Google sign-in is required
-    router.replace("/login")
+    // Redirect to home page since Google sign-in is required
+    router.replace("/")
   }, [router])
 
   return (

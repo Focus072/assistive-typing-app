@@ -1,4 +1,4 @@
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import { Providers } from "@/components/providers"
@@ -7,25 +7,71 @@ import { ErrorBoundary } from "@/components/ErrorBoundary"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "TypeFlow - Assistive Typing Engine",
-  description: "Transform your text into natural, human-like typing. Perfect for accessibility and assistive technology.",
-  manifest: "/manifest.json",
-  themeColor: "#8b5cf6",
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 5,
-    userScalable: true,
+  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || "https://typingisboring.com"),
+  title: {
+    default: "typingisboring - Natural typing for Google Docs",
+    template: "%s | typingisboring",
   },
+  description: "Paste your text, pick a document, and watch it type itself with natural pacing. Automate typing into Google Docs with human-like rhythm.",
+  keywords: ["typing", "automation", "Google Docs", "natural typing", "typing simulator", "productivity"],
+  authors: [{ name: "typingisboring" }],
+  creator: "typingisboring",
+  manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "TypeFlow",
+    title: "typingisboring",
   },
-  // icons: {
-  //   icon: "/icon-192.png",
-  //   apple: "/icon-192.png",
-  // },
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: "/",
+    siteName: "typingisboring",
+    title: "typingisboring - Natural typing for Google Docs",
+    description: "Paste your text, pick a document, and watch it type itself with natural pacing.",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "typingisboring - Natural typing for Google Docs",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "typingisboring - Natural typing for Google Docs",
+    description: "Paste your text, pick a document, and watch it type itself with natural pacing.",
+    images: ["/og-image.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  icons: {
+    icon: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+  },
+}
+
+export const viewport: Viewport = {
+  themeColor: "#000000",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
 }
 
 export default function RootLayout({

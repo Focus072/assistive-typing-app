@@ -2,26 +2,28 @@ import { MetadataRoute } from "next"
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "TypeFlow - Assistive Typing Engine",
-    short_name: "TypeFlow",
-    description: "Transform your text into natural, human-like typing. Perfect for accessibility and assistive technology.",
+    name: "typingisboring - Natural typing for Google Docs",
+    short_name: "typingisboring",
+    description: "Paste your text, pick a document, and watch it type itself with natural pacing.",
     start_url: "/dashboard",
     display: "standalone",
-    background_color: "#0f172a",
-    theme_color: "#8b5cf6",
+    background_color: "#000000",
+    theme_color: "#000000",
     icons: [
       {
         src: "/icon-192.png",
         sizes: "192x192",
         type: "image/png",
+        purpose: "any",
       },
       {
         src: "/icon-512.png",
         sizes: "512x512",
         type: "image/png",
+        purpose: "any",
       },
     ],
-    categories: ["productivity", "accessibility"],
+    categories: ["productivity", "utilities"],
     orientation: "any",
     screenshots: [],
   }

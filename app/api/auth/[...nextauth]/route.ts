@@ -27,7 +27,9 @@ async function handleRequest(
     // #endregion
     return response
   } catch (error: any) {
-    console.error("[NextAuth] Handler error:", error)
+    if (process.env.NODE_ENV === "development") {
+      console.error("[NextAuth] Handler error:", error)
+    }
     // #region agent log
     fetch('http://127.0.0.1:7242/ingest/edc11742-e69a-445c-9523-36ad1186a0ce',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/auth/[...nextauth]/route.ts:22',message:'NextAuth handler error caught',data:{errorMessage:error?.message,errorStack:error?.stack,errorCode:error?.code},timestamp:Date.now(),sessionId:'debug-session',runId:'run4',hypothesisId:'B'})}).catch(()=>{});
     // #endregion

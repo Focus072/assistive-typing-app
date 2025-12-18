@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth"
 import { createDocument } from "@/lib/google-docs"
 import type { DocumentFormat } from "@/types"
 import type { FormatMetadata } from "@/components/FormatMetadataModal"
+import type { CustomFormatConfig } from "@/components/CustomFormatModal"
 
 export const dynamic = 'force-dynamic'
 
@@ -18,7 +19,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const { title, format, formatMetadata } = await request.json()
+    const { title, format, formatMetadata, customFormatConfig } = await request.json()
     
     if (!title || typeof title !== "string") {
       return NextResponse.json(
@@ -31,7 +32,8 @@ export async function POST(request: Request) {
       session.user.id, 
       title,
       format as DocumentFormat | undefined,
-      formatMetadata as FormatMetadata | undefined
+      formatMetadata as FormatMetadata | undefined,
+      customFormatConfig as CustomFormatConfig | undefined
     )
     
     return NextResponse.json({ documentId })
@@ -43,12 +45,12 @@ export async function POST(request: Request) {
       )
     }
     
-    console.error("Error creating document:", {
-      message: error?.message,
-      code: error?.code,
-      stack: error?.stack,
-      response: error?.response?.data,
-    })
+    if (process.env.NODE_ENV === "development") {
+      console.error("Error creating document:", {
+        message: error?.message,
+        code: error?.code,
+      })
+    }
     
     // Provide more specific error messages
     let errorMessage = "Failed to create document"

@@ -2,11 +2,14 @@
 const nextConfig = {
   experimental: {
     serverActions: {
-      bodySizeLimit: '10mb',
+      bodySizeLimit: '10mb', // Allow up to 10MB for text content
     },
   },
-  // Add empty turbopack config to silence the webpack warning
-  // We're using Turbopack (default in Next.js 16) instead of webpack
+  // Production optimizations
+  compress: true,
+  poweredByHeader: false, // Remove X-Powered-By header for security
+  reactStrictMode: true,
+  // Turbopack config (Next.js 16 default)
   turbopack: {},
 }
 
