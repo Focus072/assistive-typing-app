@@ -111,7 +111,8 @@ export const Shader: React.FC<ShaderProps> = ({ source, uniforms, maxFps = 60 })
         value: new THREE.Vector2(size.width * 2, size.height * 2),
       };
       return preparedUniforms;
-    }, [uniforms, size.width, size.height]);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [size.width, size.height]);
 
     const material = useMemo(() => {
       const materialObject = new THREE.ShaderMaterial({
@@ -137,7 +138,8 @@ export const Shader: React.FC<ShaderProps> = ({ source, uniforms, maxFps = 60 })
       });
 
       return materialObject;
-    }, [source, getUniforms]);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [getUniforms]);
 
     return (
       <mesh ref={ref as any}>
