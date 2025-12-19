@@ -8,16 +8,10 @@ import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { HomeNavbar } from "@/components/ui/sign-in-flow-auth";
 
-// Dynamically import the Shader component to avoid SSR issues with react-three/fiber
-// Use a function to ensure it only loads after mount
+// Dynamically import the Shader component to avoid SSR issues with THREE.js and react-three/fiber
+// ssr: false ensures it only loads client-side, so no window check needed
 const DynamicShader = dynamic(
-  () => {
-    // Ensure React is fully initialized before loading
-    if (typeof window === 'undefined') {
-      return Promise.resolve({ default: () => null });
-    }
-    return import("./CanvasShader").then((mod) => ({ default: mod.Shader }));
-  },
+  () => import("./CanvasShader").then((mod) => ({ default: mod.Shader })),
   { 
     ssr: false,
     loading: () => null

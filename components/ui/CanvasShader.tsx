@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useRef, useMemo, useCallback, useState, useEffect } from "react";
-import * as THREE from "three";
 
 type Uniforms = {
   [key: string]: {
@@ -18,7 +17,8 @@ interface ShaderProps {
 
 export const Shader: React.FC<ShaderProps> = ({ source, uniforms, maxFps = 60 }) => {
   const [mounted, setMounted] = useState(false);
-  const [r3fModule, setR3fModule] = useState<{
+  const [libraries, setLibraries] = useState<{
+    THREE: typeof import("three");
     Canvas: any;
     useThree: any;
     useFrame: any;
@@ -27,30 +27,35 @@ export const Shader: React.FC<ShaderProps> = ({ source, uniforms, maxFps = 60 })
   useEffect(() => {
     setMounted(true);
     
-    // Load react-three/fiber only after mount and React is initialized
+    // Load THREE.js and react-three/fiber together after mount to avoid bundler evaluation
+    // Both are browser-only libraries and should not be loaded during SSR
     if (typeof window !== 'undefined') {
-      import("@react-three/fiber").then((r3f) => {
-        setR3fModule({
+      Promise.all([
+        import("three"),
+        import("@react-three/fiber")
+      ]).then(([three, r3f]) => {
+        setLibraries({
+          THREE: three,
           Canvas: r3f.Canvas,
           useThree: r3f.useThree,
           useFrame: r3f.useFrame,
         });
       }).catch((error) => {
-        console.error("Failed to load react-three/fiber:", error);
+        console.error("Failed to load THREE.js or react-three/fiber:", error);
       });
     }
   }, []);
 
-  if (!mounted || !r3fModule) {
+  if (!mounted || !libraries) {
     return null;
   }
 
-  const { Canvas, useThree, useFrame } = r3fModule;
+  const { THREE, Canvas, useThree, useFrame } = libraries;
 
   // Create the ShaderMaterial component dynamically so it can use hooks directly
   const ShaderMaterialInternal = () => {
     const { size } = useThree();
-    const ref = useRef<THREE.Mesh>(null);
+    const ref = useRef<any>(null);
 
     // Now we can use useFrame unconditionally since this component only renders when hooks are available
     useFrame(({ clock }: { clock: any }) => {
