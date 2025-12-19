@@ -257,6 +257,22 @@ export function DocsSelector({
     }
   };
 
+  const handleOpenInDocs = async (docId: string) => {
+    try {
+      const response = await fetch(`/api/google-docs/${docId}/url`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch document URL");
+      }
+      const data = await response.json();
+      window.open(data.url, "_blank", "noopener,noreferrer");
+      setShowActionsMenu(null);
+    } catch (error) {
+      // Fallback to constructed URL if API fails
+      window.open(`https://docs.google.com/document/d/${docId}/edit`, "_blank", "noopener,noreferrer");
+      setShowActionsMenu(null);
+    }
+  };
+
   const handleDeleteDoc = async (docId: string) => {
     if (!window.confirm("Move this document to trash in Google Drive?")) {
       return;
@@ -655,18 +671,17 @@ export function DocsSelector({
                             overflowY: 'auto'
                           }}
                         >
-                          <a
-                            href={`https://docs.google.com/document/d/${doc.id}/edit`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className={`block px-3 py-2 text-sm transition-colors ${
+                          <button
+                            type="button"
+                            onClick={() => handleOpenInDocs(doc.id)}
+                            className={`w-full text-left px-3 py-2 text-sm transition-colors ${
                               isDark
                                 ? "text-white/80 hover:bg-white/10"
                                 : "text-black/80 hover:bg-gray-50"
                             }`}
                           >
                             Open in Google Docs
-                          </a>
+                          </button>
                           <button
                             type="button"
                             onClick={() => handleStartRename(doc)}

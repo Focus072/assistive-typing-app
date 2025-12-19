@@ -109,6 +109,8 @@ function DashboardContent() {
   const [formatMetadata, setFormatMetadata] = useState<FormatMetadata | undefined>(undefined)
   const [customFormatConfig, setCustomFormatConfig] = useState<CustomFormatConfig | undefined>(undefined)
   const [documentId, setDocumentId] = useState("")
+  const [documentUrl, setDocumentUrl] = useState<string | null>(null)
+  const [loadingDocumentUrl, setLoadingDocumentUrl] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showAdvanced, setShowAdvanced] = useState(false)
@@ -120,6 +122,46 @@ function DashboardContent() {
       setShowTextInput(true)
     }
   }, [textContent, showTextInput])
+
+  // Fetch document URL when documentId changes
+  useEffect(() => {
+    if (!documentId) {
+      setDocumentUrl(null)
+      return
+    }
+
+    let cancelled = false
+    setLoadingDocumentUrl(true)
+
+    const fetchDocumentUrl = async () => {
+      try {
+        const response = await fetch(`/api/google-docs/${documentId}/url`)
+        if (!response.ok) {
+          throw new Error("Failed to fetch document URL")
+        }
+        const data = await response.json()
+        if (!cancelled) {
+          setDocumentUrl(data.url)
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.error("Error fetching document URL:", error)
+          // Fallback to constructed URL if API fails
+          setDocumentUrl(`https://docs.google.com/document/d/${documentId}/edit`)
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingDocumentUrl(false)
+        }
+      }
+    }
+
+    void fetchDocumentUrl()
+
+    return () => {
+      cancelled = true
+    }
+  }, [documentId])
 
   // Job state
   const [currentJobId, setCurrentJobId] = useState<string | null>(jobIdParam)
@@ -1061,14 +1103,19 @@ function DashboardContent() {
                     disabled={loading || !textContent.trim() || !documentId}
                   />
                   <a
-                    href={`https://docs.google.com/document/d/${documentId}/edit`}
+                    href={documentUrl || `https://docs.google.com/document/d/${documentId}/edit`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className={`text-sm flex items-center gap-1.5 px-3 py-2 rounded-lg border transition-colors ${
                       isDark
                         ? "text-white/70 hover:text-white border-white/20 hover:bg-white/10"
                         : "text-black/70 hover:text-black border-black/20 hover:bg-black/5"
-                    }`}
+                    } ${loadingDocumentUrl ? "opacity-50 cursor-wait" : ""}`}
+                    onClick={(e) => {
+                      if (loadingDocumentUrl) {
+                        e.preventDefault()
+                      }
+                    }}
                   >
                     <span>Open in Google Docs</span>
                     <svg
@@ -1091,12 +1138,34 @@ function DashboardContent() {
               <div className={`relative rounded-lg overflow-hidden border ${
                 isDark ? "border-white/10" : "border-black/10"
               }`}>
-                <iframe
-                  src={`https://docs.google.com/document/d/${documentId}/edit?embedded=true`}
-                  className="w-full h-[600px] lg:h-[700px] border-0 bg-white"
-                  title="Google Doc Preview"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                />
+                {documentUrl ? (
+                  <iframe
+                    src={`${documentUrl}?embedded=true`}
+                    className="w-full h-[600px] lg:h-[700px] border-0 bg-white"
+                    title="Google Doc Preview"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  />
+                ) : (
+                  <div className={`w-full h-[600px] lg:h-[700px] flex items-center justify-center ${
+                    isDark ? "bg-black/20" : "bg-gray-50"
+                  }`}>
+                    <div className="text-center space-y-2">
+                      <p className={`text-sm ${isDark ? "text-white/70" : "text-black/70"}`}>
+                        {loadingDocumentUrl ? "Loading document..." : "Document preview unavailable"}
+                      </p>
+                      {documentId && !loadingDocumentUrl && (
+                        <a
+                          href={`https://docs.google.com/document/d/${documentId}/edit`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={`text-sm underline ${isDark ? "text-white/90" : "text-black/90"}`}
+                        >
+                          Open in new tab
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                )}
                 {jobStatus === "running" && (
                   <div className={`absolute bottom-3 right-3 flex items-center gap-2 px-3 py-1.5 rounded-full border backdrop-blur-sm ${
                     isDark
@@ -1121,14 +1190,19 @@ function DashboardContent() {
           {documentId && (
             <div className="md:hidden">
               <a
-                href={`https://docs.google.com/document/d/${documentId}/edit`}
+                href={documentUrl || `https://docs.google.com/document/d/${documentId}/edit`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg border transition-colors ${
                   isDark
                     ? "bg-white/10 border-white/20 text-white hover:bg-white/20"
                     : "bg-black/5 border-black/20 text-black hover:bg-black/10"
-                }`}
+                } ${loadingDocumentUrl ? "opacity-50 cursor-wait" : ""}`}
+                onClick={(e) => {
+                  if (loadingDocumentUrl) {
+                    e.preventDefault()
+                  }
+                }}
               >
                 <svg
                   className="w-4 h-4"
