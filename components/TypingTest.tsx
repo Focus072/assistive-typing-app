@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useDashboardTheme } from "@/app/dashboard/layout"
 import { useFocusTrap } from "@/hooks/useFocusTrap"
+import { useScrollLock } from "@/hooks/useScrollLock"
 
 interface TypingTestProps {
   isOpen: boolean
@@ -150,16 +151,7 @@ export function TypingTest({ isOpen, onClose, onComplete }: TypingTestProps) {
   }, [isOpen, started, onClose])
 
   // Prevent body scroll when modal is open
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden"
-    } else {
-      document.body.style.overflow = ""
-    }
-    return () => {
-      document.body.style.overflow = ""
-    }
-  }, [isOpen])
+  useScrollLock(isOpen)
 
   if (!isOpen) return null
 

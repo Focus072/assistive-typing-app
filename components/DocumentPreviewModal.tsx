@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react"
 import { useDashboardTheme } from "@/app/dashboard/layout"
 import { formatConfigs } from "@/lib/document-formats"
 import { useFocusTrap } from "@/hooks/useFocusTrap"
+import { useScrollLock } from "@/hooks/useScrollLock"
 import type { DocumentFormat } from "@/types"
 import type { FormatMetadata } from "@/components/FormatMetadataModal"
 import type { CustomFormatConfig } from "./CustomFormatModal"
@@ -47,16 +48,7 @@ export function DocumentPreviewModal({
   }, [isOpen, onClose])
 
   // Prevent body scroll when modal is open
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden"
-    } else {
-      document.body.style.overflow = ""
-    }
-    return () => {
-      document.body.style.overflow = ""
-    }
-  }, [isOpen])
+  useScrollLock(isOpen)
 
   if (!isOpen) return null
 

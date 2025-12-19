@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import { useDashboardTheme } from "@/app/dashboard/layout"
 import { useFocusTrap } from "@/hooks/useFocusTrap"
+import { useScrollLock } from "@/hooks/useScrollLock"
 
 export interface CustomFormatConfig {
   fontFamily: string
@@ -87,16 +88,7 @@ export function CustomFormatModal({
   }, [isOpen, onClose])
 
   // Prevent body scroll when modal is open
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden"
-    } else {
-      document.body.style.overflow = ""
-    }
-    return () => {
-      document.body.style.overflow = ""
-    }
-  }, [isOpen])
+  useScrollLock(isOpen)
 
   if (!isOpen) return null
 
