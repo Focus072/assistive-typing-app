@@ -343,14 +343,21 @@ export const SignInPage = ({ className }: SignInPageProps) => {
                 Natural typing for Google Docs
               </span>
 
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-semibold tracking-tight text-white drop-shadow-[0_0_25px_rgba(0,0,0,0.8)]">
-                Typing Is Boring
-              </h1>
+              {/* Brand name - reduced emphasis */}
+              <div className="space-y-1">
+                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-medium tracking-tight text-white/80 drop-shadow-[0_0_15px_rgba(0,0,0,0.6)]">
+                  Typing Is Boring
+                </h2>
+                <p className="text-sm sm:text-base text-white/60">
+                  Typing Is Boring simulates human typing in Google Docs.
+                </p>
+              </div>
 
-              <p className="text-xl sm:text-2xl text-white/90 font-medium">
+              {/* Primary benefit - dominant headline */}
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-semibold tracking-tight text-white drop-shadow-[0_0_25px_rgba(0,0,0,0.8)]">
                 Make long docs feel{" "}
                 <span className="text-white/60">effortless.</span>
-              </p>
+              </h1>
 
               <p className="text-base sm:text-lg text-white/70 max-w-xl">
                 Paste your text, pick a Google Doc, and watch it type itself
@@ -372,22 +379,17 @@ export const SignInPage = ({ className }: SignInPageProps) => {
                 </li>
               </ul>
 
-              <div className="flex flex-col sm:flex-row items-center gap-3 pt-3">
+              <div className="flex flex-col gap-3 pt-3">
                 {isAuthenticated ? (
-                  <>
-                    <button
-                      type="button"
-                      onClick={handleGoToDashboard}
-                      className="inline-flex items-center justify-center w-full sm:w-auto rounded-full bg-white text-black font-medium py-3 px-6 text-sm hover:bg-white/90 transition-colors"
-                    >
-                      Open dashboard
-                    </button>
-                    <p className="text-xs text-white/60 text-center sm:text-left">
-                      Signed in as {session?.user?.email}
-                    </p>
-                  </>
+                  <button
+                    type="button"
+                    onClick={handleGoToDashboard}
+                    className="inline-flex items-center justify-center w-full sm:w-auto rounded-full bg-white text-black font-medium py-3 px-6 text-sm hover:bg-white/90 transition-colors"
+                  >
+                    Open dashboard
+                  </button>
                 ) : (
-                  <>
+                  <div className="flex flex-col gap-2">
                     <button
                       type="button"
                       onClick={handleGoogleSignIn}
@@ -396,11 +398,21 @@ export const SignInPage = ({ className }: SignInPageProps) => {
                       <span className="text-lg">G</span>
                       <span>Sign in with Google</span>
                     </button>
-                    <p className="text-xs text-white/60 text-center sm:text-left">
-                      Connect Google once. We’ll only type into documents you select.
+                    <p className="text-xs text-white/50 text-center sm:text-left">
+                      No install. No extensions.
                     </p>
-                  </>
+                  </div>
                 )}
+              </div>
+
+              {/* Trust signals */}
+              <div className="flex flex-col gap-1.5 pt-1">
+                <p className="text-xs text-white/50">
+                  We never read or store your documents.
+                </p>
+                <p className="text-xs text-white/50">
+                  Uses official Google OAuth — revoke access anytime.
+                </p>
               </div>
 
               <p className="text-[11px] text-white/40 pt-2">
@@ -421,7 +433,10 @@ export const SignInPage = ({ className }: SignInPageProps) => {
             </section>
 
             {/* Right: live system status card */}
-            <aside className="relative mt-8 lg:mt-0 flex justify-center lg:justify-end">
+            <aside className="relative mt-8 lg:mt-0 flex flex-col items-center lg:items-end gap-2">
+              <p className="text-xs text-white/50 text-center lg:text-right">
+                Live preview
+              </p>
               <div
                 className="group relative w-full max-w-sm lg:max-w-md overflow-hidden rounded-2xl border border-white/10 bg-black/60 backdrop-blur-xl shadow-[0_24px_60px_rgba(0,0,0,0.9)]"
                 style={{ aspectRatio: "1 / 1" }}
@@ -536,6 +551,32 @@ export const SignInPage = ({ className }: SignInPageProps) => {
                 </div>
               </div>
             </aside>
+          </div>
+
+          {/* Simple 3-step flow below the fold */}
+          <div className="w-full max-w-7xl mx-auto px-6 pt-16 pb-8">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-12 text-center">
+              <div className="flex flex-col items-center gap-2">
+                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white/10 text-white/80 text-sm font-medium">
+                  1
+                </div>
+                <p className="text-sm text-white/70">Paste your text</p>
+              </div>
+              <div className="hidden sm:block text-white/30">→</div>
+              <div className="flex flex-col items-center gap-2">
+                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white/10 text-white/80 text-sm font-medium">
+                  2
+                </div>
+                <p className="text-sm text-white/70">Pick a Google Doc</p>
+              </div>
+              <div className="hidden sm:block text-white/30">→</div>
+              <div className="flex flex-col items-center gap-2">
+                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white/10 text-white/80 text-sm font-medium">
+                  3
+                </div>
+                <p className="text-sm text-white/70">Watch it type naturally</p>
+              </div>
+            </div>
           </div>
         </main>
       </div>
