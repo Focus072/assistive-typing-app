@@ -344,9 +344,13 @@ export const SignInPage = ({ className }: SignInPageProps) => {
               </span>
 
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-semibold tracking-tight text-white drop-shadow-[0_0_25px_rgba(0,0,0,0.8)]">
+                Typing Is Boring
+              </h1>
+
+              <p className="text-xl sm:text-2xl text-white/90 font-medium">
                 Make long docs feel{" "}
                 <span className="text-white/60">effortless.</span>
-              </h1>
+              </p>
 
               <p className="text-base sm:text-lg text-white/70 max-w-xl">
                 Paste your text, pick a Google Doc, and watch it type itself
