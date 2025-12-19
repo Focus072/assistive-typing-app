@@ -125,6 +125,8 @@ function DashboardContent() {
   const [currentJobId, setCurrentJobId] = useState<string | null>(jobIdParam)
   const currentJobIdRef = useRef<string | null>(jobIdParam)
   const progressStreamRef = useRef<EventSource | null>(null)
+  const reconnectAttemptsRef = useRef<number>(0)
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const [jobStatus, setJobStatus] = useState<JobStatus>("pending")
   const [currentIndex, setCurrentIndex] = useState(0)
   const [totalChars, setTotalChars] = useState(0)
@@ -218,9 +220,14 @@ function DashboardContent() {
       progressStreamRef.current = null
     }
 
+    // Clear any pending reconnection timeout
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current)
+      reconnectTimeoutRef.current = null
+    }
+
     const eventSource = new EventSource(`/api/progress/stream?jobId=${id}`)
     progressStreamRef.current = eventSource
-    let reconnectAttempts = 0
     const maxReconnectAttempts = 10
     const reconnectDelay = 2000
 
@@ -233,7 +240,7 @@ function DashboardContent() {
         setJobDurationMinutes(data.durationMinutes)
 
         // Reset reconnect attempts on successful message
-        reconnectAttempts = 0
+        reconnectAttemptsRef.current = 0
 
         // Close stream if job is finished
         if (["completed", "stopped", "failed", "expired"].includes(data.status)) {
@@ -250,33 +257,64 @@ function DashboardContent() {
       progressStreamRef.current = null
 
       // Only reconnect if job is still active and we haven't exceeded max attempts
-      if (currentJobIdRef.current && reconnectAttempts < maxReconnectAttempts) {
-        reconnectAttempts++
-        const delay = reconnectDelay * Math.min(reconnectAttempts, 5) // Exponential backoff, max 10s
+      if (currentJobIdRef.current && reconnectAttemptsRef.current < maxReconnectAttempts) {
+        reconnectAttemptsRef.current++
+        const delay = reconnectDelay * Math.min(reconnectAttemptsRef.current, 5) // Exponential backoff, max 10s
         
-        setTimeout(() => {
+        reconnectTimeoutRef.current = setTimeout(() => {
           // Double-check job is still active before reconnecting
           if (currentJobIdRef.current === id) {
             startProgressStream(id)
           }
+          reconnectTimeoutRef.current = null
         }, delay)
-      } else if (reconnectAttempts >= maxReconnectAttempts) {
+      } else if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
         toast.addToast("Lost connection to job progress. Refresh the page to reconnect.", "warning")
       }
     }
-
-    return () => {
-      eventSource.close()
-      progressStreamRef.current = null
-    }
   }, [toast])
 
+  // Load job from URL param
   useEffect(() => {
     if (jobIdParam) {
       loadJob(jobIdParam)
-      startProgressStream(jobIdParam)
     }
-  }, [jobIdParam, loadJob, startProgressStream])
+  }, [jobIdParam, loadJob])
+
+  // Manage EventSource lifecycle explicitly
+  useEffect(() => {
+    const jobId = currentJobId
+
+    if (!jobId) {
+      // Clean up if no job is active
+      if (progressStreamRef.current) {
+        progressStreamRef.current.close()
+        progressStreamRef.current = null
+      }
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current)
+        reconnectTimeoutRef.current = null
+      }
+      reconnectAttemptsRef.current = 0
+      return
+    }
+
+    // Start stream for active job
+    startProgressStream(jobId)
+
+    // Cleanup function: close stream and clear timeouts on unmount or job change
+    return () => {
+      if (progressStreamRef.current) {
+        progressStreamRef.current.close()
+        progressStreamRef.current = null
+      }
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current)
+        reconnectTimeoutRef.current = null
+      }
+      reconnectAttemptsRef.current = 0
+    }
+  }, [currentJobId, startProgressStream])
 
   const handleCreateDocument = async (title: string): Promise<string> => {
     try {
