@@ -1,6 +1,6 @@
 ﻿"use client"
 
-import { useState, useEffect, useCallback, useRef, Suspense, use } from "react"
+import { useState, useEffect, useCallback, useRef, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
@@ -61,19 +61,7 @@ function calculateCurrentWPM(
   return Math.round(actualWPM)
 }
 
-export default function DashboardPage({
-  params = Promise.resolve({}),
-  searchParams = Promise.resolve({}),
-}: {
-  params?: Promise<Record<string, string>>
-  searchParams?: Promise<Record<string, string | string[] | undefined>>
-}) {
-  // Unwrap params/searchParams to prevent Next.js 16 enumeration errors
-  // We don't actually use them, but unwrapping prevents React from trying to serialize the Promise
-  // This must be done unconditionally at the top level to prevent enumeration
-  use(params)
-  use(searchParams)
-  
+export default function DashboardPage() {
   return (
     <Suspense fallback={<DashboardSkeleton />}>
       <DashboardContent />
