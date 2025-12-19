@@ -5,6 +5,11 @@ import { prisma } from "@/lib/prisma"
 
 export const dynamic = 'force-dynamic'
 
+// Stable params unwrapping helper - forward-compatible with Next.js param handling changes
+async function unwrapParams<T>(params: Promise<T> | T): Promise<T> {
+  return Promise.resolve(params)
+}
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -19,7 +24,7 @@ export async function GET(
       )
     }
 
-    const { id } = await params
+    const { id } = await unwrapParams(params)
 
     const job = await prisma.job.findUnique({
       where: { id },
