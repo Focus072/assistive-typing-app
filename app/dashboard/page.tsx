@@ -111,6 +111,7 @@ function DashboardContent() {
   const [documentId, setDocumentId] = useState("")
   const [documentUrl, setDocumentUrl] = useState<string | null>(null)
   const [loadingDocumentUrl, setLoadingDocumentUrl] = useState(false)
+  const [iframeError, setIframeError] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showAdvanced, setShowAdvanced] = useState(false)
@@ -127,11 +128,13 @@ function DashboardContent() {
   useEffect(() => {
     if (!documentId) {
       setDocumentUrl(null)
+      setIframeError(false)
       return
     }
 
     let cancelled = false
     setLoadingDocumentUrl(true)
+    setIframeError(false) // Reset iframe error when document changes
 
     const fetchDocumentUrl = async () => {
       try {
@@ -162,6 +165,7 @@ function DashboardContent() {
       cancelled = true
     }
   }, [documentId])
+
 
   // Job state
   const [currentJobId, setCurrentJobId] = useState<string | null>(jobIdParam)
@@ -1138,29 +1142,51 @@ function DashboardContent() {
               <div className={`relative rounded-lg overflow-hidden border ${
                 isDark ? "border-white/10" : "border-black/10"
               }`}>
-                {documentUrl ? (
+                {documentUrl && !iframeError ? (
                   <iframe
                     src={`${documentUrl}?embedded=true`}
                     className="w-full h-[600px] lg:h-[700px] border-0 bg-white"
                     title="Google Doc Preview"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    onError={() => setIframeError(true)}
                   />
                 ) : (
                   <div className={`w-full h-[600px] lg:h-[700px] flex items-center justify-center ${
                     isDark ? "bg-black/20" : "bg-gray-50"
                   }`}>
-                    <div className="text-center space-y-2">
+                    <div className="text-center space-y-4">
                       <p className={`text-sm ${isDark ? "text-white/70" : "text-black/70"}`}>
-                        {loadingDocumentUrl ? "Loading document..." : "Document preview unavailable"}
+                        {iframeError
+                          ? "Document preview unavailable. Please open in Google Docs."
+                          : loadingDocumentUrl
+                            ? "Loading document..."
+                            : "Document preview unavailable"}
                       </p>
-                      {documentId && !loadingDocumentUrl && (
+                      {(documentUrl || documentId) && (
                         <a
-                          href={`https://docs.google.com/document/d/${documentId}/edit`}
+                          href={documentUrl || `https://docs.google.com/document/d/${documentId}/edit`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className={`text-sm underline ${isDark ? "text-white/90" : "text-black/90"}`}
+                          className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
+                            isDark
+                              ? "bg-white/10 border-white/20 text-white hover:bg-white/20"
+                              : "bg-black/5 border-black/20 text-black hover:bg-black/10"
+                          }`}
                         >
-                          Open in new tab
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                            />
+                          </svg>
+                          <span className="text-sm font-medium">Open in Google Docs</span>
                         </a>
                       )}
                     </div>
