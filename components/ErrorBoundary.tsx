@@ -1,6 +1,7 @@
 "use client"
 
 import { Component, ReactNode } from "react"
+import { useRouter } from "next/navigation"
 
 interface Props {
   children: ReactNode
@@ -36,6 +37,8 @@ export class ErrorBoundary extends Component<Props, State> {
 }
 
 function ErrorFallback({ error }: { error: Error | null }) {
+  const router = useRouter()
+  
   return (
     <div className="min-h-screen bg-white flex items-center justify-center p-6">
       <div className="bg-white border border-black rounded-2xl p-8 max-w-md w-full text-center shadow-md">
@@ -56,7 +59,7 @@ function ErrorFallback({ error }: { error: Error | null }) {
             Refresh Page
           </button>
           <button
-            onClick={() => window.location.href = "/dashboard"}
+            onClick={() => router.push("/dashboard")}
             className="px-6 py-3 rounded-lg bg-white border border-black text-black hover:bg-gray-50 transition-colors"
           >
             Go to Dashboard

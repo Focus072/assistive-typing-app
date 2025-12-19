@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { formatDuration } from "@/lib/utils"
 import type { JobStatus } from "@/types"
 import { useDashboardTheme } from "@/app/dashboard/layout"
@@ -22,6 +23,7 @@ interface Job {
 
 export function JobHistory() {
   const { isDark } = useDashboardTheme()
+  const router = useRouter()
   const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -54,7 +56,7 @@ export function JobHistory() {
 
       if (response.ok) {
         await loadJobs()
-        window.location.href = `/dashboard?jobId=${jobId}`
+        router.push(`/dashboard?jobId=${jobId}`)
       }
     } catch (error) {
       // Error handled by UI state

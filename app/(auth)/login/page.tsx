@@ -17,7 +17,7 @@ function LoginPageInner() {
       const callbackUrl = searchParams.get("callbackUrl")
       const cleanCallbackUrl = callbackUrl?.split("&error=")[0].split("?error=")[0]
       const targetUrl = cleanCallbackUrl?.startsWith("/") ? cleanCallbackUrl : "/dashboard"
-      window.location.replace(targetUrl)
+      router.replace(targetUrl)
       return
     }
     
@@ -27,7 +27,7 @@ function LoginPageInner() {
         setError("Google sign-in failed. Please try again.")
       }
     }
-  }, [status, session, searchParams])
+  }, [status, session, searchParams, router])
 
   const handleGoogleSignIn = async () => {
     setError("")
