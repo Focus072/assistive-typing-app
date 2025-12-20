@@ -365,7 +365,7 @@ export const SignInPage = ({ className }: SignInPageProps) => {
               </p>
 
               {/* CTA + Trust block */}
-              <div className="flex flex-col gap-4 pt-6">
+              <div className="flex flex-col gap-4 pt-3 sm:pt-6">
                 {isAuthenticated ? (
                   <button
                     type="button"
@@ -402,7 +402,7 @@ export const SignInPage = ({ className }: SignInPageProps) => {
               </div>
 
               {/* Supporting bullets - de-emphasized */}
-              <ul className="space-y-2 text-xs text-white/60 pt-1">
+              <ul className="space-y-1.5 sm:space-y-2 text-[11px] sm:text-xs text-white/60 pt-1">
                 <li className="flex items-center gap-2">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
                   Looks like real typing, not a copy‑paste dump.
@@ -435,7 +435,7 @@ export const SignInPage = ({ className }: SignInPageProps) => {
             </section>
 
             {/* Right: live system status card + 3-step flow */}
-            <aside className="relative mt-8 lg:mt-0 flex flex-col items-center lg:items-start gap-3">
+            <aside className="relative mt-12 sm:mt-8 lg:mt-0 flex flex-col items-center lg:items-start gap-3">
               <p className="text-sm font-medium text-white/70 text-center lg:text-left w-full">
                 Live preview
               </p>
@@ -456,7 +456,7 @@ export const SignInPage = ({ className }: SignInPageProps) => {
                 {/* Soft inner highlight */}
                 <div className="pointer-events-none absolute inset-px rounded-[1.1rem] bg-gradient-to-br from-white/10 via-transparent to-white/5 opacity-50" />
 
-                <div className="relative z-10 h-full p-7 space-y-6">
+                <div className="relative z-10 h-full p-5 sm:p-7 space-y-5 sm:space-y-6">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       {/* Pulsing online indicator */}
@@ -554,7 +554,7 @@ export const SignInPage = ({ className }: SignInPageProps) => {
               </div>
 
               {/* 3-step flow - connected to preview, secondary */}
-              <div className="w-full max-w-sm lg:max-w-lg pt-3">
+              <div className="w-full max-w-sm lg:max-w-lg pt-5 sm:pt-3 lg:pt-3">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex flex-col items-center gap-1.5 flex-1">
                     <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white/10 border border-white/15 text-white/80 text-xs font-medium">
