@@ -336,9 +336,9 @@ export const SignInPage = ({ className }: SignInPageProps) => {
 
         {/* Main hero */}
         <main className="flex flex-1 items-center justify-center px-6 pt-28 pb-16">
-          <div className="w-full max-w-7xl grid grid-cols-1 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,0.9fr)] gap-10 lg:gap-16 items-center">
+          <div className="w-full max-w-7xl grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-8 lg:gap-12 items-start lg:items-center">
             {/* Left: Natural typing copy + CTA */}
-            <section className="space-y-6">
+            <section className="space-y-5">
               <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-white/70">
                 Natural typing for Google Docs
               </span>
@@ -359,27 +359,13 @@ export const SignInPage = ({ className }: SignInPageProps) => {
                 <span className="text-white/60">effortless.</span>
               </h1>
 
-              <p className="text-base sm:text-lg text-white/70 max-w-xl">
+              <p className="text-base sm:text-lg text-white/70">
                 Paste your text, pick a Google Doc, and watch it type itself
                 with human-like rhythm — pauses, bursts, and everything in between.
               </p>
 
-              <ul className="space-y-2 text-sm text-white/70">
-                <li className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                  Looks like real typing, not a copy‑paste dump.
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                  Your docs stay in your Google account — we only type where you point us.
-                </li>
-                <li className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                  Control speed, breaks, and pacing to match how humans type.
-                </li>
-              </ul>
-
-              <div className="flex flex-col gap-3 pt-3">
+              {/* CTA + Trust block */}
+              <div className="flex flex-col gap-4 pt-2">
                 {isAuthenticated ? (
                   <button
                     type="button"
@@ -405,7 +391,7 @@ export const SignInPage = ({ className }: SignInPageProps) => {
                 )}
 
                 {/* Trust signals - compact block directly under CTA */}
-                <div className="flex flex-col gap-1 pt-2">
+                <div className="flex flex-col gap-1.5">
                   <p className="text-xs text-white/50">
                     We never read or store your documents.
                   </p>
@@ -414,6 +400,22 @@ export const SignInPage = ({ className }: SignInPageProps) => {
                   </p>
                 </div>
               </div>
+
+              {/* Supporting bullets */}
+              <ul className="space-y-2.5 text-sm text-white/70 pt-2">
+                <li className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
+                  Looks like real typing, not a copy‑paste dump.
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
+                  Your docs stay in your Google account — we only type where you point us.
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
+                  Control speed, breaks, and pacing to match how humans type.
+                </li>
+              </ul>
 
               <p className="text-[11px] text-white/40 pt-2">
                 By continuing, you agree to our{" "}
@@ -432,13 +434,13 @@ export const SignInPage = ({ className }: SignInPageProps) => {
               </p>
             </section>
 
-            {/* Right: live system status card */}
-            <aside className="relative mt-8 lg:mt-0 flex flex-col items-center lg:items-end gap-2">
-              <p className="text-sm text-white/60 text-center lg:text-right">
+            {/* Right: live system status card + 3-step flow */}
+            <aside className="relative mt-8 lg:mt-0 flex flex-col items-center lg:items-start gap-4">
+              <p className="text-sm font-medium text-white/70 text-center lg:text-left w-full">
                 Live preview
               </p>
               <div
-                className="group relative w-full max-w-sm lg:max-w-md overflow-hidden rounded-2xl border border-white/10 bg-black/60 backdrop-blur-xl shadow-[0_24px_60px_rgba(0,0,0,0.9)]"
+                className="group relative w-full max-w-sm lg:max-w-lg overflow-hidden rounded-2xl border border-white/10 bg-black/60 backdrop-blur-xl shadow-[0_24px_60px_rgba(0,0,0,0.9)]"
                 style={{ aspectRatio: "1 / 1" }}
                 aria-label="Typing status into Google Docs"
                 aria-live="polite"
@@ -550,33 +552,33 @@ export const SignInPage = ({ className }: SignInPageProps) => {
                   </div>
                 </div>
               </div>
-            </aside>
-          </div>
 
-          {/* Simple 3-step flow below the fold */}
-          <div className="w-full max-w-7xl mx-auto px-6 pt-16 pb-8">
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-8 sm:gap-16 text-center">
-              <div className="flex flex-col items-center gap-2">
-                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white/10 text-white/80 text-sm font-medium">
-                  1
+              {/* 3-step flow - connected to preview */}
+              <div className="w-full max-w-sm lg:max-w-lg pt-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex flex-col items-center gap-2 flex-1">
+                    <div className="flex items-center justify-center w-9 h-9 rounded-full bg-white/10 border border-white/20 text-white/90 text-sm font-semibold">
+                      1
+                    </div>
+                    <p className="text-xs text-white/70 text-center leading-tight">Paste your text</p>
+                  </div>
+                  <div className="text-white/40 text-xl pt-4">→</div>
+                  <div className="flex flex-col items-center gap-2 flex-1">
+                    <div className="flex items-center justify-center w-9 h-9 rounded-full bg-white/10 border border-white/20 text-white/90 text-sm font-semibold">
+                      2
+                    </div>
+                    <p className="text-xs text-white/70 text-center leading-tight">Pick a Google Doc</p>
+                  </div>
+                  <div className="text-white/40 text-xl pt-4">→</div>
+                  <div className="flex flex-col items-center gap-2 flex-1">
+                    <div className="flex items-center justify-center w-9 h-9 rounded-full bg-white/10 border border-white/20 text-white/90 text-sm font-semibold">
+                      3
+                    </div>
+                    <p className="text-xs text-white/70 text-center leading-tight">Watch it type naturally</p>
+                  </div>
                 </div>
-                <p className="text-sm text-white/70">Paste your text</p>
               </div>
-              <div className="hidden sm:block text-white/30 text-lg">→</div>
-              <div className="flex flex-col items-center gap-2">
-                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white/10 text-white/80 text-sm font-medium">
-                  2
-                </div>
-                <p className="text-sm text-white/70">Pick a Google Doc</p>
-              </div>
-              <div className="hidden sm:block text-white/30 text-lg">→</div>
-              <div className="flex flex-col items-center gap-2">
-                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white/10 text-white/80 text-sm font-medium">
-                  3
-                </div>
-                <p className="text-sm text-white/70">Watch it type naturally</p>
-              </div>
-            </div>
+            </aside>
           </div>
         </main>
       </div>
