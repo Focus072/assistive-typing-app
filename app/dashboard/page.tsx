@@ -619,7 +619,7 @@ function DashboardContent() {
         initialConfig={customFormatConfig}
       />
       
-          <div className="space-y-4 md:space-y-6 pb-6">
+          <div className="space-y-6 md:space-y-8 pb-6">
 
           {currentJobId && (
             <div className="flex flex-wrap items-center gap-3">
@@ -777,7 +777,7 @@ function DashboardContent() {
         )}
 
         {/* Main Layout - Simplified Flow */}
-        <div className="space-y-4 md:space-y-6">
+        <div className="space-y-6 md:space-y-8">
           {/* Text Input Section - Collapsible */}
           <div className="space-y-2 md:space-y-3">
             {!showTextInput && !textContent && (
@@ -885,7 +885,7 @@ function DashboardContent() {
           </div>
 
           {/* Document Selection - Primary (more prominent on mobile) */}
-          <div className={`pt-4 md:pt-4 border-t ${
+          <div className={`pt-6 md:pt-6 border-t ${
             isDark ? "border-white/10" : "border-black/10"
           }`}>
             <DocsSelector
@@ -896,7 +896,7 @@ function DashboardContent() {
           </div>
 
           {/* Tier 1: Core Options - Always Visible */}
-          <div className={`pt-4 border-t ${
+          <div className={`pt-6 border-t ${
             isDark ? "border-white/10" : "border-black/10"
           } space-y-4`}>
             <TimeSelector
@@ -917,8 +917,8 @@ function DashboardContent() {
             />
           </div>
 
-          {/* Tier 2: Advanced Options - Collapsed by default */}
-          <div className={`pt-4 border-t ${
+          {/* Secondary: Advanced Options - Collapsed by default */}
+          <div className={`pt-6 border-t ${
             isDark ? "border-white/5" : "border-black/5"
           }`}>
             <button
@@ -953,7 +953,7 @@ function DashboardContent() {
             </button>
 
             {showAdvanced && (
-              <div className="mt-4 space-y-4">
+              <div className="mt-4 space-y-3">
                 <FormatSelector
                   value={documentFormat}
                   onChange={(format, metadata, customConfig) => {
@@ -978,7 +978,7 @@ function DashboardContent() {
                 {documentFormat === "mla" && (
                   <button
                     onClick={() => setShowMetadataModal(true)}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors text-sm ${
+                    className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg border transition-colors text-xs ${
                       formatMetadata && 
                       formatMetadata.studentName && 
                       formatMetadata.professorName && 
@@ -1007,7 +1007,7 @@ function DashboardContent() {
                         d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                       />
                     </svg>
-                    <span className="text-sm font-medium">
+                    <span className="text-xs font-medium">
                       {formatMetadata && 
                       formatMetadata.studentName && 
                       formatMetadata.professorName && 
@@ -1024,10 +1024,10 @@ function DashboardContent() {
                 {textContent && documentFormat !== "none" && (
                   <button
                     onClick={() => setShowPreviewModal(true)}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors text-sm ${
+                    className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg border transition-colors text-xs ${
                       isDark
-                        ? "bg-white/10 border-white/20 text-white hover:bg-white/20"
-                        : "bg-black/5 border-black/20 text-black hover:bg-black/10"
+                        ? "bg-white/5 border-white/10 text-white/70 hover:bg-white/10 hover:text-white"
+                        : "bg-black/5 border-black/10 text-black/70 hover:bg-black/10 hover:text-black"
                     }`}
                     aria-label="Preview document"
                   >
@@ -1050,7 +1050,7 @@ function DashboardContent() {
                         d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
                       />
                     </svg>
-                    <span className="text-sm font-medium">Preview formatted text</span>
+                    <span className="text-xs font-medium">Preview formatted text</span>
                   </button>
                 )}
               </div>
@@ -1058,7 +1058,9 @@ function DashboardContent() {
           </div>
 
           {documentId && (
-            <div className="space-y-4 hidden md:block">
+            <div className={`space-y-4 hidden md:block pt-6 border-t ${
+              isDark ? "border-white/10" : "border-black/10"
+            }`}>
               {/* Start Typing Controls - Above Live Preview */}
               <div className="space-y-3">
                 {/* Summary line */}
