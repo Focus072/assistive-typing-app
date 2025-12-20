@@ -365,12 +365,12 @@ export const SignInPage = ({ className }: SignInPageProps) => {
               </p>
 
               {/* CTA + Trust block */}
-              <div className="flex flex-col gap-4 pt-2">
+              <div className="flex flex-col gap-4 pt-6">
                 {isAuthenticated ? (
                   <button
                     type="button"
                     onClick={handleGoToDashboard}
-                    className="inline-flex items-center justify-center w-full sm:w-auto rounded-full bg-white text-black font-medium py-3 px-6 text-sm hover:bg-white/90 transition-colors"
+                    className="inline-flex items-center justify-center w-full sm:w-auto sm:max-w-[240px] rounded-full bg-white text-black font-medium py-3 px-6 text-sm hover:bg-white/90 transition-colors"
                   >
                     Open dashboard
                   </button>
@@ -379,7 +379,7 @@ export const SignInPage = ({ className }: SignInPageProps) => {
                     <button
                       type="button"
                       onClick={handleGoogleSignIn}
-                      className="backdrop-blur-[2px] inline-flex items-center justify-center gap-2 w-full sm:w-auto bg-white text-black rounded-full py-3 px-6 text-sm font-medium hover:bg-white/90 transition-colors"
+                      className="backdrop-blur-[2px] inline-flex items-center justify-center gap-2 w-full sm:w-auto sm:max-w-[240px] bg-white text-black rounded-full py-3 px-6 text-sm font-medium hover:bg-white/90 transition-colors"
                     >
                       <span className="text-lg">G</span>
                       <span>Sign in with Google</span>
@@ -391,7 +391,7 @@ export const SignInPage = ({ className }: SignInPageProps) => {
                 )}
 
                 {/* Trust signals - compact block directly under CTA */}
-                <div className="flex flex-col gap-1.5">
+                <div className="flex flex-col gap-1.5 pt-1">
                   <p className="text-xs text-white/50">
                     We never read or store your documents.
                   </p>
@@ -401,8 +401,8 @@ export const SignInPage = ({ className }: SignInPageProps) => {
                 </div>
               </div>
 
-              {/* Supporting bullets */}
-              <ul className="space-y-2.5 text-sm text-white/70 pt-2">
+              {/* Supporting bullets - de-emphasized */}
+              <ul className="space-y-2 text-xs text-white/60 pt-1">
                 <li className="flex items-center gap-2">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
                   Looks like real typing, not a copy‑paste dump.
@@ -435,7 +435,7 @@ export const SignInPage = ({ className }: SignInPageProps) => {
             </section>
 
             {/* Right: live system status card + 3-step flow */}
-            <aside className="relative mt-8 lg:mt-0 flex flex-col items-center lg:items-start gap-4">
+            <aside className="relative mt-8 lg:mt-0 flex flex-col items-center lg:items-start gap-3">
               <p className="text-sm font-medium text-white/70 text-center lg:text-left w-full">
                 Live preview
               </p>
@@ -553,28 +553,28 @@ export const SignInPage = ({ className }: SignInPageProps) => {
                 </div>
               </div>
 
-              {/* 3-step flow - connected to preview */}
-              <div className="w-full max-w-sm lg:max-w-lg pt-4">
+              {/* 3-step flow - connected to preview, secondary */}
+              <div className="w-full max-w-sm lg:max-w-lg pt-3">
                 <div className="flex items-center justify-between gap-3">
-                  <div className="flex flex-col items-center gap-2 flex-1">
-                    <div className="flex items-center justify-center w-9 h-9 rounded-full bg-white/10 border border-white/20 text-white/90 text-sm font-semibold">
+                  <div className="flex flex-col items-center gap-1.5 flex-1">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white/10 border border-white/15 text-white/80 text-xs font-medium">
                       1
                     </div>
-                    <p className="text-xs text-white/70 text-center leading-tight">Paste your text</p>
+                    <p className="text-[11px] text-white/60 text-center leading-tight">Paste your text</p>
                   </div>
-                  <div className="text-white/40 text-xl pt-4">→</div>
-                  <div className="flex flex-col items-center gap-2 flex-1">
-                    <div className="flex items-center justify-center w-9 h-9 rounded-full bg-white/10 border border-white/20 text-white/90 text-sm font-semibold">
+                  <div className="text-white/30 text-lg pt-3">→</div>
+                  <div className="flex flex-col items-center gap-1.5 flex-1">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white/10 border border-white/15 text-white/80 text-xs font-medium">
                       2
                     </div>
-                    <p className="text-xs text-white/70 text-center leading-tight">Pick a Google Doc</p>
+                    <p className="text-[11px] text-white/60 text-center leading-tight">Pick a Google Doc</p>
                   </div>
-                  <div className="text-white/40 text-xl pt-4">→</div>
-                  <div className="flex flex-col items-center gap-2 flex-1">
-                    <div className="flex items-center justify-center w-9 h-9 rounded-full bg-white/10 border border-white/20 text-white/90 text-sm font-semibold">
+                  <div className="text-white/30 text-lg pt-3">→</div>
+                  <div className="flex flex-col items-center gap-1.5 flex-1">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white/10 border border-white/15 text-white/80 text-xs font-medium">
                       3
                     </div>
-                    <p className="text-xs text-white/70 text-center leading-tight">Watch it type naturally</p>
+                    <p className="text-[11px] text-white/60 text-center leading-tight">Watch it type naturally</p>
                   </div>
                 </div>
               </div>
