@@ -53,17 +53,34 @@ export default function PrivacyPage() {
               <li>Authenticate you with Google</li>
               <li>Type text into the documents you select</li>
               <li>Track job progress and status</li>
+              <li>We do not share your Google user data with third parties.</li>
             </ul>
           </section>
           <section className="space-y-4">
-            <h2 className="text-xl font-semibold text-white">4. Google Account Access</h2>
+            <h2 className="text-xl font-semibold text-white">4. Data Sharing and Disclosure</h2>
+            <p>
+              We do not sell, rent, or trade your Google user data. We do not share your Google user data with third parties for their own purposes.
+            </p>
+            <p>
+              Your Google user data is only disclosed in the following circumstances:
+            </p>
+            <ul className="list-disc list-inside space-y-2 ml-4">
+              <li><strong>Legal requirements:</strong> If required by law, court order, or government regulation, we may disclose data to law enforcement or regulatory authorities.</li>
+              <li><strong>Infrastructure providers:</strong> We use third-party infrastructure providers (hosting, database services) to operate the service. These providers process data solely on our behalf under strict contractual obligations and do not own, use, or share your Google user data for their own purposes.</li>
+            </ul>
+            <p className="mt-2">
+              We do not use Google user data for advertising, analytics, or training AI models.
+            </p>
+          </section>
+          <section className="space-y-4">
+            <h2 className="text-xl font-semibold text-white">5. Google Account Access</h2>
             <p>
               We request only the minimum Google Docs access needed to type into documents you select.
               You can revoke access at any time through your Google account settings.
             </p>
           </section>
           <section className="space-y-4">
-            <h2 className="text-xl font-semibold text-white">5. Data Retention & Deletion</h2>
+            <h2 className="text-xl font-semibold text-white">6. Data Retention & Deletion</h2>
             <p>
               We retain data only as long as necessary to provide the service:
             </p>
@@ -78,7 +95,7 @@ export default function PrivacyPage() {
             </p>
           </section>
           <section className="space-y-4">
-            <h2 className="text-xl font-semibold text-white">6. Data Security</h2>
+            <h2 className="text-xl font-semibold text-white">7. Data Security</h2>
             <p>
               We implement industry-standard security measures to protect your data:
             </p>
@@ -90,7 +107,7 @@ export default function PrivacyPage() {
             </ul>
           </section>
           <section className="space-y-4">
-            <h2 className="text-xl font-semibold text-white">7. Your Rights</h2>
+            <h2 className="text-xl font-semibold text-white">8. Your Rights</h2>
             <p>
               You have the right to:
             </p>
@@ -106,7 +123,7 @@ export default function PrivacyPage() {
             </p>
           </section>
           <section className="space-y-4">
-            <h2 className="text-xl font-semibold text-white">8. Children&apos;s Privacy</h2>
+            <h2 className="text-xl font-semibold text-white">9. Children&apos;s Privacy</h2>
             <p>
               typingisboring is not intended for users under the age of 13. We do not knowingly collect personal
               information from children under 13. If you believe we have collected information from a child under 13,
@@ -114,7 +131,7 @@ export default function PrivacyPage() {
             </p>
           </section>
           <section className="space-y-4">
-            <h2 className="text-xl font-semibold text-white">9. Changes to This Policy</h2>
+            <h2 className="text-xl font-semibold text-white">10. Changes to This Policy</h2>
             <p>
               We may update this Privacy Policy from time to time. We will notify you of any material changes by
               posting the new policy on this page and updating the &quot;Last updated&quot; date.
