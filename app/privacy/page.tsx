@@ -40,9 +40,11 @@ export default function PrivacyPage() {
             </p>
             <ul className="list-disc list-inside space-y-2 ml-4">
               <li>Your document content after typing completes</li>
-              <li>Your Google OAuth tokens (handled by NextAuth)</li>
               <li>Any personal information beyond what&apos;s necessary for the service</li>
             </ul>
+            <p className="mt-2">
+              <strong>OAuth Token Storage:</strong> Google OAuth tokens are stored securely by our authentication provider (NextAuth) to authenticate requests on your behalf. These tokens are used only to provide the core functionality of the service and are never shared, sold, or used outside this scope.
+            </p>
           </section>
           <section className="space-y-4">
             <h2 className="text-xl font-semibold text-white">3. How We Use Your Information</h2>
@@ -78,9 +80,38 @@ export default function PrivacyPage() {
               We request only the minimum Google Docs access needed to type into documents you select.
               You can revoke access at any time through your Google account settings.
             </p>
+            <p className="mt-2">
+              We do not allow human review of Google Docs content. Human access to your Google Docs content occurs only if strictly necessary for technical support and only with your explicit consent.
+            </p>
           </section>
           <section className="space-y-4">
-            <h2 className="text-xl font-semibold text-white">6. Data Retention & Deletion</h2>
+            <h2 className="text-xl font-semibold text-white">6. Google Limited Use Disclosure</h2>
+            <p>
+              Our use and transfer of information received from Google APIs adheres to the{" "}
+              <a
+                href="https://developers.google.com/terms/api-services-user-data-policy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-white underline hover:text-white/80"
+              >
+                Google API Services User Data Policy
+              </a>
+              , including the Limited Use requirements.
+            </p>
+            <p>
+              Google user data is used only to provide the core functionality of the application:
+            </p>
+            <ul className="list-disc list-inside space-y-2 ml-4">
+              <li>To authenticate your identity</li>
+              <li>To access and type text into the Google Docs you select</li>
+              <li>To manage document permissions and access</li>
+            </ul>
+            <p className="mt-2">
+              We do not use Google user data for advertising, analytics, profiling, or training machine learning or AI models. Google user data is not shared with third parties except as explicitly disclosed in Section 4 (Data Sharing and Disclosure).
+            </p>
+          </section>
+          <section className="space-y-4">
+            <h2 className="text-xl font-semibold text-white">7. Data Retention & Deletion</h2>
             <p>
               We retain data only as long as necessary to provide the service:
             </p>
@@ -95,7 +126,7 @@ export default function PrivacyPage() {
             </p>
           </section>
           <section className="space-y-4">
-            <h2 className="text-xl font-semibold text-white">7. Data Security</h2>
+            <h2 className="text-xl font-semibold text-white">8. Data Security</h2>
             <p>
               We implement industry-standard security measures to protect your data:
             </p>
@@ -107,7 +138,7 @@ export default function PrivacyPage() {
             </ul>
           </section>
           <section className="space-y-4">
-            <h2 className="text-xl font-semibold text-white">8. Your Rights</h2>
+            <h2 className="text-xl font-semibold text-white">9. Your Rights</h2>
             <p>
               You have the right to:
             </p>
@@ -119,19 +150,33 @@ export default function PrivacyPage() {
               <li><strong>Portability:</strong> Export your data in a machine-readable format</li>
             </ul>
             <p className="mt-2">
-              To exercise these rights, please contact us through the support channels provided in the application.
+              To exercise these rights, please contact us at{" "}
+              <a
+                href="mailto:support@typingisboring.com"
+                className="text-white underline hover:text-white/80"
+              >
+                support@typingisboring.com
+              </a>
+              .
             </p>
           </section>
           <section className="space-y-4">
-            <h2 className="text-xl font-semibold text-white">9. Children&apos;s Privacy</h2>
+            <h2 className="text-xl font-semibold text-white">10. Children&apos;s Privacy</h2>
             <p>
               typingisboring is not intended for users under the age of 13. We do not knowingly collect personal
               information from children under 13. If you believe we have collected information from a child under 13,
-              please contact us immediately.
+              please contact us immediately at{" "}
+              <a
+                href="mailto:support@typingisboring.com"
+                className="text-white underline hover:text-white/80"
+              >
+                support@typingisboring.com
+              </a>
+              .
             </p>
           </section>
           <section className="space-y-4">
-            <h2 className="text-xl font-semibold text-white">10. Changes to This Policy</h2>
+            <h2 className="text-xl font-semibold text-white">11. Changes to This Policy</h2>
             <p>
               We may update this Privacy Policy from time to time. We will notify you of any material changes by
               posting the new policy on this page and updating the &quot;Last updated&quot; date.
@@ -139,7 +184,14 @@ export default function PrivacyPage() {
           </section>
           <div className="pt-8 border-t border-white/10">
             <p className="text-sm text-white/50">
-              For privacy questions or data deletion requests, please contact us through the support channels provided in the application.
+              For privacy questions or data deletion requests, please contact us at{" "}
+              <a
+                href="mailto:support@typingisboring.com"
+                className="text-white/70 underline hover:text-white"
+              >
+                support@typingisboring.com
+              </a>
+              .
             </p>
             <div className="mt-4 flex gap-4 text-sm">
               <Link href="/terms" className="text-white/60 hover:text-white underline">
