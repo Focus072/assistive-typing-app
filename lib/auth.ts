@@ -103,13 +103,13 @@ const adapter = {
       return user
     }
   },
-  async deleteSession(sessionToken: string) {
+  async deleteSession(sessionToken: string): Promise<void> {
     try {
-      return await baseAdapter.deleteSession!(sessionToken)
+      await baseAdapter.deleteSession!(sessionToken)
     } catch (error: any) {
-      // If database fails, return null (non-blocking)
+      // If database fails, log but don't throw (non-blocking)
       console.warn("[AUTH] Delete session failed (non-blocking):", error?.message)
-      return null
+      // Return void (don't throw error)
     }
   },
   async updateSession(session: any) {
