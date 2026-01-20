@@ -119,3 +119,12 @@ model Document {
   @@index([userId, state])
   @@index([documentId])
 }
+
+model WaitlistEmail {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([createdAt])
+}
