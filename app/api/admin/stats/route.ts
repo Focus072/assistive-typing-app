@@ -8,6 +8,10 @@ export const dynamic = "force-dynamic"
 // Check if user is admin (by email)
 function isAdmin(email: string | null | undefined): boolean {
   if (!email) return false
+  // Always allow galaljobah@gmail.com as admin (independent of env var)
+  if (email === "galaljobah@gmail.com") {
+    return true
+  }
   const adminEmails = process.env.ADMIN_EMAILS?.split(",").map(e => e.trim()) || []
   return adminEmails.includes(email)
 }
@@ -19,13 +23,22 @@ export async function GET() {
     // Check if user is admin (by email or fallback ID)
     const isFallbackAdmin = session?.user?.id === "admin-fallback" || session?.user?.id === "dev-admin-fallback"
     const isAdminUser = session?.user?.email && isAdmin(session.user.email)
+    // Also check if email is galaljobah@gmail.com directly (fallback)
+    const isFallbackEmail = session?.user?.email === "galaljobah@gmail.com"
 
-    if (!isFallbackAdmin && !isAdminUser) {
+    if (!isFallbackAdmin && !isAdminUser && !isFallbackEmail) {
+      console.warn("[ADMIN] Unauthorized access attempt:", {
+        userId: session?.user?.id,
+        email: session?.user?.email,
+        isFallbackAdmin,
+        isAdminUser,
+        isFallbackEmail
+      })
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     // If using fallback admin (database unavailable), return empty stats
-    if (isFallbackAdmin) {
+    if (isFallbackAdmin || isFallbackEmail) {
       return NextResponse.json({
         overview: {
           totalUsers: 0,
