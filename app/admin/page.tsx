@@ -13,6 +13,8 @@ interface AdminStats {
     completedJobs: number
     failedJobs: number
     totalWaitlist: number
+    googleOAuthUsers: number
+    credentialUsers: number
     successRate: number
   }
   topUser: {
@@ -25,7 +27,11 @@ interface AdminStats {
     id: string
     email: string
     name: string | null
+    image: string | null
     createdAt: Date
+    accounts: Array<{
+      provider: string
+    }>
   }>
   recentJobs: Array<{
     id: string
@@ -189,6 +195,16 @@ export default function AdminDashboard() {
             value={stats.overview.totalWaitlist.toLocaleString()}
             icon="📧"
           />
+          <StatCard
+            title="Google OAuth Users"
+            value={stats.overview.googleOAuthUsers.toLocaleString()}
+            icon="🔐"
+          />
+          <StatCard
+            title="Credential Users"
+            value={stats.overview.credentialUsers.toLocaleString()}
+            icon="🔑"
+          />
         </div>
 
         {/* Top User */}
@@ -226,19 +242,38 @@ export default function AdminDashboard() {
                 {stats.recentUsers.length === 0 ? (
                   <p className="text-gray-500 text-sm">No recent users</p>
                 ) : (
-                  stats.recentUsers.map((user) => (
-                    <div key={user.id} className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-gray-900">
-                          {user.name || user.email}
+                  stats.recentUsers.map((user) => {
+                    const isGoogleUser = user.accounts.some(acc => acc.provider === "google")
+                    return (
+                      <div key={user.id} className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          {user.image ? (
+                            <img 
+                              src={user.image} 
+                              alt={user.name || user.email}
+                              className="w-10 h-10 rounded-full"
+                            />
+                          ) : (
+                            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold">
+                              {(user.name || user.email)[0].toUpperCase()}
+                            </div>
+                          )}
+                          <div>
+                            <p className="font-medium text-gray-900">
+                              {user.name || user.email}
+                            </p>
+                            <p className="text-sm text-gray-600">{user.email}</p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {isGoogleUser ? "🔐 Google OAuth" : "🔑 Credentials"}
+                            </p>
+                          </div>
+                        </div>
+                        <p className="text-sm text-gray-500">
+                          {new Date(user.createdAt).toLocaleDateString()}
                         </p>
-                        <p className="text-sm text-gray-600">{user.email}</p>
                       </div>
-                      <p className="text-sm text-gray-500">
-                        {new Date(user.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                  ))
+                    )
+                  })
                 )}
               </div>
             </div>

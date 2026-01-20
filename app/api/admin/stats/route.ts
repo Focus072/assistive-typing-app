@@ -47,6 +47,8 @@ export async function GET() {
           completedJobs: 0,
           failedJobs: 0,
           totalWaitlist: 0,
+          googleOAuthUsers: 0,
+          credentialUsers: 0,
           successRate: 0,
         },
         topUser: null,
@@ -62,6 +64,8 @@ export async function GET() {
     let completedJobs = 0
     let failedJobs = 0
     let totalWaitlist = 0
+    let googleOAuthUsers = 0
+    let credentialUsers = 0
     let recentUsers: any[] = []
     let recentJobs: any[] = []
     let topUser: any = null
@@ -74,6 +78,8 @@ export async function GET() {
         completedJobs,
         failedJobs,
         totalWaitlist,
+        googleOAuthUsers,
+        credentialUsers,
         recentUsers,
         recentJobs,
       ] = await Promise.all([
@@ -105,7 +111,27 @@ export async function GET() {
         // Waitlist count
         prisma.waitlistEmail.count(),
         
-        // Recent users (last 7 days)
+        // Google OAuth users (users with Google account linked)
+        prisma.user.count({
+          where: {
+            accounts: {
+              some: {
+                provider: "google",
+              },
+            },
+          },
+        }),
+        
+        // Credential users (users with password)
+        prisma.user.count({
+          where: {
+            password: {
+              not: null,
+            },
+          },
+        }),
+        
+        // Recent users (last 7 days) with account info
         prisma.user.findMany({
           where: {
             createdAt: {
@@ -116,7 +142,14 @@ export async function GET() {
             id: true,
             email: true,
             name: true,
+            image: true,
             createdAt: true,
+            // Don't select password for security, but we can check if it exists via accounts
+            accounts: {
+              select: {
+                provider: true,
+              },
+            },
           },
           orderBy: { createdAt: "desc" },
           take: 10,
@@ -175,6 +208,8 @@ export async function GET() {
         completedJobs,
         failedJobs,
         totalWaitlist,
+        googleOAuthUsers,
+        credentialUsers,
         successRate,
       },
       topUser: topUser
