@@ -28,8 +28,15 @@ export async function GET(request: Request) {
     const limit = parseInt(searchParams.get("limit") || "50")
     const skip = (page - 1) * limit
     const status = searchParams.get("status") || undefined
+    const userId = searchParams.get("userId") || undefined
 
-    const where = status ? { status } : {}
+    const where: any = {}
+    if (status) {
+      where.status = status
+    }
+    if (userId) {
+      where.userId = userId
+    }
 
     const [jobs, total] = await Promise.all([
       prisma.job.findMany({

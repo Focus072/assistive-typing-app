@@ -1,8 +1,8 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { useSession } from "next-auth/react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 
 interface Job {
@@ -35,8 +35,24 @@ interface JobsResponse {
 }
 
 export default function AdminJobsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-gray-300 border-t-blue-600 rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <AdminJobsContent />
+    </Suspense>
+  )
+}
+
+function AdminJobsContent() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -47,6 +63,18 @@ export default function AdminJobsPage() {
     totalPages: 0,
   })
   const [statusFilter, setStatusFilter] = useState<string>("")
+  const [userIdFilter, setUserIdFilter] = useState<string | null>(null)
+  const [userEmail, setUserEmail] = useState<string | null>(null)
+
+  useEffect(() => {
+    const userId = searchParams.get("userId")
+    if (userId) {
+      setUserIdFilter(userId)
+    } else {
+      setUserIdFilter(null)
+      setUserEmail(null)
+    }
+  }, [searchParams])
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -57,12 +85,18 @@ export default function AdminJobsPage() {
     if (status === "authenticated") {
       fetchJobs()
     }
-  }, [status, router, pagination.page, statusFilter])
+  }, [status, router, pagination.page, statusFilter, userIdFilter])
 
   const fetchJobs = async () => {
     try {
       setLoading(true)
-      const url = `/api/admin/jobs?page=${pagination.page}&limit=${pagination.limit}${statusFilter ? `&status=${statusFilter}` : ""}`
+      let url = `/api/admin/jobs?page=${pagination.page}&limit=${pagination.limit}`
+      if (statusFilter) {
+        url += `&status=${statusFilter}`
+      }
+      if (userIdFilter) {
+        url += `&userId=${userIdFilter}`
+      }
       const response = await fetch(url)
       
       if (response.status === 401) {
@@ -77,6 +111,10 @@ export default function AdminJobsPage() {
       const data: JobsResponse = await response.json()
       setJobs(data.jobs)
       setPagination(data.pagination)
+      // Set user email from first job if available
+      if (data.jobs.length > 0 && data.jobs[0].user) {
+        setUserEmail(data.jobs[0].user.email)
+      }
     } catch (err: any) {
       setError(err.message || "Failed to load jobs")
     } finally {
@@ -136,7 +174,15 @@ export default function AdminJobsPage() {
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Job Monitoring</h1>
               <p className="text-sm text-gray-600 mt-1">
-                Monitor all typing jobs ({pagination.total.toLocaleString()} total)
+                {userIdFilter && userEmail ? (
+                  <>
+                    Jobs for {userEmail} ({pagination.total.toLocaleString()} total)
+                  </>
+                ) : (
+                  <>
+                    Monitor all typing jobs ({pagination.total.toLocaleString()} total)
+                  </>
+                )}
               </p>
             </div>
             <Link
@@ -151,8 +197,8 @@ export default function AdminJobsPage() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Filter */}
-        <div className="mb-4">
+        {/* Filters */}
+        <div className="mb-4 flex items-center gap-4">
           <select
             value={statusFilter}
             onChange={(e) => {
@@ -167,6 +213,22 @@ export default function AdminJobsPage() {
             <option value="completed">Completed</option>
             <option value="failed">Failed</option>
           </select>
+          
+          {/* User Filter Indicator */}
+          {userIdFilter && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-blue-100 text-blue-800 rounded-lg">
+              <span className="text-sm font-medium">
+                User: {userEmail || userIdFilter}
+              </span>
+              <Link
+                href="/admin/jobs"
+                className="text-blue-600 hover:text-blue-900 font-bold"
+                title="Clear user filter"
+              >
+                ✕
+              </Link>
+            </div>
+          )}
         </div>
 
         {/* Jobs Table */}
