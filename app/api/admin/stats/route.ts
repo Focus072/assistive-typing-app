@@ -77,48 +77,61 @@ export async function GET() {
     // Try to query the database for real stats
     console.log("[ADMIN STATS] Querying database for stats...")
     try {
-      const [
-        totalUsersResult,
-        totalJobsResult,
-        activeJobsResult,
-        completedJobsResult,
-        failedJobsResult,
-        totalWaitlistResult,
-        googleOAuthUsersResult,
-        credentialUsersResult,
-        recentUsersResult,
-        recentJobsResult,
-      ] = await Promise.all([
-        // Total users
-        prisma.user.count(),
-        
-        // Total jobs
-        prisma.job.count(),
-        
-        // Active jobs (running or paused)
-        prisma.job.count({
+      // Run queries individually with error handling to see which ones fail
+      try {
+        totalUsers = await prisma.user.count()
+        console.log("[ADMIN STATS] Total users query successful:", totalUsers)
+      } catch (e: any) {
+        console.error("[ADMIN STATS] Total users query failed:", e?.message)
+      }
+
+      try {
+        totalJobs = await prisma.job.count()
+        console.log("[ADMIN STATS] Total jobs query successful:", totalJobs)
+      } catch (e: any) {
+        console.error("[ADMIN STATS] Total jobs query failed:", e?.message)
+      }
+
+      try {
+        activeJobs = await prisma.job.count({
           where: {
             status: {
               in: ["running", "paused"],
             },
           },
-        }),
-        
-        // Completed jobs
-        prisma.job.count({
+        })
+        console.log("[ADMIN STATS] Active jobs query successful:", activeJobs)
+      } catch (e: any) {
+        console.error("[ADMIN STATS] Active jobs query failed:", e?.message)
+      }
+
+      try {
+        completedJobs = await prisma.job.count({
           where: { status: "completed" },
-        }),
-        
-        // Failed jobs
-        prisma.job.count({
+        })
+        console.log("[ADMIN STATS] Completed jobs query successful:", completedJobs)
+      } catch (e: any) {
+        console.error("[ADMIN STATS] Completed jobs query failed:", e?.message)
+      }
+
+      try {
+        failedJobs = await prisma.job.count({
           where: { status: "failed" },
-        }),
-        
-        // Waitlist count
-        prisma.waitlistEmail.count(),
-        
-        // Google OAuth users (users with Google account linked)
-        prisma.user.count({
+        })
+        console.log("[ADMIN STATS] Failed jobs query successful:", failedJobs)
+      } catch (e: any) {
+        console.error("[ADMIN STATS] Failed jobs query failed:", e?.message)
+      }
+
+      try {
+        totalWaitlist = await prisma.waitlistEmail.count()
+        console.log("[ADMIN STATS] Waitlist query successful:", totalWaitlist)
+      } catch (e: any) {
+        console.error("[ADMIN STATS] Waitlist query failed:", e?.message)
+      }
+
+      try {
+        googleOAuthUsers = await prisma.user.count({
           where: {
             accounts: {
               some: {
@@ -126,19 +139,27 @@ export async function GET() {
               },
             },
           },
-        }),
-        
-        // Credential users (users with password)
-        prisma.user.count({
+        })
+        console.log("[ADMIN STATS] Google OAuth users query successful:", googleOAuthUsers)
+      } catch (e: any) {
+        console.error("[ADMIN STATS] Google OAuth users query failed:", e?.message)
+      }
+
+      try {
+        credentialUsers = await prisma.user.count({
           where: {
             password: {
               not: null,
             },
           },
-        }),
-        
-        // Recent users (last 7 days) with account info
-        prisma.user.findMany({
+        })
+        console.log("[ADMIN STATS] Credential users query successful:", credentialUsers)
+      } catch (e: any) {
+        console.error("[ADMIN STATS] Credential users query failed:", e?.message)
+      }
+
+      try {
+        recentUsers = await prisma.user.findMany({
           where: {
             createdAt: {
               gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
@@ -150,7 +171,6 @@ export async function GET() {
             name: true,
             image: true,
             createdAt: true,
-            // Don't select password for security, but we can check if it exists via accounts
             accounts: {
               select: {
                 provider: true,
@@ -159,10 +179,14 @@ export async function GET() {
           },
           orderBy: { createdAt: "desc" },
           take: 10,
-        }),
-        
-        // Recent jobs (last 24 hours)
-        prisma.job.findMany({
+        })
+        console.log("[ADMIN STATS] Recent users query successful, count:", recentUsers.length)
+      } catch (e: any) {
+        console.error("[ADMIN STATS] Recent users query failed:", e?.message)
+      }
+
+      try {
+        recentJobs = await prisma.job.findMany({
           where: {
             createdAt: {
               gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
@@ -178,20 +202,11 @@ export async function GET() {
           },
           orderBy: { createdAt: "desc" },
           take: 20,
-        }),
-      ])
-
-      // Assign results to variables
-      totalUsers = totalUsersResult
-      totalJobs = totalJobsResult
-      activeJobs = activeJobsResult
-      completedJobs = completedJobsResult
-      failedJobs = failedJobsResult
-      totalWaitlist = totalWaitlistResult
-      googleOAuthUsers = googleOAuthUsersResult
-      credentialUsers = credentialUsersResult
-      recentUsers = recentUsersResult
-      recentJobs = recentJobsResult
+        })
+        console.log("[ADMIN STATS] Recent jobs query successful, count:", recentJobs.length)
+      } catch (e: any) {
+        console.error("[ADMIN STATS] Recent jobs query failed:", e?.message)
+      }
 
       console.log("[ADMIN STATS] Database query successful:", {
         totalUsers,
@@ -227,8 +242,20 @@ export async function GET() {
       console.error("[ADMIN STATS] Database error:", {
         message: dbError?.message,
         code: dbError?.code,
+        name: dbError?.name,
         stack: dbError?.stack,
-        error: dbError,
+      })
+      
+      // Log what we have so far
+      console.error("[ADMIN STATS] Partial results before error:", {
+        totalUsers,
+        totalJobs,
+        activeJobs,
+        completedJobs,
+        failedJobs,
+        totalWaitlist,
+        googleOAuthUsers,
+        credentialUsers,
       })
       
       // Don't throw - return empty stats instead so the page can still load
