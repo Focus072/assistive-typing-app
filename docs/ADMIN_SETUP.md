@@ -24,9 +24,16 @@ Make a POST request to create/set password for admin:
 curl -X POST http://localhost:3002/api/admin/setup \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "your-admin-email@example.com",
+    "username": "galaljobah",
     "password": "your-secure-password"
   }'
+```
+
+Or using PowerShell:
+
+```powershell
+$body = @{username='galaljobah'; password='your-secure-password'} | ConvertTo-Json
+Invoke-RestMethod -Uri "http://localhost:3002/api/admin/setup" -Method POST -ContentType "application/json" -Body $body
 ```
 
 #### Option B: Using Prisma Studio
@@ -39,8 +46,10 @@ curl -X POST http://localhost:3002/api/admin/setup \
 ## Accessing Admin Dashboard
 
 1. Go to: `http://localhost:3002/admin/login`
-2. Enter your admin email and password
+2. Enter your username (e.g., `galaljobah`) and password
 3. You'll be redirected to the admin dashboard at `/admin`
+
+**Note:** The username will be automatically converted to an email (e.g., `galaljobah` → `galaljobah@gmail.com`)
 
 ## Security Notes
 

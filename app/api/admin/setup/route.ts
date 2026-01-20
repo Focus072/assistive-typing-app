@@ -6,22 +6,33 @@ import { z } from "zod"
 export const dynamic = "force-dynamic"
 
 const setupSchema = z.object({
-  email: z.string().email(),
+  username: z.string().min(1, "Username is required"),
   password: z.string().min(8, "Password must be at least 8 characters"),
 })
+
+// Map username to email
+const getEmailFromUsername = (username: string): string => {
+  if (username.includes("@")) {
+    return username
+  }
+  return `${username}@gmail.com`
+}
 
 // This endpoint allows setting up an admin account with password
 // Only works if the email is in ADMIN_EMAILS env variable
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { email, password } = setupSchema.parse(body)
+    const { username, password } = setupSchema.parse(body)
+
+    // Convert username to email
+    const email = getEmailFromUsername(username)
 
     // Check if email is in admin emails
     const adminEmails = process.env.ADMIN_EMAILS?.split(",").map(e => e.trim()) || []
     if (!adminEmails.includes(email)) {
       return NextResponse.json(
-        { error: "Email is not authorized as admin" },
+        { error: "Username is not authorized as admin" },
         { status: 403 }
       )
     }

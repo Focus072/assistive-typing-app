@@ -6,10 +6,11 @@ const prisma = new PrismaClient()
 
 async function setupAdmin() {
   try {
-    const email = 'galaljobah@gmail.com'
+    const username = 'galaljobah'
+    const email = `${username}@gmail.com`
     const password = 'Galal1023**88'
 
-    console.log(`Setting up admin account for ${email}...`)
+    console.log(`Setting up admin account for username: ${username} (${email})...`)
 
     // Check if user exists
     let user = await prisma.user.findUnique({

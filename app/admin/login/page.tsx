@@ -8,10 +8,20 @@ function AdminLoginInner() {
   const router = useRouter()
   const { data: session, status } = useSession()
   const searchParams = useSearchParams()
-  const [email, setEmail] = useState("")
+  const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+
+  // Map username to email (for admin login)
+  const getEmailFromUsername = (username: string): string => {
+    // If it's already an email, return as is
+    if (username.includes("@")) {
+      return username
+    }
+    // Otherwise, append @gmail.com
+    return `${username}@gmail.com`
+  }
 
   // Redirect to admin dashboard if already authenticated
   useEffect(() => {
@@ -28,6 +38,9 @@ function AdminLoginInner() {
     setLoading(true)
 
     try {
+      // Convert username to email
+      const email = getEmailFromUsername(username)
+      
       const result = await signIn("credentials", {
         email,
         password,
@@ -35,7 +48,12 @@ function AdminLoginInner() {
       })
 
       if (result?.error) {
-        setError("Invalid email or password")
+        // More specific error messages
+        if (result.error === "CredentialsSignin") {
+          setError("Invalid email or password. If this is your first login, you may need to set up your password first using the setup API.")
+        } else {
+          setError(`Login failed: ${result.error}`)
+        }
         setLoading(false)
         return
       }
@@ -84,18 +102,18 @@ function AdminLoginInner() {
             )}
             
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                Email
+              <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
+                Username
               </label>
               <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                id="username"
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
                 required
                 disabled={loading}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
-                placeholder="admin@example.com"
+                placeholder="Enter your username"
               />
             </div>
             
