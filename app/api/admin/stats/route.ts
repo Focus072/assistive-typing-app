@@ -76,36 +76,6 @@ export async function GET() {
 
     // Try to query the database for real stats
     console.log("[ADMIN STATS] Querying database for stats...")
-    
-    // First, test if database connection works with a simple query
-    try {
-      const testQuery = await prisma.user.count()
-      console.log("[ADMIN STATS] Database connection test successful, user count:", testQuery)
-    } catch (testError: any) {
-      console.error("[ADMIN STATS] Database connection test failed:", {
-        message: testError?.message,
-        code: testError?.code,
-        name: testError?.name,
-      })
-      // If even a simple count fails, return empty stats
-      return NextResponse.json({
-        overview: {
-          totalUsers: 0,
-          totalJobs: 0,
-          activeJobs: 0,
-          completedJobs: 0,
-          failedJobs: 0,
-          totalWaitlist: 0,
-          googleOAuthUsers: 0,
-          credentialUsers: 0,
-          successRate: 0,
-        },
-        topUser: null,
-        recentUsers: [],
-        recentJobs: [],
-      })
-    }
-    
     try {
       const [
         totalUsersResult,
