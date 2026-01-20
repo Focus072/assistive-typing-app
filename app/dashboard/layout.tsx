@@ -6,6 +6,18 @@ import Link from "next/link"
 import { SignOutButton } from "@/components/SignOutButton"
 import { useEffect, useState, createContext, useContext } from "react"
 
+// Check if user is admin (client-side check)
+function isAdmin(email: string | null | undefined): boolean {
+  if (!email) return false
+  // Always allow galaljobah@gmail.com as admin (independent of env var)
+  if (email === "galaljobah@gmail.com") {
+    return true
+  }
+  // In production, you might want to check ADMIN_EMAILS env var
+  // but for client-side, we'll just check the hardcoded admin email
+  return false
+}
+
 // Theme Context
 interface DashboardThemeContextType {
   isDark: boolean
@@ -162,6 +174,24 @@ export default function DashboardLayout({
                 </svg>
                 <span className="text-sm hidden sm:inline">History</span>
               </Link>
+              
+              {/* Admin Link - Only show for admin users */}
+              {session?.user?.email && isAdmin(session.user.email) && (
+                <Link 
+                  href="/admin" 
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors ${
+                    isDark
+                      ? "text-white/70 hover:text-white hover:bg-white/10 border border-yellow-500/30"
+                      : "text-black/70 hover:text-black hover:bg-black/5 border border-yellow-500/30"
+                  }`}
+                  aria-label="Admin Dashboard"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                  <span className="text-sm hidden sm:inline">Admin</span>
+                </Link>
+              )}
               
               {/* Theme Toggle */}
               <button
