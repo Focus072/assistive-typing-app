@@ -40,16 +40,65 @@ export const authOptions: NextAuthOptions = {
           return null
         }
 
-        // Development fallback: Allow admin login without database if DB is unavailable
-        // This is ONLY for local development when database quota is exceeded
+        // Development fallback: Check admin credentials FIRST before trying database
+        // This allows admin login even when database quota is exceeded
         if (process.env.NODE_ENV === "development") {
           const adminEmails = process.env.ADMIN_EMAILS?.split(",").map(e => e.trim()) || []
           const isAdminEmail = adminEmails.includes(credentials.email)
           
-          // Hardcoded admin credentials for development fallback (when DB is down)
+          // Hardcoded admin credentials for development fallback
           if (isAdminEmail && credentials.email === "galaljobah@gmail.com" && credentials.password === "Galal1023**88") {
-            console.warn("[DEV FALLBACK] Using development-only admin login (database unavailable)")
-            // Return a mock user object - NextAuth will handle session creation
+            console.warn("[DEV FALLBACK] Using development-only admin login")
+            
+            // Try to find or create user in database, but don't fail if DB is down
+            try {
+              let user = await prisma.user.findUnique({
+                where: { email: credentials.email },
+              })
+              
+              if (!user) {
+                // Create user if doesn't exist (but don't fail if DB is down)
+                try {
+                  const hashedPassword = await bcrypt.hash(credentials.password, 10)
+                  user = await prisma.user.create({
+                    data: {
+                      email: credentials.email,
+                      password: hashedPassword,
+                    },
+                  })
+                  console.log("[DEV] Created admin user in database")
+                } catch (createError: any) {
+                  // If DB is down, continue with fallback
+                  console.warn("[DEV] Could not create user in DB, using fallback:", createError?.message)
+                }
+              } else if (!user.password) {
+                // Update password if user exists but has no password
+                try {
+                  const hashedPassword = await bcrypt.hash(credentials.password, 10)
+                  await prisma.user.update({
+                    where: { email: credentials.email },
+                    data: { password: hashedPassword },
+                  })
+                  console.log("[DEV] Updated admin password in database")
+                } catch (updateError: any) {
+                  // If DB is down, continue with fallback
+                  console.warn("[DEV] Could not update password in DB, using fallback:", updateError?.message)
+                }
+              }
+              
+              // If we have a user from DB, use it
+              if (user?.id) {
+                return {
+                  id: user.id,
+                  email: user.email,
+                }
+              }
+            } catch (dbError: any) {
+              // Database is unavailable - use fallback
+              console.warn("[DEV] Database unavailable, using fallback:", dbError?.message)
+            }
+            
+            // Return fallback user (works even if DB is down)
             return {
               id: "dev-admin-fallback",
               email: credentials.email,
@@ -57,6 +106,7 @@ export const authOptions: NextAuthOptions = {
           }
         }
 
+        // Normal database authentication (for production or non-admin users)
         try {
           const user = await prisma.user.findUnique({
             where: { email: credentials.email },
@@ -80,22 +130,6 @@ export const authOptions: NextAuthOptions = {
         } catch (error: any) {
           // Handle database connection errors gracefully
           console.error("[Credentials] Database error during authentication:", error)
-          
-          // In development, if database is unavailable and it's an admin email, try fallback
-          if (process.env.NODE_ENV === "development") {
-            const adminEmails = process.env.ADMIN_EMAILS?.split(",").map(e => e.trim()) || []
-            if (adminEmails.includes(credentials.email) && 
-                (error?.message?.includes("quota") || error?.message?.includes("compute time"))) {
-              // Try fallback for known admin credentials
-              if (credentials.email === "galaljobah@gmail.com" && credentials.password === "Galal1023**88") {
-                console.warn("[DEV FALLBACK] Using development-only admin login (database quota exceeded)")
-                return {
-                  id: "dev-admin-fallback",
-                  email: credentials.email,
-                }
-              }
-            }
-          }
           
           // Re-throw with a user-friendly message that NextAuth will pass to the client
           if (error?.message?.includes("quota") || error?.message?.includes("compute time")) {
