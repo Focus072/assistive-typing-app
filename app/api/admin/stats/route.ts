@@ -77,7 +77,18 @@ export async function GET() {
     // Try to query the database for real stats
     console.log("[ADMIN STATS] Querying database for stats...")
     try {
-      const results = await Promise.all([
+      const [
+        totalUsersResult,
+        totalJobsResult,
+        activeJobsResult,
+        completedJobsResult,
+        failedJobsResult,
+        totalWaitlistResult,
+        googleOAuthUsersResult,
+        credentialUsersResult,
+        recentUsersResult,
+        recentJobsResult,
+      ] = await Promise.all([
         // Total users
         prisma.user.count(),
         
@@ -170,19 +181,17 @@ export async function GET() {
         }),
       ])
 
-      // Destructure results
-      [
-        totalUsers,
-        totalJobs,
-        activeJobs,
-        completedJobs,
-        failedJobs,
-        totalWaitlist,
-        googleOAuthUsers,
-        credentialUsers,
-        recentUsers,
-        recentJobs,
-      ] = results
+      // Assign results to variables
+      totalUsers = totalUsersResult
+      totalJobs = totalJobsResult
+      activeJobs = activeJobsResult
+      completedJobs = completedJobsResult
+      failedJobs = failedJobsResult
+      totalWaitlist = totalWaitlistResult
+      googleOAuthUsers = googleOAuthUsersResult
+      credentialUsers = credentialUsersResult
+      recentUsers = recentUsersResult
+      recentJobs = recentJobsResult
 
       console.log("[ADMIN STATS] Database query successful:", {
         totalUsers,
