@@ -40,24 +40,31 @@ export const authOptions: NextAuthOptions = {
           return null
         }
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
-        })
+        try {
+          const user = await prisma.user.findUnique({
+            where: { email: credentials.email },
+          })
 
-        // Only allow email/password login if user has a password set
-        if (!user || !user.password) {
-          return null
-        }
+          // Only allow email/password login if user has a password set
+          if (!user || !user.password) {
+            return null
+          }
 
-        const isValid = await bcrypt.compare(credentials.password, user.password)
+          const isValid = await bcrypt.compare(credentials.password, user.password)
 
-        if (!isValid) {
-          return null
-        }
+          if (!isValid) {
+            return null
+          }
 
-        return {
-          id: user.id,
-          email: user.email,
+          return {
+            id: user.id,
+            email: user.email,
+          }
+        } catch (error: any) {
+          // Handle database connection errors gracefully
+          console.error("[Credentials] Database error:", error)
+          // Return null to show generic error, but log the actual issue
+          throw new Error("Database connection failed. Please try again later.")
         }
       },
     }),

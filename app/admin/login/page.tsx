@@ -51,6 +51,8 @@ function AdminLoginInner() {
         // More specific error messages
         if (result.error === "CredentialsSignin") {
           setError("Invalid email or password. If this is your first login, you may need to set up your password first using the setup API.")
+        } else if (result.error?.includes("database") || result.error?.includes("quota") || result.error?.includes("compute time")) {
+          setError("Database connection issue. Please try again later or contact support.")
         } else {
           setError(`Login failed: ${result.error}`)
         }
