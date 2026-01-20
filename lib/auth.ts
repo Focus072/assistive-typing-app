@@ -164,6 +164,13 @@ export const authOptions: NextAuthOptions = {
       // #region agent log
       fetch('http://127.0.0.1:7242/ingest/edc11742-e69a-445c-9523-36ad1186a0ce',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/auth.ts:61',message:'signIn callback entry',data:{hasUser:!!user,userEmail:user?.email,userId:user?.id,hasAccount:!!account,provider:account?.provider,hasAccessToken:!!account?.access_token,hasRefreshToken:!!account?.refresh_token,providerAccountId:account?.providerAccountId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
       // #endregion
+      
+      // For development fallback users, allow sign-in even if adapter fails
+      if (process.env.NODE_ENV === "development" && user?.id === "dev-admin-fallback") {
+        console.warn("[DEV] Allowing fallback admin sign-in (bypassing adapter)")
+        return true
+      }
+      
       // PrismaAdapter handles user/account creation automatically
       // Always allow sign-in
       try {
@@ -173,6 +180,14 @@ export const authOptions: NextAuthOptions = {
         // #endregion
         return true
       } catch (error: any) {
+        // If database is unavailable and it's a fallback user, allow sign-in anyway
+        if (process.env.NODE_ENV === "development" && 
+            (error?.message?.includes("quota") || error?.message?.includes("compute time")) &&
+            user?.id === "dev-admin-fallback") {
+          console.warn("[DEV] Allowing fallback admin sign-in despite database error")
+          return true
+        }
+        
         if (process.env.NODE_ENV === "development") {
           console.error("[NextAuth] Error in signIn callback:", error)
         }

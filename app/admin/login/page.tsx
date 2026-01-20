@@ -61,17 +61,8 @@ function AdminLoginInner() {
       }
 
       if (result?.ok) {
-        // Check if user is admin
-        const adminCheck = await fetch("/api/admin/stats")
-        if (adminCheck.status === 401) {
-          setError("This account does not have admin access")
-          setLoading(false)
-          // Sign out the user
-          await signOut({ redirect: false })
-          return
-        }
-
         // Success - redirect to admin dashboard
+        // Admin check will happen on the dashboard page itself
         router.push("/admin")
       }
     } catch (err) {

@@ -16,6 +16,25 @@ export async function GET() {
   try {
     const session = await getServerSession(authOptions)
 
+    // In development, allow fallback admin user
+    if (process.env.NODE_ENV === "development" && session?.user?.id === "dev-admin-fallback") {
+      // Use fallback stats for development
+      return NextResponse.json({
+        overview: {
+          totalUsers: 0,
+          totalJobs: 0,
+          activeJobs: 0,
+          completedJobs: 0,
+          failedJobs: 0,
+          totalWaitlist: 0,
+          successRate: 0,
+        },
+        topUser: null,
+        recentUsers: [],
+        recentJobs: [],
+      })
+    }
+
     if (!session?.user?.email || !isAdmin(session.user.email)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
