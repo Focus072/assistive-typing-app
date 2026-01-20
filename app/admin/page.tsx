@@ -66,7 +66,14 @@ export default function AdminDashboard() {
   const fetchStats = async () => {
     try {
       setLoading(true)
-      const response = await fetch("/api/admin/stats")
+      setError(null)
+      // Add cache-busting to ensure fresh data
+      const response = await fetch("/api/admin/stats", {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache",
+        },
+      })
       
       if (response.status === 401) {
         setError("Unauthorized: You don't have admin access")
@@ -74,12 +81,15 @@ export default function AdminDashboard() {
       }
 
       if (!response.ok) {
-        throw new Error("Failed to fetch stats")
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || "Failed to fetch stats")
       }
 
       const data = await response.json()
+      console.log("[ADMIN] Stats received:", data)
       setStats(data)
     } catch (err: any) {
+      console.error("[ADMIN] Error fetching stats:", err)
       setError(err.message || "Failed to load admin dashboard")
     } finally {
       setLoading(false)

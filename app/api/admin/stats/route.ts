@@ -75,19 +75,9 @@ export async function GET() {
     }
 
     // Try to query the database for real stats
+    console.log("[ADMIN STATS] Querying database for stats...")
     try {
-      [
-        totalUsers,
-        totalJobs,
-        activeJobs,
-        completedJobs,
-        failedJobs,
-        totalWaitlist,
-        googleOAuthUsers,
-        credentialUsers,
-        recentUsers,
-        recentJobs,
-      ] = await Promise.all([
+      const results = await Promise.all([
         // Total users
         prisma.user.count(),
         
@@ -180,6 +170,33 @@ export async function GET() {
         }),
       ])
 
+      // Destructure results
+      [
+        totalUsers,
+        totalJobs,
+        activeJobs,
+        completedJobs,
+        failedJobs,
+        totalWaitlist,
+        googleOAuthUsers,
+        credentialUsers,
+        recentUsers,
+        recentJobs,
+      ] = results
+
+      console.log("[ADMIN STATS] Database query successful:", {
+        totalUsers,
+        totalJobs,
+        activeJobs,
+        completedJobs,
+        failedJobs,
+        totalWaitlist,
+        googleOAuthUsers,
+        credentialUsers,
+        recentUsersCount: recentUsers.length,
+        recentJobsCount: recentJobs.length,
+      })
+
       // Get user with most jobs
       topUser = await prisma.user.findFirst({
         select: {
@@ -197,16 +214,28 @@ export async function GET() {
         },
       })
     } catch (dbError: any) {
-      // If database fails, log the error but still try to return what we can
-      console.error("Database error in admin stats:", dbError)
-      // If it's a quota/compute time error, we might want to return a specific message
-      // For now, we'll return the initialized values (0s) which will show "no data"
-      // The frontend can handle this gracefully
+      // If database fails, log the error with full details
+      console.error("[ADMIN STATS] Database error:", {
+        message: dbError?.message,
+        code: dbError?.code,
+        stack: dbError?.stack,
+        error: dbError,
+      })
+      
+      // Re-throw the error so we can see it in the outer catch block
+      // This will help us understand if the database is actually failing
+      throw new Error(`Database query failed: ${dbError?.message || "Unknown error"}`)
     }
 
     // Calculate success rate
     const successRate =
       totalJobs > 0 ? Math.round((completedJobs / totalJobs) * 100) : 0
+
+    console.log("[ADMIN STATS] Returning stats:", {
+      totalUsers,
+      totalJobs,
+      successRate,
+    })
 
     return NextResponse.json({
       overview: {
