@@ -1,0 +1,154 @@
+🔁 THE EXACT ORDER (STEP-BY-STEP)
+🟢 STEP 1 — FEATURE BUILD — START
+
+This is always first when changing UI or behavior.
+
+You paste this:
+
+FEATURE BUILD — START.
+
+We are starting a new feature.
+
+Before writing or changing any code:
+
+1. Ask for (or create) a new branch name specific to this feature.
+2. Restate the feature objective in ONE clear sentence.
+3. List the exact components or files that will be modified.
+4. List any files or areas that must NOT be touched.
+5. State whether this feature requires client components ("use client") and why.
+6. Confirm no refactors or redesigns beyond the header will be done.
+
+Wait for confirmation before proceeding.
+
+
+Cursor should respond with something like:
+
+Branch: feature-home-header
+
+Objective: “Update the home page header layout and styling”
+
+Files: app/page.tsx, components/header.tsx
+
+Will NOT touch: auth, routing, footer, etc.
+
+👉 You confirm.
+
+🟡 STEP 2 — WORK
+
+Now Cursor codes only what was agreed:
+
+Header only
+
+No extra files
+
+No “while I’m here”
+
+You let it finish.
+
+🔴 STEP 3 — STOP / CLOSE — COMMIT & MERGE
+
+The moment it finishes and says “done”, “fixed”, or “ready”:
+
+You paste:
+
+STOP.
+
+Based only on the work just completed in this branch:
+
+1. State the single issue this branch solved (one sentence).
+2. List the files that were changed.
+3. Suggest exactly ONE commit message.
+
+Then:
+- Create a commit on this branch using that message.
+- Merge this branch into `main`.
+- Delete the branch.
+- Do not make any additional changes.
+
+After completing the merge, wait.
+
+🔐 THAT’S IT. NO EXTRA STEPS.
+❌ WHAT YOU DO NOT DO
+
+Don’t stack multiple UI changes
+
+Don’t “also tweak the footer”
+
+Don’t start another task before STOP
+
+Don’t commit multiple features together
+
+🏀 BASKETBALL COMPARISON (LOCK THIS IN)
+
+FEATURE BUILD — START → Coach calls the play
+
+WORK → Execute the play
+
+STOP → Whistle, score, reset
+
+Then you call a new play if needed.
+
+🧠 GOLDEN RULE
+
+One prompt opens the task. One prompt closes it. Nothing in between.
+
+You now have a repeatable, professional workflow.
+
+
+
+
+--------------------------------------------------------------------------
+
+New rule to add to your workflow (VERY IMPORTANT)
+
+After any STOP / MERGE:
+
+🔍 Always verify in this order:
+
+Local
+
+git status
+
+
+Ahead check
+
+git log origin/main..main --oneline
+
+
+Push
+
+git push origin main
+
+
+GitHub UI
+
+Open the file
+
+Confirm the change exists
+
+If step 4 doesn’t show it → it doesn’t exist.
+
+((Approved. Proceed with the change exactly as described.))
+
+END OF BRANCH
+
+
+STOP.
+
+Based only on the work just completed in this branch:
+
+1. State the single issue this branch solved (one sentence).
+2. List the files that were changed.
+3. Suggest exactly ONE commit message.
+
+Then perform these steps IN ORDER:
+
+1. Commit the changes on this branch using the suggested message.
+2. Merge this branch into local `main`.
+3. Push `main` to `origin/main` (GitHub) so the change is visible on GitHub.
+4. Delete the feature branch locally and on origin.
+
+Do NOT make any additional changes.
+
+After confirming the push to GitHub is complete, wait.
+A branch is not done until GitHub shows the change on main.

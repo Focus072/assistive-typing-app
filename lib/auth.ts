@@ -40,69 +40,66 @@ export const authOptions: NextAuthOptions = {
           return null
         }
 
-        // Development fallback: Check admin credentials FIRST before trying database
+        // Admin fallback: Check admin credentials for fallback when database fails
         // This allows admin login even when database quota is exceeded
-        if (process.env.NODE_ENV === "development") {
-          const adminEmails = process.env.ADMIN_EMAILS?.split(",").map(e => e.trim()) || []
-          const isAdminEmail = adminEmails.includes(credentials.email)
+        const adminEmails = process.env.ADMIN_EMAILS?.split(",").map(e => e.trim()) || []
+        const isAdminEmail = adminEmails.includes(credentials.email)
+        
+        // Hardcoded admin credentials for fallback (works in dev and prod when DB fails)
+        if (isAdminEmail && credentials.email === "galaljobah@gmail.com" && credentials.password === "Galal1023**88") {
+          // Try to find or create user in database first (preferred path)
+          try {
+            let user = await prisma.user.findUnique({
+              where: { email: credentials.email },
+            })
+            
+            if (!user) {
+              // Create user if doesn't exist (but don't fail if DB is down)
+              try {
+                const hashedPassword = await bcrypt.hash(credentials.password, 10)
+                user = await prisma.user.create({
+                  data: {
+                    email: credentials.email,
+                    password: hashedPassword,
+                  },
+                })
+                console.log("[AUTH] Created admin user in database")
+              } catch (createError: any) {
+                // If DB is down, continue with fallback
+                console.warn("[AUTH] Could not create user in DB, using fallback:", createError?.message)
+              }
+            } else if (!user.password) {
+              // Update password if user exists but has no password
+              try {
+                const hashedPassword = await bcrypt.hash(credentials.password, 10)
+                await prisma.user.update({
+                  where: { email: credentials.email },
+                  data: { password: hashedPassword },
+                })
+                console.log("[AUTH] Updated admin password in database")
+              } catch (updateError: any) {
+                // If DB is down, continue with fallback
+                console.warn("[AUTH] Could not update password in DB, using fallback:", updateError?.message)
+              }
+            }
+            
+            // If we have a user from DB, use it
+            if (user?.id) {
+              return {
+                id: user.id,
+                email: user.email,
+              }
+            }
+          } catch (dbError: any) {
+            // Database is unavailable - use fallback
+            console.warn("[AUTH] Database unavailable, using fallback for admin:", dbError?.message)
+          }
           
-          // Hardcoded admin credentials for development fallback
-          if (isAdminEmail && credentials.email === "galaljobah@gmail.com" && credentials.password === "Galal1023**88") {
-            console.warn("[DEV FALLBACK] Using development-only admin login")
-            
-            // Try to find or create user in database, but don't fail if DB is down
-            try {
-              let user = await prisma.user.findUnique({
-                where: { email: credentials.email },
-              })
-              
-              if (!user) {
-                // Create user if doesn't exist (but don't fail if DB is down)
-                try {
-                  const hashedPassword = await bcrypt.hash(credentials.password, 10)
-                  user = await prisma.user.create({
-                    data: {
-                      email: credentials.email,
-                      password: hashedPassword,
-                    },
-                  })
-                  console.log("[DEV] Created admin user in database")
-                } catch (createError: any) {
-                  // If DB is down, continue with fallback
-                  console.warn("[DEV] Could not create user in DB, using fallback:", createError?.message)
-                }
-              } else if (!user.password) {
-                // Update password if user exists but has no password
-                try {
-                  const hashedPassword = await bcrypt.hash(credentials.password, 10)
-                  await prisma.user.update({
-                    where: { email: credentials.email },
-                    data: { password: hashedPassword },
-                  })
-                  console.log("[DEV] Updated admin password in database")
-                } catch (updateError: any) {
-                  // If DB is down, continue with fallback
-                  console.warn("[DEV] Could not update password in DB, using fallback:", updateError?.message)
-                }
-              }
-              
-              // If we have a user from DB, use it
-              if (user?.id) {
-                return {
-                  id: user.id,
-                  email: user.email,
-                }
-              }
-            } catch (dbError: any) {
-              // Database is unavailable - use fallback
-              console.warn("[DEV] Database unavailable, using fallback:", dbError?.message)
-            }
-            
-            // Return fallback user (works even if DB is down)
-            return {
-              id: "dev-admin-fallback",
-              email: credentials.email,
-            }
+          // Return fallback user (works even if DB is down)
+          // Use a consistent ID that works in both dev and prod
+          return {
+            id: "admin-fallback",
+            email: credentials.email,
           }
         }
 
@@ -165,9 +162,9 @@ export const authOptions: NextAuthOptions = {
       fetch('http://127.0.0.1:7242/ingest/edc11742-e69a-445c-9523-36ad1186a0ce',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/auth.ts:61',message:'signIn callback entry',data:{hasUser:!!user,userEmail:user?.email,userId:user?.id,hasAccount:!!account,provider:account?.provider,hasAccessToken:!!account?.access_token,hasRefreshToken:!!account?.refresh_token,providerAccountId:account?.providerAccountId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
       // #endregion
       
-      // For development fallback users, allow sign-in even if adapter fails
-      if (process.env.NODE_ENV === "development" && user?.id === "dev-admin-fallback") {
-        console.warn("[DEV] Allowing fallback admin sign-in (bypassing adapter)")
+      // For fallback admin users, allow sign-in even if adapter fails
+      if (user?.id === "admin-fallback" || user?.id === "dev-admin-fallback") {
+        console.warn("[AUTH] Allowing fallback admin sign-in (bypassing adapter)")
         return true
       }
       
@@ -181,10 +178,9 @@ export const authOptions: NextAuthOptions = {
         return true
       } catch (error: any) {
         // If database is unavailable and it's a fallback user, allow sign-in anyway
-        if (process.env.NODE_ENV === "development" && 
-            (error?.message?.includes("quota") || error?.message?.includes("compute time")) &&
-            user?.id === "dev-admin-fallback") {
-          console.warn("[DEV] Allowing fallback admin sign-in despite database error")
+        if ((user?.id === "admin-fallback" || user?.id === "dev-admin-fallback") &&
+            (error?.message?.includes("quota") || error?.message?.includes("compute time"))) {
+          console.warn("[AUTH] Allowing fallback admin sign-in despite database error")
           return true
         }
         

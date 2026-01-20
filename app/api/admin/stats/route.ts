@@ -16,9 +16,16 @@ export async function GET() {
   try {
     const session = await getServerSession(authOptions)
 
-    // In development, allow fallback admin user
-    if (process.env.NODE_ENV === "development" && session?.user?.id === "dev-admin-fallback") {
-      // Use fallback stats for development
+    // Check if user is admin (by email or fallback ID)
+    const isFallbackAdmin = session?.user?.id === "admin-fallback" || session?.user?.id === "dev-admin-fallback"
+    const isAdminUser = session?.user?.email && isAdmin(session.user.email)
+
+    if (!isFallbackAdmin && !isAdminUser) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    // If using fallback admin (database unavailable), return empty stats
+    if (isFallbackAdmin) {
       return NextResponse.json({
         overview: {
           totalUsers: 0,
@@ -35,102 +42,113 @@ export async function GET() {
       })
     }
 
-    if (!session?.user?.email || !isAdmin(session.user.email)) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
     // Get overview statistics
-    const [
-      totalUsers,
-      totalJobs,
-      activeJobs,
-      completedJobs,
-      failedJobs,
-      totalWaitlist,
-      recentUsers,
-      recentJobs,
-    ] = await Promise.all([
-      // Total users
-      prisma.user.count(),
-      
-      // Total jobs
-      prisma.job.count(),
-      
-      // Active jobs (running or paused)
-      prisma.job.count({
-        where: {
-          status: {
-            in: ["running", "paused"],
+    let totalUsers = 0
+    let totalJobs = 0
+    let activeJobs = 0
+    let completedJobs = 0
+    let failedJobs = 0
+    let totalWaitlist = 0
+    let recentUsers: any[] = []
+    let recentJobs: any[] = []
+    let topUser: any = null
+
+    try {
+      [
+        totalUsers,
+        totalJobs,
+        activeJobs,
+        completedJobs,
+        failedJobs,
+        totalWaitlist,
+        recentUsers,
+        recentJobs,
+      ] = await Promise.all([
+        // Total users
+        prisma.user.count(),
+        
+        // Total jobs
+        prisma.job.count(),
+        
+        // Active jobs (running or paused)
+        prisma.job.count({
+          where: {
+            status: {
+              in: ["running", "paused"],
+            },
           },
-        },
-      }),
-      
-      // Completed jobs
-      prisma.job.count({
-        where: { status: "completed" },
-      }),
-      
-      // Failed jobs
-      prisma.job.count({
-        where: { status: "failed" },
-      }),
-      
-      // Waitlist count
-      prisma.waitlistEmail.count(),
-      
-      // Recent users (last 7 days)
-      prisma.user.findMany({
-        where: {
-          createdAt: {
-            gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+        }),
+        
+        // Completed jobs
+        prisma.job.count({
+          where: { status: "completed" },
+        }),
+        
+        // Failed jobs
+        prisma.job.count({
+          where: { status: "failed" },
+        }),
+        
+        // Waitlist count
+        prisma.waitlistEmail.count(),
+        
+        // Recent users (last 7 days)
+        prisma.user.findMany({
+          where: {
+            createdAt: {
+              gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+            },
           },
-        },
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            createdAt: true,
+          },
+          orderBy: { createdAt: "desc" },
+          take: 10,
+        }),
+        
+        // Recent jobs (last 24 hours)
+        prisma.job.findMany({
+          where: {
+            createdAt: {
+              gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
+            },
+          },
+          select: {
+            id: true,
+            userId: true,
+            status: true,
+            createdAt: true,
+            completedAt: true,
+            totalChars: true,
+          },
+          orderBy: { createdAt: "desc" },
+          take: 20,
+        }),
+      ])
+
+      // Get user with most jobs
+      topUser = await prisma.user.findFirst({
         select: {
           id: true,
           email: true,
           name: true,
-          createdAt: true,
-        },
-        orderBy: { createdAt: "desc" },
-        take: 10,
-      }),
-      
-      // Recent jobs (last 24 hours)
-      prisma.job.findMany({
-        where: {
-          createdAt: {
-            gte: new Date(Date.now() - 24 * 60 * 60 * 1000),
+          _count: {
+            select: { jobs: true },
           },
         },
-        select: {
-          id: true,
-          userId: true,
-          status: true,
-          createdAt: true,
-          completedAt: true,
-          totalChars: true,
+        orderBy: {
+          jobs: {
+            _count: "desc",
+          },
         },
-        orderBy: { createdAt: "desc" },
-        take: 20,
-      }),
-    ])
-
-    // Get user with most jobs
-    const topUser = await prisma.user.findFirst({
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        _count: {
-          select: { jobs: true },
-        },
-      },
-      orderBy: {
-        jobs: {
-          _count: "desc",
-        },
-      },
-    })
+      })
+    } catch (dbError: any) {
+      // If database fails, use empty stats (already initialized above)
+      console.error("Database error in admin stats:", dbError)
+    }
 
     // Calculate success rate
     const successRate =
