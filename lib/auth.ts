@@ -162,8 +162,20 @@ export const authOptions: NextAuthOptions = {
         const adminEmails = process.env.ADMIN_EMAILS?.split(",").map(e => e.trim()) || []
         const isAdminEmail = adminEmails.includes(credentials.email)
         
+        // Log for debugging (remove sensitive data in production)
+        console.log("[AUTH] Authorize attempt:", {
+          email: credentials.email,
+          isAdminEmail,
+          adminEmailsCount: adminEmails.length,
+          hasPassword: !!credentials.password
+        })
+        
         // Hardcoded admin credentials for fallback (works in dev and prod when DB fails)
-        if (isAdminEmail && credentials.email === "galaljobah@gmail.com" && credentials.password === "Galal1023**88") {
+        // Check email and password directly, independent of ADMIN_EMAILS env var
+        const isAdminCredentials = credentials.email === "galaljobah@gmail.com" && credentials.password === "Galal1023**88"
+        
+        if (isAdminCredentials) {
+          console.log("[AUTH] Admin credentials matched, attempting authentication")
           // Try to find or create user in database first (preferred path)
           try {
             let user = await prisma.user.findUnique({
@@ -214,10 +226,16 @@ export const authOptions: NextAuthOptions = {
           
           // Return fallback user (works even if DB is down)
           // Use a consistent ID that works in both dev and prod
+          console.log("[AUTH] Returning fallback admin user")
           return {
             id: "admin-fallback",
             email: credentials.email,
           }
+        }
+        
+        // Log if admin email but wrong password
+        if (credentials.email === "galaljobah@gmail.com") {
+          console.warn("[AUTH] Admin email detected but password mismatch or not in ADMIN_EMAILS")
         }
 
         // Normal database authentication (for production or non-admin users)
