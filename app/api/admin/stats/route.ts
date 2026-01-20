@@ -37,8 +37,25 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // If using fallback admin (database unavailable), return empty stats
-    if (isFallbackAdmin || isFallbackEmail) {
+    // Only use fallback stats if it's a fallback admin ID (not just the email)
+    // Regular admin users should always try to query the database
+    const shouldUseFallback = isFallbackAdmin && !isAdminUser
+
+    // Get overview statistics
+    let totalUsers = 0
+    let totalJobs = 0
+    let activeJobs = 0
+    let completedJobs = 0
+    let failedJobs = 0
+    let totalWaitlist = 0
+    let googleOAuthUsers = 0
+    let credentialUsers = 0
+    let recentUsers: any[] = []
+    let recentJobs: any[] = []
+    let topUser: any = null
+
+    // If using fallback admin ID (database unavailable), return empty stats
+    if (shouldUseFallback) {
       return NextResponse.json({
         overview: {
           totalUsers: 0,
@@ -57,19 +74,7 @@ export async function GET() {
       })
     }
 
-    // Get overview statistics
-    let totalUsers = 0
-    let totalJobs = 0
-    let activeJobs = 0
-    let completedJobs = 0
-    let failedJobs = 0
-    let totalWaitlist = 0
-    let googleOAuthUsers = 0
-    let credentialUsers = 0
-    let recentUsers: any[] = []
-    let recentJobs: any[] = []
-    let topUser: any = null
-
+    // Try to query the database for real stats
     try {
       [
         totalUsers,
@@ -192,8 +197,11 @@ export async function GET() {
         },
       })
     } catch (dbError: any) {
-      // If database fails, use empty stats (already initialized above)
+      // If database fails, log the error but still try to return what we can
       console.error("Database error in admin stats:", dbError)
+      // If it's a quota/compute time error, we might want to return a specific message
+      // For now, we'll return the initialized values (0s) which will show "no data"
+      // The frontend can handle this gracefully
     }
 
     // Calculate success rate
