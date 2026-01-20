@@ -9,19 +9,136 @@ import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 import { google } from "googleapis"
 
-// Wrap PrismaAdapter to catch errors
-let adapter: ReturnType<typeof PrismaAdapter>
-try {
-  adapter = PrismaAdapter(prisma)
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/edc11742-e69a-445c-9523-36ad1186a0ce',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/auth.ts:12',message:'PrismaAdapter created successfully',data:{},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'G'})}).catch(()=>{});
-  // #endregion
-} catch (error: any) {
-  console.error("[NextAuth] PrismaAdapter creation error:", error)
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/edc11742-e69a-445c-9523-36ad1186a0ce',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/auth.ts:16',message:'PrismaAdapter creation failed',data:{errorMessage:error?.message},timestamp:Date.now(),sessionId:'debug-session',runId:'run2',hypothesisId:'B'})}).catch(()=>{});
-  // #endregion
-  throw error
+// Wrap PrismaAdapter to catch errors and handle fallback users
+const baseAdapter = PrismaAdapter(prisma)
+
+// Create a wrapper adapter that handles fallback users gracefully
+const adapter = {
+  ...baseAdapter,
+  async createUser(user: any) {
+    // For fallback users, skip database creation
+    if (user.id === "admin-fallback" || user.id === "dev-admin-fallback") {
+      console.warn("[AUTH] Skipping database user creation for fallback admin")
+      return user
+    }
+    try {
+      return await baseAdapter.createUser!(user)
+    } catch (error: any) {
+      // If database fails and it's a fallback user, return the user anyway
+      if (user.id === "admin-fallback" || user.id === "dev-admin-fallback") {
+        console.warn("[AUTH] Database unavailable, skipping user creation for fallback")
+        return user
+      }
+      throw error
+    }
+  },
+  async linkAccount(account: any) {
+    // For fallback users, skip account linking
+    if (account.userId === "admin-fallback" || account.userId === "dev-admin-fallback") {
+      console.warn("[AUTH] Skipping account linking for fallback admin")
+      return account
+    }
+    try {
+      return await baseAdapter.linkAccount!(account)
+    } catch (error: any) {
+      // If database fails, log but don't block
+      console.warn("[AUTH] Account linking failed (non-blocking):", error?.message)
+      return account
+    }
+  },
+  async createSession(session: any) {
+    // For fallback users, skip session creation (JWT handles it)
+    if (session.userId === "admin-fallback" || session.userId === "dev-admin-fallback") {
+      return session
+    }
+    try {
+      return await baseAdapter.createSession!(session)
+    } catch (error: any) {
+      // If database fails, return session anyway (JWT will handle it)
+      console.warn("[AUTH] Session creation failed (non-blocking):", error?.message)
+      return session
+    }
+  },
+  async getUser(id: string) {
+    // For fallback users, return null (JWT will handle it)
+    if (id === "admin-fallback" || id === "dev-admin-fallback") {
+      return null
+    }
+    try {
+      return await baseAdapter.getUser!(id)
+    } catch (error: any) {
+      // If database fails, return null (JWT will handle it)
+      console.warn("[AUTH] Get user failed (non-blocking):", error?.message)
+      return null
+    }
+  },
+  async getUserByEmail(email: string) {
+    try {
+      return await baseAdapter.getUserByEmail!(email)
+    } catch (error: any) {
+      // If database fails, return null
+      console.warn("[AUTH] Get user by email failed (non-blocking):", error?.message)
+      return null
+    }
+  },
+  async getUserByAccount(account: any) {
+    try {
+      return await baseAdapter.getUserByAccount!(account)
+    } catch (error: any) {
+      // If database fails, return null
+      console.warn("[AUTH] Get user by account failed (non-blocking):", error?.message)
+      return null
+    }
+  },
+  async updateUser(user: any) {
+    // For fallback users, skip database update
+    if (user.id === "admin-fallback" || user.id === "dev-admin-fallback") {
+      return user
+    }
+    try {
+      return await baseAdapter.updateUser!(user)
+    } catch (error: any) {
+      // If database fails, return user anyway
+      console.warn("[AUTH] Update user failed (non-blocking):", error?.message)
+      return user
+    }
+  },
+  async deleteSession(sessionToken: string) {
+    try {
+      return await baseAdapter.deleteSession!(sessionToken)
+    } catch (error: any) {
+      // If database fails, return null (non-blocking)
+      console.warn("[AUTH] Delete session failed (non-blocking):", error?.message)
+      return null
+    }
+  },
+  async updateSession(session: any) {
+    try {
+      return await baseAdapter.updateSession!(session)
+    } catch (error: any) {
+      // If database fails, return session anyway
+      console.warn("[AUTH] Update session failed (non-blocking):", error?.message)
+      return session
+    }
+  },
+  async createVerificationToken(verificationToken: any) {
+    try {
+      return await baseAdapter.createVerificationToken!(verificationToken)
+    } catch (error: any) {
+      // If database fails, return token anyway
+      console.warn("[AUTH] Create verification token failed (non-blocking):", error?.message)
+      return verificationToken
+    }
+  },
+  async useVerificationToken(token: any) {
+    try {
+      return await baseAdapter.useVerificationToken!(token)
+    } catch (error: any) {
+      // If database fails, return null
+      console.warn("[AUTH] Use verification token failed (non-blocking):", error?.message)
+      return null
+    }
+  },
 }
 
 export const authOptions: NextAuthOptions = {
