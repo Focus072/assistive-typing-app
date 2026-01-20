@@ -62,9 +62,13 @@ export const authOptions: NextAuthOptions = {
           }
         } catch (error: any) {
           // Handle database connection errors gracefully
-          console.error("[Credentials] Database error:", error)
-          // Return null to show generic error, but log the actual issue
-          throw new Error("Database connection failed. Please try again later.")
+          console.error("[Credentials] Database error during authentication:", error)
+          // Re-throw with a user-friendly message that NextAuth will pass to the client
+          if (error?.message?.includes("quota") || error?.message?.includes("compute time")) {
+            throw new Error("Database service temporarily unavailable. Please try again in a few minutes.")
+          }
+          // For other database errors, return null to show generic credentials error
+          return null
         }
       },
     }),
