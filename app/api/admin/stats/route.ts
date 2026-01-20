@@ -231,9 +231,9 @@ export async function GET() {
         error: dbError,
       })
       
-      // Re-throw the error so we can see it in the outer catch block
-      // This will help us understand if the database is actually failing
-      throw new Error(`Database query failed: ${dbError?.message || "Unknown error"}`)
+      // Don't throw - return empty stats instead so the page can still load
+      // The variables are already initialized to 0/empty arrays, so we can continue
+      // This allows the admin dashboard to show even when database is unavailable
     }
 
     // Calculate success rate
