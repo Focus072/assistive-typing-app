@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
+import { signIn } from "next-auth/react"
 import Link from "next/link"
 import { TextInput } from "@/components/TextInput"
 import { TimeSelector } from "@/components/TimeSelector"
@@ -83,10 +84,11 @@ function DashboardSkeleton() {
 
 function DashboardContent() {
   const router = useRouter()
-  const { data: session, status } = useSession()
+  const { data: session, status, update: updateSession } = useSession()
   const searchParams = useSearchParams()
   // Extract value immediately to avoid Next.js 16 enumeration issues
   const jobIdParam = searchParams.get("jobId")
+  const checkoutParam = searchParams.get("checkout")
   const toast = useToast()
   const { isDark } = useDashboardTheme()
   const [showConfetti, setShowConfetti] = useState(false)
@@ -100,6 +102,24 @@ function DashboardContent() {
       router.push("/")
     }
   }, [status, router])
+
+  // Refresh session after successful Stripe checkout
+  useEffect(() => {
+    if (checkoutParam === "success" && status === "authenticated") {
+      // Force session refresh to get updated planTier
+      updateSession().then(() => {
+        // Show success message
+        toast.addToast("Payment Successful! Your plan has been upgraded. Enjoy your new features!", "success")
+        setShowConfetti(true)
+        // Clean up URL
+        router.replace("/dashboard", { scroll: false })
+      }).catch((error) => {
+        console.error("Failed to refresh session:", error)
+        // Still show success message even if refresh fails
+        toast.addToast("Payment successful! Your subscription is being processed. Please refresh the page if your tier doesn't update.", "success")
+      })
+    }
+  }, [checkoutParam, status, updateSession, router, toast])
 
   const [textContent, setTextContent] = useState("")
   const [durationMinutes, setDurationMinutes] = useState(30)
@@ -914,6 +934,7 @@ function DashboardContent() {
                 }
               }}
               testWPM={testWPM}
+              userTier={session?.user?.planTier || "FREE"}
             />
           </div>
 

@@ -1,6 +1,6 @@
 /**
  * Utility to determine if all pages should be accessible (local development)
- * vs only waitlist page (production)
+ * vs only public pages (production)
  */
 
 export function isLocalDevelopment(): boolean {
@@ -21,7 +21,7 @@ export function isLocalDevelopment(): boolean {
  * Check if a page should be accessible in production
  * Returns true if:
  * - We're in local development, OR
- * - The page is in the allowed list (waitlist, privacy, terms, cookies)
+ * - The page is in the allowed public list (home, pricing, how-it-works, updates, privacy, terms, cookies)
  */
 export function isPageAccessible(pathname: string): boolean {
   // Always allow in local development
@@ -29,9 +29,13 @@ export function isPageAccessible(pathname: string): boolean {
     return true
   }
   
-  // In production, only allow specific pages
+  // In production, allow public pages
   const allowedPaths = [
-    "/waitlist",
+    "/", // Home page
+    "/pricing",
+    "/how-it-works",
+    "/updates",
+    "/launch",
     "/privacy",
     "/terms",
     "/cookies",

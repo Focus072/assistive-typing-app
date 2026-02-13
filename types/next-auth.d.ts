@@ -1,4 +1,5 @@
 import "next-auth"
+import { PlanTier } from "@prisma/client"
 
 declare module "next-auth" {
   interface Session {
@@ -7,6 +8,7 @@ declare module "next-auth" {
       email?: string | null
       name?: string | null
       image?: string | null
+      planTier?: PlanTier
     }
   }
 }

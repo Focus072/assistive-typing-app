@@ -6,6 +6,7 @@ import CredentialsProvider from "next-auth/providers/credentials"
 import GoogleProvider from "next-auth/providers/google"
 import { PrismaAdapter } from "@next-auth/prisma-adapter"
 import { prisma } from "@/lib/prisma"
+import { PlanTier } from "@prisma/client"
 import bcrypt from "bcryptjs"
 import { google } from "googleapis"
 
@@ -335,6 +336,7 @@ export const authOptions: NextAuthOptions = {
         if (token.email) session.user.email = token.email as string
         if (token.name) session.user.name = token.name as string
         if (token.picture) session.user.image = token.picture as string
+        if (token.planTier) session.user.planTier = token.planTier as PlanTier
       }
       return session
     },
@@ -352,6 +354,39 @@ export const authOptions: NextAuthOptions = {
           token.email = user.email || undefined
           token.name = user.name || undefined
           token.picture = user.image || undefined
+          
+          // Fetch planTier from database on initial sign in
+          try {
+            const dbUser = await prisma.user.findUnique({
+              where: { id: user.id },
+              select: { planTier: true },
+            })
+            if (dbUser?.planTier) {
+              token.planTier = dbUser.planTier
+            }
+          } catch (dbError) {
+            // If DB fails, default to FREE
+            token.planTier = 'FREE'
+          }
+        } else if (token.sub) {
+          // On subsequent requests, refresh planTier from database
+          // This ensures tier updates (from webhooks) are reflected
+          try {
+            const dbUser = await prisma.user.findUnique({
+              where: { id: token.sub },
+              select: { planTier: true },
+            })
+            if (dbUser?.planTier) {
+              token.planTier = dbUser.planTier
+            } else {
+              token.planTier = 'FREE'
+            }
+          } catch (dbError) {
+            // If DB fails, keep existing tier or default to FREE
+            if (!token.planTier) {
+              token.planTier = 'FREE'
+            }
+          }
         } else {
           // #region agent log
           fetch('http://127.0.0.1:7242/ingest/edc11742-e69a-445c-9523-36ad1186a0ce',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/auth.ts:109',message:'jwt callback no user object',data:{tokenSub:token.sub},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});

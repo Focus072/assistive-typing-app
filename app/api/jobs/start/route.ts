@@ -5,9 +5,9 @@ import { prisma } from "@/lib/prisma"
 import { inngest } from "@/inngest/client"
 import { z } from "zod"
 import { logger } from "@/lib/logger"
+import { getUserLimits, isProfileAllowed, PlanTier } from "@/lib/constants/tiers"
 
 const MAX_CHARS = 50000
-const MAX_JOBS_PER_DAY = 50
 
 const startJobSchema = z.object({
   textContent: z.string().min(1).max(MAX_CHARS),
@@ -46,22 +46,68 @@ export async function POST(request: Request) {
       validated.testWPM = undefined
     }
 
-    // Check daily job limit
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    
-    const jobsToday = await prisma.job.count({
-      where: {
-        userId: session.user.id,
-        createdAt: { gte: today },
-      },
+    // Fetch user's planTier from database
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { planTier: true },
     })
 
-    if (jobsToday >= MAX_JOBS_PER_DAY) {
+    const userTier: PlanTier = user?.planTier || 'FREE'
+    const limits = getUserLimits(userTier)
+
+    // Validate typing profile is allowed for user's tier
+    if (!isProfileAllowed(userTier, validated.typingProfile)) {
+      const requiredTier = validated.typingProfile === 'burst' || validated.typingProfile === 'micropause' 
+        ? 'PRO' 
+        : 'PRO'
       return NextResponse.json(
-        { error: "Daily job limit reached" },
-        { status: 400 }
+        { 
+          error: `The ${validated.typingProfile} profile is not available on your current plan.`,
+          upgradeRequired: requiredTier,
+          currentTier: userTier,
+        },
+        { status: 403 }
       )
+    }
+
+    // Validate duration against tier limit
+    if (limits.maxDurationMinutes !== null && validated.durationMinutes > limits.maxDurationMinutes) {
+      const requiredTier = validated.durationMinutes > 360 ? 'UNLIMITED' : 'PRO'
+      return NextResponse.json(
+        { 
+          error: `Duration limit exceeded. Your ${userTier} plan allows up to ${limits.maxDurationMinutes} minutes (${Math.round(limits.maxDurationMinutes / 60)} hours).`,
+          upgradeRequired: requiredTier,
+          currentTier: userTier,
+          maxAllowed: limits.maxDurationMinutes,
+        },
+        { status: 403 }
+      )
+    }
+
+    // Check daily job limit based on tier
+    if (limits.maxJobsPerDay !== null) {
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      
+      const jobsToday = await prisma.job.count({
+        where: {
+          userId: session.user.id,
+          createdAt: { gte: today },
+        },
+      })
+
+      if (jobsToday >= limits.maxJobsPerDay) {
+        const requiredTier = userTier === 'FREE' ? 'BASIC' : userTier === 'BASIC' ? 'PRO' : 'UNLIMITED'
+        return NextResponse.json(
+          { 
+            error: `Daily job limit reached. Your ${userTier} plan allows ${limits.maxJobsPerDay} jobs per day.`,
+            upgradeRequired: requiredTier,
+            currentTier: userTier,
+            maxAllowed: limits.maxJobsPerDay,
+          },
+          { status: 403 }
+        )
+      }
     }
 
     // Atomic transaction: check document state and create job

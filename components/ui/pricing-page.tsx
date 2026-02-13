@@ -2,6 +2,8 @@
 
 import React, { useRef, useEffect } from "react"
 import Link from "next/link"
+import { useSession } from "next-auth/react"
+import { useRouter } from "next/navigation"
 import {
   Scene,
   PerspectiveCamera,
@@ -21,6 +23,72 @@ export function PricingContent() {
   const sceneRef = useRef<Scene>()
   const rendererRef = useRef<WebGLRenderer>()
   const animationIdRef = useRef<number>()
+  const { data: session, status } = useSession()
+  const router = useRouter()
+
+  const handleCheckout = async (tier: 'basic' | 'pro' | 'unlimited') => {
+    // Check loading state first
+    if (status === 'loading') {
+      alert('Please wait while we verify your session...')
+      return
+    }
+
+    // Check authentication
+    if (status === 'unauthenticated' || !session) {
+      // Redirect to login with return URL
+      router.push(`/login?callbackUrl=${encodeURIComponent('/pricing')}`)
+      return
+    }
+
+    try {
+      const response = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ priceId: tier }),
+      })
+
+      if (!response.ok) {
+        let errorData
+        try {
+          errorData = await response.json()
+        } catch {
+          errorData = { error: `HTTP ${response.status}: ${response.statusText}` }
+        }
+        
+        // Handle unauthorized error specifically
+        if (response.status === 401) {
+          router.push(`/login?callbackUrl=${encodeURIComponent('/pricing')}`)
+          return
+        }
+        
+        // Log full error details for debugging
+        console.error('Checkout API error:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData,
+        })
+        
+        throw new Error(errorData.error || errorData.message || `Failed to create checkout session (${response.status})`)
+      }
+
+      const data = await response.json()
+      
+      // Redirect to Stripe hosted checkout page
+      if (data.url) {
+        window.location.assign(data.url)
+      }
+    } catch (error) {
+      console.error('Checkout error:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Failed to start checkout'
+      
+      // Don't show alert for navigation (redirect to login)
+      if (!errorMessage.includes('Unauthorized')) {
+        alert(errorMessage)
+      }
+    }
+  }
 
   // Three.js background effect (same as waitlist and how-it-works pages)
   useEffect(() => {
@@ -188,7 +256,6 @@ export function PricingContent() {
 
   const features = [
     { name: "How it works", href: "/how-it-works" },
-    { name: "Pricing", href: "/pricing" },
     { name: "Home", href: "/" },
     { name: "Launch", href: "/launch" },
     { name: "Updates", href: "/updates" },
@@ -196,7 +263,6 @@ export function PricingContent() {
 
   const mobileFeatures = [
     { name: "Home", href: "/" },
-    { name: "Pricing", href: "/pricing" },
     { name: "How it works", href: "/how-it-works" },
   ]
 
@@ -276,14 +342,12 @@ export function PricingContent() {
                     </li>
                   </ul>
                   <div className="mt-auto pt-4">
-                    <a 
-                      href="https://buy.stripe.com/dRmbJ0gwE39egm88HHgnK03" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="w-full px-6 py-3 bg-white/10 border border-white/20 text-white rounded-xl hover:bg-white/20 transition-colors inline-block text-center"
+                    <button
+                      onClick={() => handleCheckout('basic')}
+                      className="w-full px-6 py-3 bg-white/10 border border-white/20 text-white rounded-xl hover:bg-white/20 transition-colors"
                     >
                       Get Started
-                    </a>
+                    </button>
                   </div>
                 </div>
                 <div className="absolute inset-0 rounded-3xl bg-gradient-to-t from-transparent via-white/[0.02] to-white/[0.05] pointer-events-none" />
@@ -341,14 +405,12 @@ export function PricingContent() {
                     </li>
                   </ul>
                   <div className="mt-auto pt-4">
-                    <a 
-                      href="https://buy.stripe.com/4gMeVcbck8ty6LybTTgnK04" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="w-full px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-colors font-medium inline-block text-center"
+                    <button
+                      onClick={() => handleCheckout('pro')}
+                      className="w-full px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-colors font-medium"
                     >
                       Get Started
-                    </a>
+                    </button>
                   </div>
                 </div>
                 <div className="absolute inset-0 rounded-3xl bg-gradient-to-t from-transparent via-white/[0.02] to-white/[0.05] pointer-events-none" />
@@ -401,14 +463,12 @@ export function PricingContent() {
                     </li>
                   </ul>
                   <div className="mt-auto pt-4">
-                    <a 
-                      href="https://buy.stripe.com/cNibJ08086lqc5SbTTgnK05" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="w-full px-6 py-3 bg-white/10 border border-white/20 text-white rounded-xl hover:bg-white/20 transition-colors inline-block text-center"
+                    <button
+                      onClick={() => handleCheckout('unlimited')}
+                      className="w-full px-6 py-3 bg-white/10 border border-white/20 text-white rounded-xl hover:bg-white/20 transition-colors"
                     >
                       Get Started
-                    </a>
+                    </button>
                   </div>
                 </div>
                 <div className="absolute inset-0 rounded-3xl bg-gradient-to-t from-transparent via-white/[0.02] to-white/[0.05] pointer-events-none" />

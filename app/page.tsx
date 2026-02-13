@@ -1,10 +1,10 @@
 import type { Metadata } from "next"
-import { WaitlistExperience } from "@/components/ui/waitlist-landing-page-with-countdown-timer"
+import SignInPageClient from "@/components/SignInPageClient"
 
 export const metadata: Metadata = {
-  title: "Join the Waitlist - Typing Is Boring",
+  title: "Typing Is Boring - Natural Typing for Google Docs",
   description:
-    "Get early access to Typing Is Boring - the next generation typing automation platform. Join the waitlist to be notified when we launch.",
+    "Automate typing in Google Docs with natural human-like rhythm. Paste your text, pick a Google Doc, and watch it type itself with pauses, bursts, and realistic delays.",
   robots: {
     index: true,
     follow: true,
@@ -12,5 +12,9 @@ export const metadata: Metadata = {
 }
 
 export default function HomePage() {
-  return <WaitlistExperience />
+  return (
+    <div className="w-full min-h-screen bg-black">
+      <SignInPageClient />
+    </div>
+  )
 }

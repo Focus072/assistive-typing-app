@@ -4,11 +4,14 @@ import { useState } from "react";
 import type { TypingProfile } from "@/types";
 import { useDashboardTheme } from "@/app/dashboard/layout";
 import { TypingTest } from "./TypingTest";
+import { UpgradeModal } from "./UpgradeModal";
+import { isProfileAllowed, PlanTier } from "@/lib/constants/tiers";
 
 interface TypingProfileSelectorProps {
   value: TypingProfile;
   onChange: (value: TypingProfile, testWPM?: number) => void;
   testWPM?: number;
+  userTier?: PlanTier;
 }
 
 const profiles: {
@@ -98,9 +101,15 @@ export function TypingProfileSelector({
   value,
   onChange,
   testWPM,
+  userTier = "FREE",
 }: TypingProfileSelectorProps) {
   const { isDark } = useDashboardTheme();
   const [showTypingTest, setShowTypingTest] = useState(false);
+  const [upgradeModal, setUpgradeModal] = useState<{ isOpen: boolean; requiredTier: PlanTier; feature: string }>({
+    isOpen: false,
+    requiredTier: "PRO",
+    feature: "",
+  });
 
   const selectedDark =
     "bg-white border-white border-2 text-black";
@@ -135,29 +144,48 @@ export function TypingProfileSelector({
       </label>
 
       <div className="grid grid-cols-5 gap-1.5">
-        {profiles.map((profile) => (
-          <button
-            key={profile.value}
-            onClick={() => {
-              if (profile.value === "typing-test") {
-                setShowTypingTest(true);
-              } else {
-                onChange(profile.value);
-              }
-            }}
-            className={`relative p-2 rounded-lg text-center transition-all group touch-manipulation active:scale-95 ${
-              value === profile.value
-                ? isDark
-                  ? selectedDark
-                  : selectedLight
-                : isDark
-                ? unselectedDark
-                : unselectedLight
-            }`}
-            aria-label={`Select ${profile.label} profile`}
-            aria-pressed={value === profile.value}
-            tabIndex={0}
-          >
+        {profiles.map((profile) => {
+          const isLocked = !isProfileAllowed(userTier, profile.value);
+          const requiredTier: PlanTier = profile.value === "burst" || profile.value === "micropause" || profile.value === "typing-test" 
+            ? "PRO" 
+            : "FREE";
+
+          return (
+            <button
+              key={profile.value}
+              onClick={() => {
+                if (isLocked) {
+                  setUpgradeModal({
+                    isOpen: true,
+                    requiredTier,
+                    feature: `${profile.label} typing profile`,
+                  });
+                  return;
+                }
+                if (profile.value === "typing-test") {
+                  setShowTypingTest(true);
+                } else {
+                  onChange(profile.value);
+                }
+              }}
+              disabled={isLocked}
+              className={`relative p-2 rounded-lg text-center transition-all group touch-manipulation active:scale-95 ${
+                isLocked
+                  ? "opacity-50 cursor-not-allowed"
+                  : ""
+              } ${
+                value === profile.value
+                  ? isDark
+                    ? selectedDark
+                    : selectedLight
+                  : isDark
+                  ? unselectedDark
+                  : unselectedLight
+              }`}
+              aria-label={`Select ${profile.label} profile${isLocked ? " (locked)" : ""}`}
+              aria-pressed={value === profile.value}
+              tabIndex={isLocked ? -1 : 0}
+            >
             <div
               className={`w-5 h-5 rounded mb-1 mx-auto flex items-center justify-center ${
                 value === profile.value
@@ -191,7 +219,18 @@ export function TypingProfileSelector({
               {profile.label}
             </div>
 
-            {value === profile.value && (
+            {isLocked && (
+              <div className="absolute top-1 right-1 z-10">
+                <div className={`w-4 h-4 rounded-full flex items-center justify-center ${
+                  isDark ? "bg-yellow-500/20 border border-yellow-500/40" : "bg-yellow-100 border border-yellow-300"
+                }`}>
+                  <svg className={`w-2.5 h-2.5 ${isDark ? "text-yellow-400" : "text-yellow-600"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                </div>
+              </div>
+            )}
+            {value === profile.value && !isLocked && (
               <div className="absolute top-1 right-1">
                 <div className={`w-1.5 h-1.5 rounded-full ${
                   isDark ? "bg-black" : "bg-white"
@@ -206,8 +245,17 @@ export function TypingProfileSelector({
               </div>
             )}
           </button>
-        ))}
+        );
+        })}
       </div>
+
+      <UpgradeModal
+        isOpen={upgradeModal.isOpen}
+        onClose={() => setUpgradeModal({ ...upgradeModal, isOpen: false })}
+        requiredTier={upgradeModal.requiredTier}
+        feature={upgradeModal.feature}
+        currentTier={userTier}
+      />
 
       {value === "typing-test" && testWPM && (
         <div className={`px-2 py-1.5 rounded border text-xs ${

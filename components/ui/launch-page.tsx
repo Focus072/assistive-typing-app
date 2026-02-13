@@ -188,7 +188,6 @@ export function LaunchContent() {
 
   const features = [
     { name: "How it works", href: "/how-it-works" },
-    { name: "Pricing", href: "/pricing" },
     { name: "Home", href: "/" },
     { name: "Launch", href: "/launch" },
     { name: "Updates", href: "/updates" },
@@ -196,7 +195,6 @@ export function LaunchContent() {
 
   const mobileFeatures = [
     { name: "Home", href: "/" },
-    { name: "Pricing", href: "/pricing" },
     { name: "How it works", href: "/how-it-works" },
   ]
 
@@ -227,14 +225,14 @@ export function LaunchContent() {
               </h1>
               <p className="text-white/70 text-lg sm:text-xl leading-relaxed max-w-2xl mx-auto mb-8">
                 Experience natural, human-like typing automation for Google Docs. 
-                Join thousands already on the waitlist.
+                Start automating your typing today.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link
-                  href="/"
+                  href="/pricing"
                   className="inline-flex items-center justify-center px-8 py-4 bg-red-600 hover:bg-red-700 text-white font-medium rounded-xl transition-all duration-300 hover:shadow-lg hover:shadow-red-500/25 text-base"
                 >
-                  Join the waitlist
+                  Get Started
                 </Link>
                 <Link
                   href="/how-it-works"
@@ -327,13 +325,13 @@ export function LaunchContent() {
             {/* CTA Section */}
             <div className="text-center mt-12">
               <p className="text-white/60 mb-6">
-                Be the first to know when we launch
+                Ready to start automating your typing?
               </p>
               <Link
-                href="/waitlist"
+                href="/pricing"
                 className="inline-flex items-center justify-center px-8 py-4 bg-white text-black font-medium rounded-xl hover:bg-white/90 transition-colors text-base"
               >
-                Join the waitlist
+                View Pricing
               </Link>
             </div>
           </div>

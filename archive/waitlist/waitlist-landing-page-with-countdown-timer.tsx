@@ -292,7 +292,6 @@ export function WaitlistExperience(): ReactElement {
 
   const features = [
     { name: "How it works", href: "/how-it-works" },
-    { name: "Pricing", href: "/pricing" },
     { name: "Home", href: "/" },
     { name: "Launch", href: "/launch" },
     { name: "Updates", href: "/updates" },
@@ -300,7 +299,6 @@ export function WaitlistExperience(): ReactElement {
 
   const mobileFeatures = [
     { name: "Home", href: "/" },
-    { name: "Pricing", href: "/pricing" },
     { name: "How it works", href: "/how-it-works" },
   ]
 
