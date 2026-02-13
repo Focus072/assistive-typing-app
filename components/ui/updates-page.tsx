@@ -14,6 +14,7 @@ import {
   AdditiveBlending,
   DoubleSide,
 } from "three"
+import { MobileNav } from "@/components/ui/mobile-nav"
 
 export function UpdatesContent() {
   const mountRef = useRef<HTMLDivElement>(null)
@@ -193,6 +194,12 @@ export function UpdatesContent() {
     { name: "Updates", href: "/updates" },
   ]
 
+  const mobileFeatures = [
+    { name: "Home", href: "/waitlist" },
+    { name: "Pricing", href: "/pricing" },
+    { name: "How it works", href: "/how-it-works" },
+  ]
+
   // Placeholder updates - can be replaced with dynamic content later
   const updates = [
     {
@@ -231,43 +238,12 @@ export function UpdatesContent() {
 
       {/* Content Layer */}
       <div className="relative z-10 min-h-screen">
-        {/* Top Navigation */}
-        <div className="absolute top-4 sm:top-8 left-1/2 transform -translate-x-1/2 z-20 w-full sm:w-auto max-w-full sm:max-w-none px-4 sm:px-0">
-          <div className="sm:bg-black/40 sm:backdrop-blur-md sm:border sm:border-white/10 rounded-none sm:rounded-full px-0 sm:px-6 py-2 sm:py-3">
-            <div className="flex items-center justify-center gap-4 sm:gap-6">
-              {features.map((feature, index) => {
-                const isActive = index === 4
-                const className = `text-sm sm:text-sm px-3 sm:px-3 py-2 sm:py-1 rounded-none sm:rounded-full transition-colors whitespace-nowrap relative font-medium ${
-                  isActive
-                    ? "text-white border-b-2 border-white pb-2 sm:border-0 sm:pb-1 sm:bg-black/60 sm:text-white sm:border sm:border-white/20"
-                    : "text-white/70 hover:text-white/90"
-                }`
-
-                if (feature.href === "#") {
-                  return (
-                    <button
-                      key={feature.name}
-                      type="button"
-                      className={className}
-                    >
-                      {feature.name}
-                    </button>
-                  )
-                }
-
-                return (
-                  <Link
-                    key={feature.name}
-                    href={feature.href}
-                    className={className}
-                  >
-                    {feature.name}
-                  </Link>
-                )
-              })}
-            </div>
-          </div>
-        </div>
+        {/* Navigation */}
+        <MobileNav 
+          currentPath="/updates"
+          links={features}
+          mobileLinks={mobileFeatures}
+        />
 
         {/* Main Content */}
         <div className="flex items-start justify-center min-h-screen px-4 sm:px-6 pt-24 sm:pt-32 pb-16">

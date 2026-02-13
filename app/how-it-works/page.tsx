@@ -1,5 +1,7 @@
 import type { Metadata } from "next"
+import { redirect } from "next/navigation"
 import { HowItWorksContent } from "@/components/ui/how-it-works-page"
+import { isLocalDevelopment } from "@/lib/page-access"
 
 export const metadata: Metadata = {
   title: "How it works - Typing Is Boring",
@@ -8,5 +10,11 @@ export const metadata: Metadata = {
 }
 
 export default function HowItWorksPage() {
+  // In production, redirect to waitlist
+  // In local development, allow access
+  if (!isLocalDevelopment()) {
+    redirect("/waitlist")
+  }
+  
   return <HowItWorksContent />
 }
