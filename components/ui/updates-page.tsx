@@ -232,7 +232,7 @@ export function UpdatesContent() {
       {/* Content Layer */}
       <div className="relative z-10 min-h-screen">
         {/* Top Navigation */}
-        <div className="absolute top-4 sm:top-8 left-1/2 transform -translate-x-1/2 z-20">
+        <div className="absolute top-4 sm:top-8 left-1/2 transform -translate-x-1/2 z-20 w-[calc(100%-2rem)] sm:w-auto px-0">
           <div className="bg-black/40 backdrop-blur-md border border-white/10 rounded-full px-4 sm:px-6 py-2.5 sm:py-3">
             <div className="flex items-center justify-center gap-3 sm:gap-6">
               {features.map((feature, index) => {
