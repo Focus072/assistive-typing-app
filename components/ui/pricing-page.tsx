@@ -263,7 +263,7 @@ export function PricingContent() {
                   </div>
                   <div className="mb-6">
                     <div className="flex items-baseline gap-2">
-                      <span className="text-4xl font-light text-white">$0</span>
+                      <span className="text-4xl font-light text-white">$10</span>
                       <span className="text-white/60">/month</span>
                     </div>
                   </div>
@@ -272,19 +272,31 @@ export function PricingContent() {
                       <svg className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
-                      <span className="text-white/70">Feature coming soon</span>
+                      <span className="text-white/70">Up to 3 hours typing duration</span>
                     </li>
                     <li className="flex items-start gap-3">
                       <svg className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
-                      <span className="text-white/70">Feature coming soon</span>
+                      <span className="text-white/70">Basic typing profiles (Steady, Fatigue)</span>
                     </li>
                     <li className="flex items-start gap-3">
                       <svg className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
-                      <span className="text-white/70">Feature coming soon</span>
+                      <span className="text-white/70">Job history (last 20 jobs)</span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <svg className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span className="text-white/70">Real-time progress tracking</span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <svg className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span className="text-white/70">Pause, resume, and stop controls</span>
                     </li>
                   </ul>
                   <div className="mt-auto pt-4">
@@ -316,7 +328,7 @@ export function PricingContent() {
                   </div>
                   <div className="mb-6">
                     <div className="flex items-baseline gap-2">
-                      <span className="text-4xl font-light text-white">$0</span>
+                      <span className="text-4xl font-light text-white">$15</span>
                       <span className="text-white/60">/month</span>
                     </div>
                   </div>
@@ -325,19 +337,31 @@ export function PricingContent() {
                       <svg className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
-                      <span className="text-white/70">Feature coming soon</span>
+                      <span className="text-white/70">Up to 6 hours typing duration</span>
                     </li>
                     <li className="flex items-start gap-3">
                       <svg className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
-                      <span className="text-white/70">Feature coming soon</span>
+                      <span className="text-white/70">All typing profiles (Steady, Fatigue, Burst, Micro-pause)</span>
                     </li>
                     <li className="flex items-start gap-3">
                       <svg className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
-                      <span className="text-white/70">Feature coming soon</span>
+                      <span className="text-white/70">Extended job history (last 100 jobs)</span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <svg className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span className="text-white/70">Real-time progress tracking</span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <svg className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span className="text-white/70">Priority support</span>
                     </li>
                   </ul>
                   <div className="mt-auto pt-4">
@@ -364,7 +388,7 @@ export function PricingContent() {
                   </div>
                   <div className="mb-6">
                     <div className="flex items-baseline gap-2">
-                      <span className="text-4xl font-light text-white">$0</span>
+                      <span className="text-4xl font-light text-white">$25</span>
                       <span className="text-white/60">/month</span>
                     </div>
                   </div>
@@ -373,19 +397,31 @@ export function PricingContent() {
                       <svg className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
-                      <span className="text-white/70">Feature coming soon</span>
+                      <span className="text-white/70">Unlimited typing duration</span>
                     </li>
                     <li className="flex items-start gap-3">
                       <svg className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
-                      <span className="text-white/70">Feature coming soon</span>
+                      <span className="text-white/70">All typing profiles (Steady, Fatigue, Burst, Micro-pause)</span>
                     </li>
                     <li className="flex items-start gap-3">
                       <svg className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
-                      <span className="text-white/70">Feature coming soon</span>
+                      <span className="text-white/70">Unlimited job history</span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <svg className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span className="text-white/70">Advanced features & API access</span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <svg className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span className="text-white/70">Priority support & team collaboration</span>
                     </li>
                   </ul>
                   <div className="mt-auto pt-4">
