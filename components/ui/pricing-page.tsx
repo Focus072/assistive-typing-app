@@ -14,6 +14,7 @@ import {
   AdditiveBlending,
   DoubleSide,
 } from "three"
+import { MobileNav } from "@/components/ui/mobile-nav"
 
 export function PricingContent() {
   const mountRef = useRef<HTMLDivElement>(null)
@@ -193,6 +194,12 @@ export function PricingContent() {
     { name: "Updates", href: "/updates" },
   ]
 
+  const mobileFeatures = [
+    { name: "Home", href: "/waitlist" },
+    { name: "Pricing", href: "/pricing" },
+    { name: "How it works", href: "/how-it-works" },
+  ]
+
   return (
     <main className="relative min-h-screen overflow-hidden bg-black w-full">
       {/* Three.js Background */}
@@ -200,43 +207,12 @@ export function PricingContent() {
 
       {/* Content Layer */}
       <div className="relative z-10 min-h-screen">
-        {/* Top Navigation */}
-        <div className="absolute top-4 sm:top-8 left-1/2 transform -translate-x-1/2 z-20 w-full sm:w-auto max-w-full sm:max-w-none px-4 sm:px-0">
-          <div className="sm:bg-black/40 sm:backdrop-blur-md sm:border sm:border-white/10 rounded-none sm:rounded-full px-0 sm:px-6 py-2 sm:py-3">
-            <div className="flex items-center justify-center gap-4 sm:gap-6">
-              {features.map((feature, index) => {
-                const isActive = index === 1
-                const className = `text-sm sm:text-sm px-3 sm:px-3 py-2 sm:py-1 rounded-none sm:rounded-full transition-colors whitespace-nowrap relative font-medium ${
-                  isActive
-                    ? "text-white border-b-2 border-white pb-2 sm:border-0 sm:pb-1 sm:bg-black/60 sm:text-white sm:border sm:border-white/20"
-                    : "text-white/70 hover:text-white/90"
-                }`
-
-                if (feature.href === "#") {
-                  return (
-                    <button
-                      key={feature.name}
-                      type="button"
-                      className={className}
-                    >
-                      {feature.name}
-                    </button>
-                  )
-                }
-
-                return (
-                  <Link
-                    key={feature.name}
-                    href={feature.href}
-                    className={className}
-                  >
-                    {feature.name}
-                  </Link>
-                )
-              })}
-            </div>
-          </div>
-        </div>
+        {/* Navigation */}
+        <MobileNav 
+          currentPath="/pricing"
+          links={features}
+          mobileLinks={mobileFeatures}
+        />
 
         {/* Main Content */}
         <div className="flex items-center justify-center min-h-screen px-4 sm:px-6 pt-24 sm:pt-32 pb-16">
@@ -263,7 +239,7 @@ export function PricingContent() {
                   </div>
                   <div className="mb-6">
                     <div className="flex items-baseline gap-2">
-                      <span className="text-4xl font-light text-white">$10</span>
+                      <span className="text-4xl font-light text-white">$5</span>
                       <span className="text-white/60">/month</span>
                     </div>
                   </div>
@@ -301,7 +277,7 @@ export function PricingContent() {
                   </ul>
                   <div className="mt-auto pt-4">
                     <a 
-                      href="https://buy.stripe.com/4gMeVc94caBG2vi1ffgnK00" 
+                      href="https://buy.stripe.com/dRmbJ0gwE39egm88HHgnK03" 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="w-full px-6 py-3 bg-white/10 border border-white/20 text-white rounded-xl hover:bg-white/20 transition-colors inline-block text-center"
@@ -328,7 +304,7 @@ export function PricingContent() {
                   </div>
                   <div className="mb-6">
                     <div className="flex items-baseline gap-2">
-                      <span className="text-4xl font-light text-white">$15</span>
+                      <span className="text-4xl font-light text-white">$10</span>
                       <span className="text-white/60">/month</span>
                     </div>
                   </div>
@@ -366,7 +342,7 @@ export function PricingContent() {
                   </ul>
                   <div className="mt-auto pt-4">
                     <a 
-                      href="https://buy.stripe.com/8x200i2FOcJOee0ga9gnK01" 
+                      href="https://buy.stripe.com/4gMeVcbck8ty6LybTTgnK04" 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="w-full px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-colors font-medium inline-block text-center"
@@ -388,7 +364,7 @@ export function PricingContent() {
                   </div>
                   <div className="mb-6">
                     <div className="flex items-baseline gap-2">
-                      <span className="text-4xl font-light text-white">$25</span>
+                      <span className="text-4xl font-light text-white">$15</span>
                       <span className="text-white/60">/month</span>
                     </div>
                   </div>
@@ -426,7 +402,7 @@ export function PricingContent() {
                   </ul>
                   <div className="mt-auto pt-4">
                     <a 
-                      href="https://buy.stripe.com/5kQdR81BK39e6Ly3nngnK02" 
+                      href="https://buy.stripe.com/cNibJ08086lqc5SbTTgnK05" 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="w-full px-6 py-3 bg-white/10 border border-white/20 text-white rounded-xl hover:bg-white/20 transition-colors inline-block text-center"
