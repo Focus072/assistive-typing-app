@@ -305,67 +305,66 @@ export function WaitlistExperience(): ReactElement {
       {/* Content Layer */}
       <div className="relative z-10 min-h-screen">
         {/* Top Navigation */}
-        <div className="absolute top-8 left-1/2 transform -translate-x-1/2 z-20">
-          <div className="bg-black/40 backdrop-blur-md border border-white/10 rounded-full px-6 py-3">
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-4">
-                {features.map((feature, index) => {
-                  const isActive = index === 2
-                  const className = `text-sm px-3 py-1 rounded-full transition-colors ${
-                    isActive
-                      ? "bg-black/60 text-white border border-white/20"
-                      : "text-white/60 hover:text-white/80"
-                  }`
+        <div className="absolute top-4 sm:top-8 left-1/2 transform -translate-x-1/2 z-20">
+          <div className="bg-black/40 backdrop-blur-md border border-white/10 rounded-full px-4 sm:px-6 py-2.5 sm:py-3">
+            <div className="flex items-center justify-center gap-3 sm:gap-6">
+              {features.map((feature, index) => {
+                const isActive = index === 2
+                const className = `text-xs sm:text-sm px-3 sm:px-3 py-1.5 sm:py-1 rounded-none sm:rounded-full transition-colors whitespace-nowrap relative ${
+                  isActive
+                    ? "text-white border-b-2 border-white pb-1.5 sm:border-0 sm:pb-1 sm:bg-black/60 sm:text-white sm:border sm:border-white/20"
+                    : "text-white/60 hover:text-white/80"
+                }`
 
-                  if (feature.href === "#") {
-                    return (
-                      <button
-                        key={feature.name}
-                        type="button"
-                        className={className}
-                      >
-                        {feature.name}
-                      </button>
-                    )
-                  }
-
+                if (feature.href === "#") {
                   return (
-                    <Link
+                    <button
                       key={feature.name}
-                      href={feature.href}
+                      type="button"
                       className={className}
                     >
                       {feature.name}
-                    </Link>
+                    </button>
                   )
-                })}
-              </div>
+                }
+
+                return (
+                  <Link
+                    key={feature.name}
+                    href={feature.href}
+                    className={className}
+                  >
+                    {feature.name}
+                  </Link>
+                )
+              })}
             </div>
           </div>
         </div>
 
         {/* Waitlist Card */}
-        <div className="flex items-center justify-center min-h-screen px-4">
-          <div className="relative">
-            <div className="relative backdrop-blur-xl bg-black/60 border border-white/20 rounded-3xl p-10 sm:p-12 w-full max-w-[560px] shadow-2xl">
+        <div className="flex items-center justify-center min-h-screen px-4 sm:px-6">
+          <div className="relative w-full">
+            <div className="relative backdrop-blur-xl bg-black/60 border border-white/20 rounded-2xl sm:rounded-3xl p-6 sm:p-10 md:p-12 w-full max-w-[560px] shadow-2xl mx-auto">
               <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-white/5 to-transparent pointer-events-none" />
 
               <div className="relative z-10">
                 {!isSubmitted ? (
                   <>
-                    <div className="mb-10 text-center">
-                      <h1 className="text-5xl sm:text-6xl font-light text-white mb-5 sm:mb-6 tracking-wide">
+                    <div className="mb-8 sm:mb-10 text-center">
+                      <h1 className="text-3xl sm:text-5xl md:text-6xl font-light text-white mb-4 sm:mb-6 tracking-wide">
                         Join the waitlist
                       </h1>
-                      <p className="text-white/70 text-lg sm:text-xl leading-relaxed px-2">
+                      <p className="text-white/70 text-base sm:text-lg md:text-xl leading-relaxed px-2">
                         Get early access to Typing Is Boring - the next generation
-                        <br />
+                        <br className="hidden sm:block" />
+                        <span className="sm:hidden"> </span>
                         typing automation platform launching soon
                       </p>
                     </div>
 
-                    <form onSubmit={handleSubmit} className="mb-8">
-                      <div className="flex gap-3">
+                    <form onSubmit={handleSubmit} className="mb-6 sm:mb-8">
+                      <div className="flex flex-col sm:flex-row gap-3">
                         <Input
                           type="email"
                           placeholder="your@email.com"
@@ -376,67 +375,67 @@ export function WaitlistExperience(): ReactElement {
                           }}
                           required
                           disabled={isSubmitting}
-                          className="flex-1 bg-black/40 border-white/20 text-white placeholder:text-white/50 focus:border-white/40 focus:ring-white/20 h-14 sm:h-16 rounded-xl backdrop-blur-sm text-base disabled:opacity-50"
+                          className="flex-1 bg-black/40 border-white/20 text-white placeholder:text-white/50 focus:border-white/40 focus:ring-white/20 h-12 sm:h-14 md:h-16 rounded-xl backdrop-blur-sm text-sm sm:text-base disabled:opacity-50"
                         />
                         <Button
                           type="submit"
                           disabled={isSubmitting}
-                          className="h-14 sm:h-16 px-8 bg-red-600 hover:bg-red-700 text-white font-medium rounded-xl transition-all duration-300 hover:shadow-lg hover:shadow-red-500/25 text-base disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="h-12 sm:h-14 md:h-16 px-6 sm:px-8 bg-red-600 hover:bg-red-700 text-white font-medium rounded-xl transition-all duration-300 hover:shadow-lg hover:shadow-red-500/25 text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
                         >
                           {isSubmitting ? "Joining..." : "Get Notified"}
                         </Button>
                       </div>
                       {error && (
-                        <p className="mt-3 text-sm text-red-400 text-center">{error}</p>
+                        <p className="mt-3 text-xs sm:text-sm text-red-400 text-center">{error}</p>
                       )}
                     </form>
 
                     {waitlistCount !== null && (
-                      <div className="flex items-center justify-center gap-4 mb-10">
+                      <div className="flex items-center justify-center gap-3 sm:gap-4 mb-8 sm:mb-10 flex-wrap">
                         <div className="flex -space-x-2">
-                          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-cyan-400 to-cyan-600 border-2 border-white/20 flex items-center justify-center text-white text-sm sm:text-base font-medium">
+                          <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full bg-gradient-to-br from-cyan-400 to-cyan-600 border-2 border-white/20 flex items-center justify-center text-white text-xs sm:text-sm md:text-base font-medium">
                             A
                           </div>
-                          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 border-2 border-white/20 flex items-center justify-center text-white text-sm sm:text-base font-medium">
+                          <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 border-2 border-white/20 flex items-center justify-center text-white text-xs sm:text-sm md:text-base font-medium">
                             B
                           </div>
-                          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 border-2 border-white/20 flex items-center justify-center text-white text-sm sm:text-base font-medium">
+                          <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 border-2 border-white/20 flex items-center justify-center text-white text-xs sm:text-sm md:text-base font-medium">
                             C
                           </div>
                         </div>
-                        <span className="text-white/70 text-base sm:text-lg">
+                        <span className="text-white/70 text-sm sm:text-base md:text-lg text-center">
                           {formatCount(waitlistCount)} People already joined
                         </span>
                       </div>
                     )}
 
-                    <div className="flex items-center justify-center gap-8 text-center px-2">
+                    <div className="flex items-center justify-center gap-3 sm:gap-6 md:gap-8 text-center px-2">
                       <div>
-                        <div className="text-5xl sm:text-6xl font-light text-white">{timeLeft.days}</div>
-                        <div className="text-sm text-white/60 uppercase tracking-wide mt-1">days</div>
+                        <div className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-light text-white">{timeLeft.days}</div>
+                        <div className="text-xs sm:text-sm text-white/60 uppercase tracking-wide mt-1">days</div>
                       </div>
-                      <div className="text-white/40 text-xl sm:text-2xl">|</div>
+                      <div className="text-white/40 text-lg sm:text-xl md:text-2xl hidden sm:block">|</div>
                       <div>
-                        <div className="text-5xl sm:text-6xl font-light text-white">{timeLeft.hours}</div>
-                        <div className="text-sm text-white/60 uppercase tracking-wide mt-1">hours</div>
+                        <div className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-light text-white">{timeLeft.hours}</div>
+                        <div className="text-xs sm:text-sm text-white/60 uppercase tracking-wide mt-1">hours</div>
                       </div>
-                      <div className="text-white/40 text-xl sm:text-2xl">|</div>
+                      <div className="text-white/40 text-lg sm:text-xl md:text-2xl hidden sm:block">|</div>
                       <div>
-                        <div className="text-5xl sm:text-6xl font-light text-white">{timeLeft.minutes}</div>
-                        <div className="text-sm text-white/60 uppercase tracking-wide mt-1">minutes</div>
+                        <div className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-light text-white">{timeLeft.minutes}</div>
+                        <div className="text-xs sm:text-sm text-white/60 uppercase tracking-wide mt-1">minutes</div>
                       </div>
-                      <div className="text-white/40 text-xl sm:text-2xl">|</div>
+                      <div className="text-white/40 text-lg sm:text-xl md:text-2xl hidden sm:block">|</div>
                       <div>
-                        <div className="text-5xl sm:text-6xl font-light text-white">{timeLeft.seconds}</div>
-                        <div className="text-sm text-white/60 uppercase tracking-wide mt-1">seconds</div>
+                        <div className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-light text-white">{timeLeft.seconds}</div>
+                        <div className="text-xs sm:text-sm text-white/60 uppercase tracking-wide mt-1">seconds</div>
                       </div>
                     </div>
                   </>
                 ) : (
-                  <div className="text-center py-4">
-                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r from-green-400/30 to-emerald-500/30 flex items-center justify-center border border-green-400/40">
+                  <div className="text-center py-4 sm:py-6">
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-3 sm:mb-4 rounded-full bg-gradient-to-r from-green-400/30 to-emerald-500/30 flex items-center justify-center border border-green-400/40">
                       <svg
-                        className="w-8 h-8 text-green-400 drop-shadow-lg"
+                        className="w-6 h-6 sm:w-8 sm:h-8 text-green-400 drop-shadow-lg"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -449,10 +448,10 @@ export function WaitlistExperience(): ReactElement {
                         />
                       </svg>
                     </div>
-                    <h3 className="text-xl font-semibold text-white mb-2 drop-shadow-lg">
+                    <h3 className="text-lg sm:text-xl font-semibold text-white mb-2 drop-shadow-lg">
                       You&apos;re on the list!
                     </h3>
-                    <p className="text-white/90 text-sm drop-shadow-md">
+                    <p className="text-white/90 text-xs sm:text-sm drop-shadow-md px-2">
                       We&apos;ll notify you when we launch. Thanks for joining!
                     </p>
                   </div>

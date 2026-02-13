@@ -201,41 +201,39 @@ export function PricingContent() {
       {/* Content Layer */}
       <div className="relative z-10 min-h-screen">
         {/* Top Navigation */}
-        <div className="absolute top-8 left-1/2 transform -translate-x-1/2 z-20">
-          <div className="bg-black/40 backdrop-blur-md border border-white/10 rounded-full px-6 py-3">
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-4">
-                {features.map((feature, index) => {
-                  const isActive = index === 1
-                  const className = `text-sm px-3 py-1 rounded-full transition-colors ${
-                    isActive
-                      ? "bg-black/60 text-white border border-white/20"
-                      : "text-white/60 hover:text-white/80"
-                  }`
+        <div className="absolute top-4 sm:top-8 left-1/2 transform -translate-x-1/2 z-20">
+          <div className="bg-black/40 backdrop-blur-md border border-white/10 rounded-full px-4 sm:px-6 py-2.5 sm:py-3">
+            <div className="flex items-center justify-center gap-3 sm:gap-6">
+              {features.map((feature, index) => {
+                const isActive = index === 1
+                const className = `text-xs sm:text-sm px-3 sm:px-3 py-1.5 sm:py-1 rounded-none sm:rounded-full transition-colors whitespace-nowrap relative ${
+                  isActive
+                    ? "text-white border-b-2 border-white pb-1.5 sm:border-0 sm:pb-1 sm:bg-black/60 sm:text-white sm:border sm:border-white/20"
+                    : "text-white/60 hover:text-white/80"
+                }`
 
-                  if (feature.href === "#") {
-                    return (
-                      <button
-                        key={feature.name}
-                        type="button"
-                        className={className}
-                      >
-                        {feature.name}
-                      </button>
-                    )
-                  }
-
+                if (feature.href === "#") {
                   return (
-                    <Link
+                    <button
                       key={feature.name}
-                      href={feature.href}
+                      type="button"
                       className={className}
                     >
                       {feature.name}
-                    </Link>
+                    </button>
                   )
-                })}
-              </div>
+                }
+
+                return (
+                  <Link
+                    key={feature.name}
+                    href={feature.href}
+                    className={className}
+                  >
+                    {feature.name}
+                  </Link>
+                )
+              })}
             </div>
           </div>
         </div>
