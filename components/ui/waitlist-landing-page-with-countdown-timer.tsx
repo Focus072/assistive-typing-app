@@ -293,13 +293,13 @@ export function WaitlistExperience(): ReactElement {
   const features = [
     { name: "How it works", href: "/how-it-works" },
     { name: "Pricing", href: "/pricing" },
-    { name: "Home", href: "/waitlist" },
+    { name: "Home", href: "/" },
     { name: "Launch", href: "/launch" },
     { name: "Updates", href: "/updates" },
   ]
 
   const mobileFeatures = [
-    { name: "Home", href: "/waitlist" },
+    { name: "Home", href: "/" },
     { name: "Pricing", href: "/pricing" },
     { name: "How it works", href: "/how-it-works" },
   ]
@@ -313,7 +313,7 @@ export function WaitlistExperience(): ReactElement {
       <div className="relative z-10 min-h-screen">
         {/* Navigation */}
         <MobileNav 
-          currentPath="/waitlist"
+          currentPath="/"
           links={features}
           mobileLinks={mobileFeatures}
         />

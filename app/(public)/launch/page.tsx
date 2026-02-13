@@ -1,7 +1,5 @@
 import type { Metadata } from "next"
-import { redirect } from "next/navigation"
 import { LaunchContent } from "@/components/ui/launch-page"
-import { isLocalDevelopment } from "@/lib/page-access"
 
 export const metadata: Metadata = {
   title: "Launch - Typing Is Boring",
@@ -10,11 +8,5 @@ export const metadata: Metadata = {
 }
 
 export default function LaunchPage() {
-  // In production, redirect to waitlist
-  // In local development, allow access
-  if (!isLocalDevelopment()) {
-    redirect("/waitlist")
-  }
-  
   return <LaunchContent />
 }

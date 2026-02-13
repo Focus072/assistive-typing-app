@@ -189,13 +189,13 @@ export function HowItWorksContent() {
   const features = [
     { name: "How it works", href: "/how-it-works" },
     { name: "Pricing", href: "/pricing" },
-    { name: "Home", href: "/waitlist" },
+    { name: "Home", href: "/" },
     { name: "Launch", href: "/launch" },
     { name: "Updates", href: "/updates" },
   ]
 
   const mobileFeatures = [
-    { name: "Home", href: "/waitlist" },
+    { name: "Home", href: "/" },
     { name: "Pricing", href: "/pricing" },
     { name: "How it works", href: "/how-it-works" },
   ]
@@ -296,7 +296,7 @@ export function HowItWorksContent() {
 
                 <div className="mt-10 sm:mt-12 pt-8 border-t border-white/10">
                   <Link
-                    href="/waitlist"
+                    href="/"
                     className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-4 bg-red-600 hover:bg-red-700 text-white font-medium rounded-xl transition-all duration-300 hover:shadow-lg hover:shadow-red-500/25"
                   >
                     Join the waitlist

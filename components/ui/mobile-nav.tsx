@@ -25,7 +25,7 @@ export function MobileNav({ currentPath, links, mobileLinks }: MobileNavProps) {
       <div className="flex items-center justify-between h-16 px-6">
         {/* Logo - Left side */}
         <Link 
-          href="/waitlist" 
+          href="/" 
           className="flex items-center justify-center w-10 h-10 rounded-lg bg-white/10 hover:bg-white/20 transition-colors flex-shrink-0"
           aria-label="Home"
         >
@@ -35,7 +35,7 @@ export function MobileNav({ currentPath, links, mobileLinks }: MobileNavProps) {
         {/* Desktop Navigation - Center */}
         <nav className="hidden sm:flex items-center justify-center gap-6 flex-1">
           {links.map((link, index) => {
-            const isActive = currentPath === link.href || (currentPath === "/" && link.href === "/waitlist")
+            const isActive = currentPath === link.href || (currentPath === "/" && link.href === "/")
             return (
               <Link
                 key={link.name}
@@ -92,7 +92,7 @@ export function MobileNav({ currentPath, links, mobileLinks }: MobileNavProps) {
           <div className="fixed top-16 left-0 right-0 bg-black/95 backdrop-blur-md border-b border-white/10 z-40 sm:hidden">
             <nav className="flex flex-col px-6 py-4 gap-1">
               {displayMobileLinks.map((link) => {
-                const isActive = currentPath === link.href || (currentPath === "/" && link.href === "/waitlist")
+                const isActive = currentPath === link.href || (currentPath === "/" && link.href === "/")
                 return (
                   <Link
                     key={link.name}
