@@ -201,15 +201,15 @@ export function PricingContent() {
       {/* Content Layer */}
       <div className="relative z-10 min-h-screen">
         {/* Top Navigation */}
-        <div className="absolute top-4 sm:top-8 left-1/2 transform -translate-x-1/2 z-20 w-[calc(100%-2rem)] sm:w-auto px-0">
-          <div className="bg-black/40 backdrop-blur-md border border-white/10 rounded-full px-4 sm:px-6 py-2.5 sm:py-3">
-            <div className="flex items-center justify-center gap-3 sm:gap-6">
+        <div className="absolute top-4 sm:top-8 left-1/2 transform -translate-x-1/2 z-20 w-full sm:w-auto max-w-full sm:max-w-none px-4 sm:px-0">
+          <div className="sm:bg-black/40 sm:backdrop-blur-md sm:border sm:border-white/10 rounded-none sm:rounded-full px-0 sm:px-6 py-2 sm:py-3">
+            <div className="flex items-center justify-center gap-4 sm:gap-6">
               {features.map((feature, index) => {
                 const isActive = index === 1
-                const className = `text-xs sm:text-sm px-3 sm:px-3 py-1.5 sm:py-1 rounded-none sm:rounded-full transition-colors whitespace-nowrap relative ${
+                const className = `text-sm sm:text-sm px-3 sm:px-3 py-2 sm:py-1 rounded-none sm:rounded-full transition-colors whitespace-nowrap relative font-medium ${
                   isActive
-                    ? "text-white border-b-2 border-white pb-1.5 sm:border-0 sm:pb-1 sm:bg-black/60 sm:text-white sm:border sm:border-white/20"
-                    : "text-white/60 hover:text-white/80"
+                    ? "text-white border-b-2 border-white pb-2 sm:border-0 sm:pb-1 sm:bg-black/60 sm:text-white sm:border sm:border-white/20"
+                    : "text-white/70 hover:text-white/90"
                 }`
 
                 if (feature.href === "#") {
@@ -288,9 +288,14 @@ export function PricingContent() {
                     </li>
                   </ul>
                   <div className="mt-auto pt-4">
-                    <button className="w-full px-6 py-3 bg-white/10 border border-white/20 text-white rounded-xl hover:bg-white/20 transition-colors">
-                      Coming soon
-                    </button>
+                    <a 
+                      href="https://buy.stripe.com/4gMeVc94caBG2vi1ffgnK00" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="w-full px-6 py-3 bg-white/10 border border-white/20 text-white rounded-xl hover:bg-white/20 transition-colors inline-block text-center"
+                    >
+                      Get Started
+                    </a>
                   </div>
                 </div>
                 <div className="absolute inset-0 rounded-3xl bg-gradient-to-t from-transparent via-white/[0.02] to-white/[0.05] pointer-events-none" />
@@ -336,9 +341,14 @@ export function PricingContent() {
                     </li>
                   </ul>
                   <div className="mt-auto pt-4">
-                    <button className="w-full px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-colors font-medium">
-                      Coming soon
-                    </button>
+                    <a 
+                      href="https://buy.stripe.com/8x200i2FOcJOee0ga9gnK01" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="w-full px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-colors font-medium inline-block text-center"
+                    >
+                      Get Started
+                    </a>
                   </div>
                 </div>
                 <div className="absolute inset-0 rounded-3xl bg-gradient-to-t from-transparent via-white/[0.02] to-white/[0.05] pointer-events-none" />
@@ -349,7 +359,7 @@ export function PricingContent() {
                 <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-white/5 to-transparent pointer-events-none" />
                 <div className="relative z-10">
                   <div className="mb-6">
-                    <h3 className="text-2xl font-semibold text-white mb-2">Enterprise</h3>
+                    <h3 className="text-2xl font-semibold text-white mb-2">Unlimited</h3>
                     <p className="text-white/60 text-sm">For teams and organizations</p>
                   </div>
                   <div className="mb-6">
@@ -379,9 +389,14 @@ export function PricingContent() {
                     </li>
                   </ul>
                   <div className="mt-auto pt-4">
-                    <button className="w-full px-6 py-3 bg-white/10 border border-white/20 text-white rounded-xl hover:bg-white/20 transition-colors">
-                      Coming soon
-                    </button>
+                    <a 
+                      href="https://buy.stripe.com/5kQdR81BK39e6Ly3nngnK02" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="w-full px-6 py-3 bg-white/10 border border-white/20 text-white rounded-xl hover:bg-white/20 transition-colors inline-block text-center"
+                    >
+                      Get Started
+                    </a>
                   </div>
                 </div>
                 <div className="absolute inset-0 rounded-3xl bg-gradient-to-t from-transparent via-white/[0.02] to-white/[0.05] pointer-events-none" />
