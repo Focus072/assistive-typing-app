@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { stripe, STRIPE_PRICE_IDS, type SubscriptionTier } from '@/lib/stripe'
+import { stripe as getStripe, STRIPE_PRICE_IDS, type SubscriptionTier } from '@/lib/stripe'
 import { z } from 'zod'
 
 export const dynamic = 'force-dynamic'
@@ -58,6 +58,7 @@ export async function POST(request: Request) {
 
     // 5. Create Stripe Checkout Session
     try {
+      const stripe = getStripe()
       const checkoutSession = await stripe.checkout.sessions.create({
         mode: 'subscription',
         payment_method_types: ['card'],

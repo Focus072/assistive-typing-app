@@ -1,16 +1,28 @@
 import Stripe from 'stripe'
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error('STRIPE_SECRET_KEY is not set in environment variables')
+const stripeKey = process.env.STRIPE_SECRET_KEY
+const isTestMode = stripeKey?.startsWith('sk_test_') ?? false
+
+// Only initialize Stripe if the key is available
+// This allows the build to complete even if env vars aren't set yet
+let stripeInstance: Stripe | null = null
+
+function getStripeInstance(): Stripe {
+  if (!stripeKey) {
+    throw new Error('STRIPE_SECRET_KEY is not set in environment variables')
+  }
+  if (!stripeInstance) {
+    stripeInstance = new Stripe(stripeKey, {
+      apiVersion: '2026-01-28.clover',
+      typescript: true,
+    })
+  }
+  return stripeInstance
 }
 
-const stripeKey = process.env.STRIPE_SECRET_KEY
-const isTestMode = stripeKey.startsWith('sk_test_')
-
-export const stripe = new Stripe(stripeKey, {
-  apiVersion: '2026-01-28.clover',
-  typescript: true,
-})
+// Export a getter function instead of the instance directly
+// This prevents build-time errors when env vars aren't set
+export const stripe = getStripeInstance
 
 // Price IDs for each tier
 export const STRIPE_PRICE_IDS = {
