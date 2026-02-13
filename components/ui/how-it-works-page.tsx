@@ -215,86 +215,89 @@ export function HowItWorksContent() {
         />
 
         {/* Main Content */}
-        <div className="flex items-center justify-center min-h-screen px-6 pt-28 pb-16">
+        <div className="flex items-center justify-center min-h-screen px-4 sm:px-6 pt-28 pb-16">
           <div className="w-full max-w-3xl">
-            <div className="relative backdrop-blur-xl bg-black/60 border border-white/20 rounded-3xl p-12 shadow-2xl">
+            <div className="relative backdrop-blur-xl bg-black/60 border border-white/20 rounded-3xl p-8 sm:p-12 shadow-2xl">
               <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-white/5 to-transparent pointer-events-none" />
 
               <div className="relative z-10">
-                <div className="mb-8">
-                  <h1 className="text-5xl font-light text-white mb-4 tracking-wide">
+                <div className="mb-8 sm:mb-10">
+                  <h1 className="text-3xl sm:text-4xl lg:text-5xl font-light text-white mb-4 tracking-wide leading-tight text-left sm:text-center">
                     How Typing Is Boring works
                   </h1>
-                  <p className="text-white/70 text-lg leading-relaxed">
+                  <p className="text-white/70 text-base sm:text-lg leading-relaxed text-left sm:text-center">
                     A simple process to make automated typing look and feel natural in your Google Docs.
                   </p>
                 </div>
 
-                <div className="space-y-6">
-                  <div className="flex gap-4">
-                    <div className="flex-shrink-0 w-10 h-10 rounded-full bg-red-600/20 border border-red-600/40 flex items-center justify-center">
+                <div className="relative space-y-10">
+                  {/* Vertical connecting line */}
+                  <div className="hidden sm:block absolute left-5 top-0 bottom-0 w-0.5 border-l border-dashed border-white/10" />
+
+                  <div className="relative flex gap-4 sm:gap-6">
+                    <div className="flex-shrink-0 w-10 h-10 rounded-full bg-red-600/20 border border-red-600/40 flex items-center justify-center relative z-10">
                       <span className="text-xl font-semibold text-red-400">1</span>
                     </div>
-                    <div>
-                      <h3 className="text-xl font-medium text-white mb-2">
+                    <div className="flex-1 pt-0">
+                      <h3 className="text-xl sm:text-2xl font-bold text-white mb-2 sm:mb-3">
                         Connect your Google account
                       </h3>
-                      <p className="text-white/70 leading-relaxed">
+                      <p className="text-sm sm:text-base text-gray-400 leading-relaxed">
                         Connect your Google account securely using OAuth — we never see your password
                         and you can revoke access at any time from your Google settings.
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex gap-4">
-                    <div className="flex-shrink-0 w-10 h-10 rounded-full bg-red-600/20 border border-red-600/40 flex items-center justify-center">
+                  <div className="relative flex gap-4 sm:gap-6">
+                    <div className="flex-shrink-0 w-10 h-10 rounded-full bg-red-600/20 border border-red-600/40 flex items-center justify-center relative z-10">
                       <span className="text-xl font-semibold text-red-400">2</span>
                     </div>
-                    <div>
-                      <h3 className="text-xl font-medium text-white mb-2">
+                    <div className="flex-1 pt-0">
+                      <h3 className="text-xl sm:text-2xl font-bold text-white mb-2 sm:mb-3">
                         Paste your text and pick a Google Doc
                       </h3>
-                      <p className="text-white/70 leading-relaxed">
+                      <p className="text-sm sm:text-base text-gray-400 leading-relaxed">
                         Paste your text, pick a Google Doc, and choose how fast you want it to type.
                         You stay in Google Docs to watch it in real time.
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex gap-4">
-                    <div className="flex-shrink-0 w-10 h-10 rounded-full bg-red-600/20 border border-red-600/40 flex items-center justify-center">
+                  <div className="relative flex gap-4 sm:gap-6">
+                    <div className="flex-shrink-0 w-10 h-10 rounded-full bg-red-600/20 border border-red-600/40 flex items-center justify-center relative z-10">
                       <span className="text-xl font-semibold text-red-400">3</span>
                     </div>
-                    <div>
-                      <h3 className="text-xl font-medium text-white mb-2">
+                    <div className="flex-1 pt-0">
+                      <h3 className="text-xl sm:text-2xl font-bold text-white mb-2 sm:mb-3">
                         Watch it type naturally
                       </h3>
-                      <p className="text-white/70 leading-relaxed">
+                      <p className="text-sm sm:text-base text-gray-400 leading-relaxed">
                         Typing Is Boring simulates a human typing into that document — including pauses,
                         bursts, and realistic delays — instead of pasting everything at once.
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex gap-4">
-                    <div className="flex-shrink-0 w-10 h-10 rounded-full bg-red-600/20 border border-red-600/40 flex items-center justify-center">
+                  <div className="relative flex gap-4 sm:gap-6">
+                    <div className="flex-shrink-0 w-10 h-10 rounded-full bg-red-600/20 border border-red-600/40 flex items-center justify-center relative z-10">
                       <span className="text-xl font-semibold text-red-400">4</span>
                     </div>
-                    <div>
-                      <h3 className="text-xl font-medium text-white mb-2">
+                    <div className="flex-1 pt-0">
+                      <h3 className="text-xl sm:text-2xl font-bold text-white mb-2 sm:mb-3">
                         Full control
                       </h3>
-                      <p className="text-white/70 leading-relaxed">
+                      <p className="text-sm sm:text-base text-gray-400 leading-relaxed">
                         You can pause, resume, or stop any job from the dashboard whenever you want.
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-10 pt-8 border-t border-white/10">
+                <div className="mt-10 sm:mt-12 pt-8 border-t border-white/10">
                   <Link
                     href="/waitlist"
-                    className="inline-flex items-center justify-center px-8 py-3 bg-red-600 hover:bg-red-700 text-white font-medium rounded-xl transition-all duration-300 hover:shadow-lg hover:shadow-red-500/25"
+                    className="w-full sm:w-auto inline-flex items-center justify-center px-8 py-4 bg-red-600 hover:bg-red-700 text-white font-medium rounded-xl transition-all duration-300 hover:shadow-lg hover:shadow-red-500/25"
                   >
                     Join the waitlist
                   </Link>
