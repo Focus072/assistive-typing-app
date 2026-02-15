@@ -10,11 +10,15 @@ const checkoutSchema = z.object({
   priceId: z.enum(['basic', 'pro', 'unlimited']),
 })
 
-// Shared checkout logic for both GET and POST
-async function createCheckoutSession(tier: 'basic' | 'pro' | 'unlimited', session: any) {
+// Shared checkout logic for both GET and POST. Pass requestOrigin from request.url so redirect URLs are always valid.
+async function createCheckoutSession(
+  tier: 'basic' | 'pro' | 'unlimited',
+  session: any,
+  requestOrigin: string
+) {
   // Get the Stripe Price ID for the selected tier
   const priceId = STRIPE_PRICE_IDS[tier]
-  
+
   if (!priceId || priceId.trim() === '') {
     console.error(`Missing price ID for tier: ${tier}`, {
       basic: STRIPE_PRICE_IDS.basic,
@@ -24,17 +28,19 @@ async function createCheckoutSession(tier: 'basic' | 'pro' | 'unlimited', sessio
     throw new Error(`Price ID not configured for ${tier} tier. Please check environment variables.`)
   }
 
-  // Log request details for debugging
+  // Use request origin so success/cancel URLs are always valid (no dependency on NEXTAUTH_URL)
+  const origin = requestOrigin.replace(/\/+$/, '')
+  const successUrl = `${origin}/dashboard?checkout=success`
+  const cancelUrl = `${origin}/pricing?checkout=cancelled`
+
   console.log('[CHECKOUT] Creating session:', {
     userId: session.user.id,
     email: session.user.email,
-    tier: tier,
-    priceId: priceId,
-    origin: process.env.NEXTAUTH_URL || 'http://localhost:3002',
+    tier,
+    priceId,
+    successUrl,
+    cancelUrl,
   })
-
-  // Set origin with port 3002 fallback
-  const origin = process.env.NEXTAUTH_URL || 'http://localhost:3002'
 
   // Create Stripe Checkout Session
   const stripe = getStripe()
@@ -49,8 +55,8 @@ async function createCheckoutSession(tier: 'basic' | 'pro' | 'unlimited', sessio
         quantity: 1,
       },
     ],
-    success_url: `${origin}/dashboard?checkout=success`,
-    cancel_url: `${origin}/pricing?checkout=cancelled`,
+    success_url: successUrl,
+    cancel_url: cancelUrl,
     metadata: {
       userId: session.user.id,
       email: session.user.email,
@@ -94,9 +100,10 @@ export async function GET(request: Request) {
     // 3. Validate priceId
     const validated = checkoutSchema.parse({ priceId: priceIdParam })
 
-    // 4. Create checkout session
+    // 4. Create checkout session (use request origin so Stripe redirect URLs are always valid)
+    const requestOrigin = new URL(request.url).origin
     try {
-      const checkoutSession = await createCheckoutSession(validated.priceId, session)
+      const checkoutSession = await createCheckoutSession(validated.priceId, session, requestOrigin)
       
       // 5. Redirect directly to Stripe Checkout
       if (checkoutSession.url) {
@@ -166,39 +173,55 @@ export async function POST(request: Request) {
     const body = await request.json()
     const validated = checkoutSchema.parse(body)
 
-    // 3. Create checkout session using shared logic
+    // 2b. Fail fast if price ID not configured (e.g. missing on Vercel)
+    const priceId = STRIPE_PRICE_IDS[validated.priceId]
+    if (!priceId?.trim()) {
+      console.error(`[CHECKOUT] Missing price ID for tier: ${validated.priceId}. Set STRIPE_*_PRICE_ID in Vercel.`)
+      return NextResponse.json(
+        {
+          error: `Checkout not configured for ${validated.priceId}. Add STRIPE_${validated.priceId.toUpperCase()}_PRICE_ID (and other STRIPE_* env vars) in Vercel → Project → Settings → Environment Variables.`,
+        },
+        { status: 400 }
+      )
+    }
+
+    // 3. Create checkout session (use request origin so Stripe redirect URLs are always valid)
+    const requestOrigin = new URL(request.url).origin
     try {
-      const checkoutSession = await createCheckoutSession(validated.priceId, session)
+      const checkoutSession = await createCheckoutSession(validated.priceId, session, requestOrigin)
 
       // 4. Return checkout URL
       return NextResponse.json({ 
         url: checkoutSession.url 
       })
     } catch (stripeError: any) {
-      // Handle Stripe-specific errors
+      // Handle Stripe-specific and config errors (e.g. missing price ID on Vercel)
       console.error('[STRIPE ERROR] Checkout session creation failed:', {
-        type: stripeError.type,
-        code: stripeError.code,
-        message: stripeError.message,
-        param: stripeError.param,
+        type: stripeError?.type,
+        code: stripeError?.code,
+        message: stripeError?.message,
+        param: stripeError?.param,
         tier: validated.priceId,
       })
-      
-      // Return user-friendly error message
+
       let errorMessage = 'Failed to create checkout session'
-      if (stripeError.type === 'StripeInvalidRequestError') {
-        if (stripeError.code === 'resource_missing') {
-          errorMessage = `Price ID not found. Please check your Stripe configuration.`
-        } else if (stripeError.message) {
+      if (stripeError?.message?.includes('Price ID not configured') || stripeError?.message?.includes('environment variables')) {
+        errorMessage = stripeError.message
+      } else if (stripeError?.type === 'StripeInvalidRequestError') {
+        if (stripeError?.code === 'resource_missing') {
+          errorMessage = 'Price ID not found. Set STRIPE_BASIC_PRICE_ID, STRIPE_PRO_PRICE_ID, STRIPE_UNLIMITED_PRICE_ID in Vercel.'
+        } else if (stripeError?.message) {
           errorMessage = stripeError.message
         }
+      } else if (stripeError?.message) {
+        errorMessage = stripeError.message
       }
-      
+
       return NextResponse.json(
-        { 
+        {
           error: errorMessage,
-          type: stripeError.type,
-          code: stripeError.code,
+          type: stripeError?.type,
+          code: stripeError?.code,
         },
         { status: 400 }
       )

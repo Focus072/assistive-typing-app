@@ -76,9 +76,12 @@ export function PricingCards({ onCheckout, highlightPlan = 'unlimited' }: Pricin
       }
 
       const data = await response.json()
-      
-      if (data.url) {
-        window.location.assign(data.url)
+      const url = data?.url
+      if (url && typeof url === 'string' && url.startsWith('http')) {
+        window.location.assign(url)
+      } else {
+        setIsLoading(null)
+        alert('Checkout started but redirect URL was missing. Please set NEXTAUTH_URL in Vercel (e.g. https://typingisboring.com).')
       }
     } catch (error) {
       console.error('Checkout error:', error)

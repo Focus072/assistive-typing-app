@@ -52,6 +52,17 @@ INNGEST_BASE_URL=https://your-domain.com/api/inngest
 INNGEST_BASE_URL=http://localhost:3000/api/inngest
 ```
 
+#### Stripe (for pricing/checkout)
+```env
+STRIPE_SECRET_KEY=sk_live_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_BASIC_PRICE_ID=price_...
+STRIPE_PRO_PRICE_ID=price_...
+STRIPE_UNLIMITED_PRICE_ID=price_...
+```
+
+Set these in **Vercel → Project → Settings → Environment Variables** for production. Without them, "Get started" / checkout returns 400.
+
 #### Optional: Base URL for SEO
 ```env
 NEXT_PUBLIC_BASE_URL=https://your-domain.com
@@ -64,6 +75,9 @@ NEXT_PUBLIC_BASE_URL=https://your-domain.com
 - [ ] `DATABASE_URL` - PostgreSQL connection string
 - [ ] `GOOGLE_CLIENT_ID` - From Google Cloud Console
 - [ ] `GOOGLE_CLIENT_SECRET` - From Google Cloud Console
+- [ ] `STRIPE_SECRET_KEY` - Stripe secret key (live for production)
+- [ ] `STRIPE_WEBHOOK_SECRET` - Stripe webhook signing secret
+- [ ] `STRIPE_BASIC_PRICE_ID`, `STRIPE_PRO_PRICE_ID`, `STRIPE_UNLIMITED_PRICE_ID` - Stripe Price IDs
 - [ ] `INNGEST_EVENT_KEY` - From Inngest Dashboard
 - [ ] `INNGEST_SIGNING_KEY` - From Inngest Dashboard
 - [ ] `INNGEST_BASE_URL` - Production Inngest endpoint
