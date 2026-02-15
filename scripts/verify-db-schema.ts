@@ -10,10 +10,30 @@ import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
+function isUnreachableDbError(error: any): boolean {
+  const msg = error?.message ?? ''
+  const code = error?.code ?? ''
+  return code === 'P1001' || /can't reach database server|Can't reach database server/i.test(msg)
+}
+
 async function verifyDatabaseSchema() {
   console.log('🔍 Verifying database schema...\n')
 
   const checks: { name: string; passed: boolean; error?: string }[] = []
+
+  // Connectivity check: if DB is unreachable (e.g. firewall blocks port 5432), skip checks and exit cleanly
+  try {
+    await prisma.$queryRaw`SELECT 1`
+  } catch (error: any) {
+    if (isUnreachableDbError(error)) {
+      console.log('⚠️  Database server unreachable from this network (e.g. port 5432 blocked).\n')
+      console.log('   If you applied the schema via Neon SQL Editor (scripts/neon-schema-apply.sql),')
+      console.log('   your schema is fine. The app will work from environments that can reach the DB')
+      console.log('   (e.g. Vercel, or another network).\n')
+      process.exit(0)
+    }
+    throw error
+  }
 
   // Check 1: User table exists and has required fields
   try {

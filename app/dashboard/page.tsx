@@ -32,7 +32,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     if (checkoutSuccess) {
       // Allow grace period - pass through to client component which will handle polling
       return <DashboardPageClient />
-    } else {
+      } else {
       // No grace period, redirect immediately
       redirect('/#pricing')
     }
