@@ -17,6 +17,7 @@ const tierInfo: Record<PlanTier, { name: string; price: string; color: string }>
   BASIC: { name: "Basic", price: "$10", color: "text-blue-400" },
   PRO: { name: "Pro", price: "$10", color: "text-yellow-400" },
   UNLIMITED: { name: "Unlimited", price: "$15", color: "text-purple-400" },
+  ADMIN: { name: "Admin", price: "—", color: "text-emerald-400" },
 }
 
 export function UpgradeModal({
