@@ -43,8 +43,8 @@ export function Header() {
 
 	return (
 		<header
-			className={cn('sticky top-0 z-50 w-full border-b border-transparent', {
-				'bg-background/95 supports-[backdrop-filter]:bg-background/50 border-border backdrop-blur-lg':
+			className={cn('sticky top-0 z-50 w-full', {
+				'bg-background/95 supports-[backdrop-filter]:bg-background/50 backdrop-blur-lg':
 					scrolled,
 			})}
 		>
@@ -130,6 +130,8 @@ export function Header() {
 					<MenuToggleIcon open={open} className="size-5" duration={300} />
 				</Button>
 			</nav>
+			{/* Thin gray separator matching vertical dividers (1px, same tone) */}
+			<div className="h-px w-full shrink-0 bg-gray-200/90" aria-hidden="true" />
 			<MobileMenu open={open} className="flex flex-col justify-between gap-2">
 				<div className="grid gap-y-2">
 					{links.map((link) => (

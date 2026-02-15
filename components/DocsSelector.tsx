@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { useDashboardTheme } from "@/app/dashboard/layout";
+import { useDashboardTheme } from "@/app/dashboard/theme-context";
 
 interface GoogleDoc {
   id: string;
@@ -409,7 +409,7 @@ export function DocsSelector({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 w-full max-w-full overflow-x-hidden">
       <label className={labelClasses}>
         <svg
           className={`w-4 h-4 ${isDark ? "text-white" : "text-black"}`}
@@ -430,15 +430,15 @@ export function DocsSelector({
         </span>
       </label>
 
-      {/* Split-view layout */}
+      {/* Split-view layout - viewport-safe on mobile */}
       <div
-        className={`rounded-lg border overflow-hidden ${
+        className={`rounded-lg border overflow-hidden w-full max-w-full ${
           isDark
             ? "bg-black/60 border-white/15"
             : "bg-white border-black/10"
         }`}
       >
-        <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-white/10">
+        <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-white/10 w-full max-w-full min-w-0">
           {/* Left: Document List */}
           <div className="p-3 md:p-4">
             {docs.length === 0 ? (
@@ -461,7 +461,7 @@ export function DocsSelector({
                   return (
                     <div
                       key={doc.id}
-                      className={`group relative rounded-md transition-all flex items-center gap-2 ${
+                      className={`group relative rounded-md transition-all flex items-center gap-2 min-w-0 max-w-full ${
                         isSelected
                           ? isDark
                             ? "bg-emerald-500/10 border-2 border-emerald-400/40"
@@ -629,7 +629,7 @@ export function DocsSelector({
                               }, 50);
                             }
                           }}
-                          className={`flex-shrink-0 p-1.5 rounded transition-colors mr-2 ${
+                          className={`flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center rounded transition-colors mr-2 touch-manipulation ${
                             isDark
                               ? "text-white/40 hover:text-white hover:bg-white/10"
                               : "text-black/40 hover:text-black hover:bg-black/10"
@@ -637,7 +637,7 @@ export function DocsSelector({
                           aria-label="Document actions"
                         >
                           <svg
-                            className="w-4 h-4"
+                            className="w-5 h-5"
                             fill="none"
                             viewBox="0 0 24 24"
                             stroke="currentColor"
@@ -746,7 +746,7 @@ export function DocsSelector({
                     }`}
                   >
                     <div
-                      className={`font-medium text-sm mb-1 ${
+                      className={`font-medium text-sm mb-1 truncate ${
                         isDark ? "text-white" : "text-black"
                       }`}
                     >

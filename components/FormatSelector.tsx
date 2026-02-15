@@ -5,7 +5,7 @@ import type { DocumentFormat } from "@/types";
 import { formatConfigs } from "@/lib/document-formats";
 import { FormatMetadataModal, type FormatMetadata } from "./FormatMetadataModal";
 import { CustomFormatModal, type CustomFormatConfig } from "./CustomFormatModal";
-import { useDashboardTheme } from "@/app/dashboard/layout";
+import { useDashboardTheme } from "@/app/dashboard/theme-context";
 
 interface FormatSelectorProps {
   value: DocumentFormat;

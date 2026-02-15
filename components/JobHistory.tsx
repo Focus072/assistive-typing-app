@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { formatDuration } from "@/lib/utils"
 import type { JobStatus } from "@/types"
-import { useDashboardTheme } from "@/app/dashboard/layout"
+import { useDashboardTheme } from "@/app/dashboard/theme-context"
 
 interface Job {
   id: string

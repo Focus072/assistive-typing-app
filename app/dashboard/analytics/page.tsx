@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
-import { useDashboardTheme } from "../layout"
+import { useDashboardTheme } from "../theme-context"
 
 interface JobStats {
   totalJobs: number

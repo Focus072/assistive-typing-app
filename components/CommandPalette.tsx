@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/components/ui/toast"
-import { useDashboardTheme } from "@/app/dashboard/layout"
+import { useDashboardTheme } from "@/app/dashboard/theme-context"
 
 interface Command {
   id: string

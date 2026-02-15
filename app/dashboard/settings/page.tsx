@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useToast } from "@/components/ui/toast"
-import { useDashboardTheme } from "../layout"
+import { useDashboardTheme } from "../theme-context"
 
 export default function SettingsPage() {
   const { isDark } = useDashboardTheme()

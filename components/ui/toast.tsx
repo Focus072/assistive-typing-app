@@ -1,7 +1,7 @@
 "use client"
 
 import { createContext, useContext, useState, useCallback, useEffect, useRef } from "react"
-import { useDashboardTheme } from "@/app/dashboard/layout"
+import { useDashboardTheme } from "@/app/dashboard/theme-context"
 
 type ToastType = "success" | "error" | "info" | "warning"
 

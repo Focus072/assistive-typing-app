@@ -1,7 +1,7 @@
 "use client";
 
 import { formatDuration } from "@/lib/utils";
-import { useDashboardTheme } from "@/app/dashboard/layout";
+import { useDashboardTheme } from "@/app/dashboard/theme-context";
 
 interface TimeSelectorProps {
   value: number;
@@ -81,10 +81,10 @@ export function TimeSelector({
           min={min}
           max={max}
           step={5}
-          className="relative w-full h-2 appearance-none bg-transparent cursor-pointer z-10
+          className="relative w-full h-3 appearance-none bg-transparent cursor-pointer z-10 touch-manipulation
             [&::-webkit-slider-thumb]:appearance-none
-            [&::-webkit-slider-thumb]:w-5
-            [&::-webkit-slider-thumb]:h-5
+            [&::-webkit-slider-thumb]:w-8
+            [&::-webkit-slider-thumb]:h-8
             [&::-webkit-slider-thumb]:rounded-full
             [&::-webkit-slider-thumb]:bg-white
             [&::-webkit-slider-thumb]:shadow-lg
@@ -92,8 +92,9 @@ export function TimeSelector({
             [&::-webkit-slider-thumb]:cursor-pointer
             [&::-webkit-slider-thumb]:transition-transform
             [&::-webkit-slider-thumb]:hover:scale-110
-            [&::-moz-range-thumb]:w-5
-            [&::-moz-range-thumb]:h-5
+            [&::-webkit-slider-thumb]:active:scale-105
+            [&::-moz-range-thumb]:w-8
+            [&::-moz-range-thumb]:h-8
             [&::-moz-range-thumb]:rounded-full
             [&::-moz-range-thumb]:bg-white
             [&::-moz-range-thumb]:border-0

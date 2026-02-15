@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { motion } from "framer-motion";
 import type { TypingProfile } from "@/types";
-import { useDashboardTheme } from "@/app/dashboard/layout";
+import { useDashboardTheme } from "@/app/dashboard/theme-context";
 import { TypingTest } from "./TypingTest";
 import { UpgradeModal } from "./UpgradeModal";
 import { isProfileAllowed, PlanTier } from "@/lib/constants/tiers";
@@ -143,7 +144,8 @@ export function TypingProfileSelector({
         Typing style
       </label>
 
-      <div className="grid grid-cols-5 gap-1.5">
+      {/* Mobile: 2-col grid (viewport-safe); Desktop: 5-col grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-1.5 w-full max-w-full">
         {profiles.map((profile) => {
           const isLocked = !isProfileAllowed(userTier, profile.value);
           const requiredTier: PlanTier = profile.value === "burst" || profile.value === "micropause" || profile.value === "typing-test" 
@@ -151,8 +153,10 @@ export function TypingProfileSelector({
             : "FREE";
 
           return (
-            <button
+            <motion.button
               key={profile.value}
+              whileTap={{ scale: 0.96 }}
+              transition={{ type: "spring", stiffness: 400, damping: 17 }}
               onClick={() => {
                 if (isLocked) {
                   setUpgradeModal({
@@ -169,7 +173,7 @@ export function TypingProfileSelector({
                 }
               }}
               disabled={isLocked}
-              className={`relative p-2 rounded-lg text-center transition-all group touch-manipulation active:scale-95 ${
+              className={`relative w-full min-w-0 p-2 rounded-lg text-center transition-all group touch-manipulation ${
                 isLocked
                   ? "opacity-50 cursor-not-allowed"
                   : ""
@@ -244,7 +248,7 @@ export function TypingProfileSelector({
                 {testWPM}
               </div>
             )}
-          </button>
+          </motion.button>
         );
         })}
       </div>

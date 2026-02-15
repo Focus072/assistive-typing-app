@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { JobHistory } from "@/components/JobHistory"
-import { useDashboardTheme } from "../layout"
+import { useDashboardTheme } from "../theme-context"
 
 export default function HistoryPage() {
   const { isDark } = useDashboardTheme()

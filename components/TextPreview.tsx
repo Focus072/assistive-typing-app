@@ -1,6 +1,6 @@
 "use client"
 
-import { useDashboardTheme } from "@/app/dashboard/layout"
+import { useDashboardTheme } from "@/app/dashboard/theme-context"
 import { formatConfigs } from "@/lib/document-formats"
 import type { DocumentFormat } from "@/types"
 import type { FormatMetadata } from "@/components/FormatMetadataModal"

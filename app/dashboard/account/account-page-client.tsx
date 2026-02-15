@@ -4,7 +4,7 @@ import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { signOut } from "next-auth/react"
-import { useDashboardTheme } from "../layout"
+import { useDashboardTheme } from "../theme-context"
 import { useState } from "react"
 
 type PlanTier = "FREE" | "BASIC" | "PRO" | "UNLIMITED"

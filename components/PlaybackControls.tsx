@@ -1,7 +1,7 @@
 "use client"
 
 import type { JobStatus } from "@/types"
-import { useDashboardTheme } from "@/app/dashboard/layout"
+import { useDashboardTheme } from "@/app/dashboard/theme-context"
 
 interface PlaybackControlsProps {
   status: JobStatus

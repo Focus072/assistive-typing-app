@@ -1,7 +1,7 @@
 "use client"
 
 import { useRef } from "react"
-import { useDashboardTheme } from "@/app/dashboard/layout"
+import { useDashboardTheme } from "@/app/dashboard/theme-context"
 
 interface TextInputProps {
   value: string

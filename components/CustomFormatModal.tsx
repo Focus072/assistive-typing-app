@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { useDashboardTheme } from "@/app/dashboard/layout"
+import { useDashboardTheme } from "@/app/dashboard/theme-context"
 import { useFocusTrap } from "@/hooks/useFocusTrap"
 import { useScrollLock } from "@/hooks/useScrollLock"
 

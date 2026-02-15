@@ -209,6 +209,8 @@ export function TrustSection() {
 						</p>
 					</div>
 				</div>
+				{/* Thin gray separator matching header (1px, same tone) */}
+				<div className="h-px w-full shrink-0 bg-gray-200/90 mt-8" aria-hidden="true" />
 			</div>
 		</section>
 	);

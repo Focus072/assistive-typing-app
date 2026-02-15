@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef, Suspense } from "react"
+import { motion, AnimatePresence } from "framer-motion"
 import { useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
@@ -22,7 +23,7 @@ import { useToast } from "@/components/ui/toast"
 import { AcademicIntegrityGate } from "@/components/AcademicIntegrityGate"
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts"
 import { formatDuration, calculateTimeRemaining } from "@/lib/utils"
-import { useDashboardTheme } from "./layout"
+import { useDashboardTheme } from "./theme-context"
 import type { TypingProfile, JobStatus, DocumentFormat } from "@/types"
 import type { FormatMetadata } from "@/components/FormatMetadataModal"
 
@@ -101,7 +102,7 @@ function PaymentProcessingModal({
   }, [])
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className={`rounded-2xl border p-8 max-w-md w-full mx-4 ${
+      <div className={`rounded-2xl border p-8 w-full max-w-[90vw] sm:max-w-md mx-4 ${
         isDark ? "bg-black border-white/20" : "bg-white border-black/10"
       }`}>
         <div className="flex flex-col items-center gap-4">
@@ -886,7 +887,7 @@ function DashboardContent() {
         initialConfig={customFormatConfig}
       />
       
-          <div className="space-y-6 md:space-y-8 pb-6">
+          <div className="space-y-6 md:space-y-8 pb-6 w-full max-w-full overflow-x-hidden min-w-0">
 
           {currentJobId && (
             <div className="flex flex-wrap items-center gap-3">
@@ -1043,39 +1044,47 @@ function DashboardContent() {
           </div>
         )}
 
-        {/* Main Layout - Simplified Flow */}
-        <div className="space-y-6 md:space-y-8">
-          {/* Text Input Section - Collapsible */}
+        {/* Main Layout - Simplified Flow (viewport-safe) */}
+        <div className="space-y-6 md:space-y-8 w-full max-w-full min-w-0">
+          {/* Text Input Section - Accordion */}
           <div className="space-y-2 md:space-y-3">
-            {!showTextInput && !textContent && (
-              <button
-                type="button"
-                onClick={() => setShowTextInput(true)}
-                className={`w-full flex items-center justify-between gap-2 px-4 py-3 rounded-lg border transition-colors ${
-                  isDark
-                    ? "bg-white/5 border-white/10 text-white hover:bg-white/10"
-                    : "bg-black/5 border-black/10 text-black hover:bg-black/10"
-                }`}
+            <button
+              type="button"
+              onClick={() => setShowTextInput((v) => !v)}
+              className={`w-full flex items-center justify-between gap-2 px-4 py-3 rounded-lg border transition-colors ${
+                isDark
+                  ? "bg-white/5 border-white/10 text-white hover:bg-white/10"
+                  : "bg-black/5 border-black/10 text-black hover:bg-black/10"
+              }`}
+              aria-expanded={showTextInput || !!textContent}
+            >
+              <span className="text-sm font-medium">Add text to type</span>
+              <motion.svg
+                className="w-4 h-4 flex-shrink-0"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                animate={{ rotate: showTextInput || textContent ? 180 : 0 }}
+                transition={{ duration: 0.2 }}
               >
-                <span className="text-sm font-medium">Add text to type</span>
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 4v16m8-8H4"
-                  />
-                </svg>
-              </button>
-            )}
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </motion.svg>
+            </button>
             
+            <AnimatePresence initial={false}>
             {(showTextInput || textContent) && (
-              <>
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.25, ease: "easeInOut" }}
+                className="overflow-hidden"
+              >
                 {!textContent && (
                   <div className="flex items-center justify-end">
                     <button
@@ -1147,8 +1156,9 @@ function DashboardContent() {
                     </button>
                   )}
                 </div>
-              </>
+              </motion.div>
             )}
+            </AnimatePresence>
           </div>
 
           {/* Document Selection - Primary (more prominent on mobile) */}
@@ -1185,26 +1195,27 @@ function DashboardContent() {
             />
           </div>
 
-          {/* Secondary: Advanced Options - Collapsed by default */}
+          {/* Secondary: Advanced Options - Accordion */}
           <div className={`pt-6 border-t ${
             isDark ? "border-white/5" : "border-black/5"
           }`}>
             <button
               type="button"
               onClick={() => setShowAdvanced((v) => !v)}
-              className={`flex items-center gap-2 text-xs transition-colors w-full ${
+              className={`flex items-center gap-2 text-xs transition-colors w-full py-1 ${
                 isDark
                   ? "text-white/50 hover:text-white/70"
                   : "text-black/50 hover:text-black/70"
               }`}
+              aria-expanded={showAdvanced}
             >
-              <svg
-                className={`w-3.5 h-3.5 transition-transform ${
-                  showAdvanced ? "rotate-90" : ""
-                }`}
+              <motion.svg
+                className="w-3.5 h-3.5 flex-shrink-0"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
+                animate={{ rotate: showAdvanced ? 90 : 0 }}
+                transition={{ duration: 0.2 }}
               >
                 <path
                   strokeLinecap="round"
@@ -1212,7 +1223,7 @@ function DashboardContent() {
                   strokeWidth={2}
                   d="M9 5l7 7-7 7"
                 />
-              </svg>
+              </motion.svg>
               <span>
                 {showAdvanced
                   ? "Hide advanced options"
@@ -1220,7 +1231,15 @@ function DashboardContent() {
               </span>
             </button>
 
+            <AnimatePresence initial={false}>
             {showAdvanced && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.25, ease: "easeInOut" }}
+                className="overflow-hidden"
+              >
               <div className="mt-4 space-y-3">
                 <FormatSelector
                   value={documentFormat}
@@ -1322,7 +1341,9 @@ function DashboardContent() {
                   </button>
                 )}
               </div>
+              </motion.div>
             )}
+            </AnimatePresence>
           </div>
 
           {documentId && (
@@ -1538,7 +1559,7 @@ function DashboardContent() {
                 : "hidden md:block"
             }`}
           >
-            <div className="container mx-auto px-4 md:px-6 py-3 md:py-4 flex flex-col gap-2 md:gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="w-full max-w-full px-4 md:px-6 py-3 md:py-4 flex flex-col gap-2 md:gap-3 md:flex-row md:items-center md:justify-between md:container md:mx-auto overflow-x-hidden">
               {/* Status text - hidden on mobile when ready, shown on desktop */}
               <div
                 className={`text-xs hidden md:block ${

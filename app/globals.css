@@ -57,9 +57,15 @@
   * {
     @apply border-border;
   }
+  html {
+    overflow-x: hidden;
+    overscroll-behavior-x: none;
+  }
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
+    overflow-x: hidden;
+    overscroll-behavior-x: none;
   }
 }
 
@@ -262,10 +268,4 @@ select:focus-visible:not(.dark) {
   }
 }
 
-/* Mobile viewport fix */
-@viewport {
-  width: device-width;
-  initial-scale: 1;
-  maximum-scale: 5;
-  user-scalable: yes;
-}
+/* Mobile viewport: controlled by Next.js viewport export in app/layout.tsx (width=device-width, maximum-scale=1, user-scalable=no) */
