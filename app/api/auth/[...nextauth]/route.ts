@@ -72,6 +72,7 @@ async function handleRequest(
     const url = new URL(req.url)
     const isCredentialsCallback = url.pathname.includes('/callback/credentials')
     const isSessionRequest = url.pathname.endsWith('/session') || url.pathname.includes('/session')
+    const isGoogleCallback = url.pathname.includes('/callback/google')
 
     if (process.env.NODE_ENV === "development") {
       console.error("[NextAuth] Handler error:", error)
