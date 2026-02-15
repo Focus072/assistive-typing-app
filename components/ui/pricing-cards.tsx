@@ -115,7 +115,7 @@ export function PricingCards({ onCheckout, highlightPlan = 'unlimited' }: Pricin
           </div>
           <div className="mb-6">
             <div className="flex items-baseline gap-2">
-              <span className="text-5xl font-semibold text-white">$10</span>
+              <span className="text-5xl font-semibold text-white">$5</span>
               <span className="text-sm text-white/50">/month</span>
             </div>
           </div>
