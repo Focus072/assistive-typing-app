@@ -27,10 +27,11 @@ export function MobileNav({ currentPath, links, mobileLinks }: MobileNavProps) {
   // Tier badge styling
   const getTierBadge = (tier: PlanTier) => {
     if (tier === "FREE") return null
-    const badges = {
+    const badges: Record<Exclude<PlanTier, "FREE">, { text: string; className: string }> = {
       BASIC: { text: "BASIC", className: "bg-blue-500/20 text-blue-400 border-blue-500/40" },
       PRO: { text: "PRO", className: "bg-yellow-500/20 text-yellow-400 border-yellow-500/40" },
       UNLIMITED: { text: "UNLIMITED", className: "bg-purple-500/20 text-purple-400 border-purple-500/40" },
+      ADMIN: { text: "ADMIN", className: "bg-emerald-500/20 text-emerald-400 border-emerald-500/40" },
     }
     return badges[tier]
   }
