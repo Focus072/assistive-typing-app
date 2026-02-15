@@ -589,11 +589,6 @@ export const authOptions: NextAuthOptions = {
       fetch('http://127.0.0.1:7243/ingest/8bf28703-bae7-4dfb-bbed-261788013e7a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/auth.ts:584',message:'events.linkAccount: Triggered',data:{userId:user?.id,provider:account?.provider,providerAccountId:account?.providerAccountId},timestamp:Date.now(),runId:'run1',hypothesisId:'B'})}).catch(()=>{});
       // #endregion
     },
-    async signIn({ user, account, isNewUser }) {
-      // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/8bf28703-bae7-4dfb-bbed-261788013e7a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/auth.ts:589',message:'events.signIn (alternative): Triggered',data:{userId:user?.id,userEmail:user?.email,isNewUser,provider:account?.provider},timestamp:Date.now(),runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-      // #endregion
-    },
   },
   session: {
     strategy: "jwt",
