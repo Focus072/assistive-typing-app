@@ -48,7 +48,11 @@ const AnimatedNavLink = ({
   );
 };
 
-function MiniNavbar() {
+interface HomeNavbarProps {
+  onPricingClick?: () => void;
+}
+
+function MiniNavbar(props?: HomeNavbarProps) {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
@@ -121,10 +125,11 @@ function MiniNavbar() {
     </div>
   );
 
-  const navLinksData: { id: NavSectionId; label: string }[] = [
+  const navLinksData: { id: NavSectionId | "pricing"; label: string; onClick?: () => void }[] = [
     { id: "how-it-works", label: "How it works" },
     { id: "trust", label: "Trust" },
     { id: "about", label: "About" },
+    { id: "pricing", label: "Pricing", onClick: props?.onPricingClick },
   ];
 
   const isLoading = status === "loading";
@@ -242,22 +247,25 @@ function MiniNavbar() {
   return (
     <>
       <header
-        className={`fixed top-6 left-1/2 transform -translate-x-1/2 z-20
+        className={`fixed top-0 left-0 right-0 z-50
                        flex flex-col items-center
-                       pl-6 pr-6 py-3 backdrop-blur-sm
-                       ${headerShapeClass}
-                       border border-[#333] bg-[#1f1f1f57]
-                       w-[calc(100%-2rem)] sm:w-auto
-                       transition-[border-radius] duration-0 ease-in-out`}
+                       px-6 py-3 backdrop-blur-md bg-black/60 border-b border-white/10
+                       transition-all duration-300 ease-in-out`}
       >
-        <div className="flex items-center justify-between w-full gap-x-6 sm:gap-x-8">
+        <div className="flex items-center justify-between w-full max-w-7xl mx-auto gap-x-6 sm:gap-x-8">
           <div className="flex items-center">{logoElement}</div>
 
           <nav className="hidden sm:flex items-center space-x-6 text-sm">
             {navLinksData.map((link) => (
               <AnimatedNavLink
                 key={link.id}
-                onClick={() => openModal(link.id)}
+                onClick={() => {
+                  if (link.id === "pricing" && link.onClick) {
+                    link.onClick();
+                  } else if (link.id !== "pricing") {
+                    openModal(link.id as NavSectionId);
+                  }
+                }}
               >
                 {link.label}
               </AnimatedNavLink>
@@ -321,7 +329,11 @@ function MiniNavbar() {
                 key={link.id}
                 type="button"
                 onClick={() => {
-                  openModal(link.id);
+                  if (link.id === "pricing" && link.onClick) {
+                    link.onClick();
+                  } else if (link.id !== "pricing") {
+                    openModal(link.id as NavSectionId);
+                  }
                   setIsOpen(false);
                 }}
                 className="text-gray-300 hover:text-white transition-colors w-full text-center"
@@ -392,7 +404,9 @@ function MiniNavbar() {
 
 // Re-export the main navbar so other pages (like /testhomepage)
 // can reuse the exact same header/navigation as the main home page.
-export { MiniNavbar as HomeNavbar };
+export function HomeNavbar(props?: HomeNavbarProps) {
+  return <MiniNavbar {...props} />;
+}
 
 export function SignInPageAuthWrapper({ className }: SignInPageProps) {
   return (

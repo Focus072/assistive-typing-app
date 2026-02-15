@@ -7,6 +7,7 @@ import dynamic from "next/dynamic";
 import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { HomeNavbar } from "@/components/ui/sign-in-flow-auth";
+import { PricingCards } from "@/components/ui/pricing-cards";
 
 // Lazy getter for DynamicShader to prevent module-level evaluation
 // This function is only called when DotMatrix component mounts, not during module initialization
@@ -307,6 +308,13 @@ export const SignInPage = ({ className }: SignInPageProps) => {
     router.push("/dashboard");
   };
 
+  const scrollToPricing = () => {
+    const pricingSection = document.getElementById("pricing-section");
+    if (pricingSection) {
+      pricingSection.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
   const isAuthenticated = status === "authenticated";
 
   return (
@@ -332,7 +340,7 @@ export const SignInPage = ({ className }: SignInPageProps) => {
       {/* Content Layer */}
       <div className="relative z-10 flex flex-col flex-1">
         {/* Top navigation: auth-aware navbar with How it works / Trust / About */}
-        <HomeNavbar />
+        <HomeNavbar onPricingClick={scrollToPricing} />
 
         {/* Main hero */}
         <main className="flex flex-1 items-center justify-center px-6 pt-28 pb-16">
@@ -378,11 +386,10 @@ export const SignInPage = ({ className }: SignInPageProps) => {
                   <div className="flex flex-col gap-2">
                     <button
                       type="button"
-                      onClick={handleGoogleSignIn}
-                      className="backdrop-blur-[2px] inline-flex items-center justify-center gap-2 w-full sm:w-auto sm:max-w-[240px] bg-white text-black rounded-full py-3 px-6 text-sm font-medium hover:bg-white/90 transition-colors"
+                      onClick={scrollToPricing}
+                      className="inline-flex items-center justify-center gap-2 w-full sm:w-auto sm:max-w-[280px] bg-gradient-to-r from-red-600 to-red-700 text-white rounded-full py-3.5 px-8 text-sm font-semibold hover:from-red-700 hover:to-red-800 transition-all shadow-lg shadow-red-500/30 hover:shadow-xl hover:shadow-red-500/40 hover:-translate-y-0.5"
                     >
-                      <span className="text-lg">G</span>
-                      <span>Sign in with Google</span>
+                      Get Started - View Plans
                     </button>
                     <p className="text-xs text-white/50 text-center sm:text-left">
                       No install. No extensions.
@@ -581,6 +588,69 @@ export const SignInPage = ({ className }: SignInPageProps) => {
             </aside>
           </div>
         </main>
+
+        {/* Trust Bar & Urgency Badge */}
+        <div className="relative z-10 px-6 pb-12">
+          <div className="max-w-7xl mx-auto">
+            {/* Urgency Badge */}
+            <div className="flex justify-center mb-8">
+              <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-500/20 border border-red-500/40 text-red-300 text-xs font-medium">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full rounded-full bg-red-400 animate-ping opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-red-400" />
+                </span>
+                Waitlist over — Live access now available
+              </span>
+            </div>
+
+            {/* Trust Bar - Single cohesive dark pill */}
+            <div className="flex flex-wrap items-center justify-center">
+              <div className="inline-flex items-center gap-4 sm:gap-6 px-6 py-3 rounded-full bg-black/40 backdrop-blur-md border border-white/5 text-xs text-white/60">
+                <div className="flex items-center gap-2">
+                  <svg className="w-4 h-4 text-white/80" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                  </svg>
+                  <span>Official Google OAuth</span>
+                </div>
+                <div className="w-px h-4 bg-white/10" />
+                <div className="flex items-center gap-2">
+                  <svg className="w-4 h-4 text-white/80" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                  </svg>
+                  <span>Stripe Secure Payments</span>
+                </div>
+                <div className="w-px h-4 bg-white/10" />
+                <div className="flex items-center gap-2">
+                  <svg className="w-4 h-4 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                  <span>Your data stays private</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Pricing Section */}
+        <section id="pricing-section" className="relative z-10 px-6 py-32 sm:py-40 mt-16">
+          <div className="max-w-7xl mx-auto">
+            {/* Section Header */}
+            <div className="text-center mb-12 sm:mb-16">
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-white mb-3 sm:mb-4 tracking-tighter">
+                Simple, transparent pricing
+              </h2>
+              <p className="text-white/70 text-base sm:text-lg leading-relaxed max-w-2xl mx-auto">
+                Choose the perfect plan for your typing automation needs. All plans include core features.
+              </p>
+            </div>
+
+            {/* Pricing Cards */}
+            <PricingCards highlightPlan="unlimited" />
+          </div>
+        </section>
       </div>
     </div>
   );
