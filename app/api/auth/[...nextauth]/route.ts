@@ -2,6 +2,7 @@
 import "@/lib/suppress-warnings"
 
 import NextAuth from "next-auth"
+import { NextResponse } from "next/server"
 import { authOptions } from "@/lib/auth"
 
 const handler = NextAuth(authOptions)
@@ -68,29 +69,30 @@ async function handleRequest(
     // #endregion
     return response
   } catch (error: any) {
-    // For credentials callbacks, if it's a database error, try to allow fallback
     const url = new URL(req.url)
     const isCredentialsCallback = url.pathname.includes('/callback/credentials')
-    const isGoogleCallback = url.pathname.includes('/callback/google')
-    
-    if (isCredentialsCallback && 
-        (error?.message?.includes("quota") || 
-         error?.message?.includes("compute time") ||
-         error?.message?.includes("database"))) {
-      console.warn("[NextAuth] Database error in credentials callback - allowing fallback")
-      // Return a redirect to indicate the error, but don't throw
-      // The client will handle the error message
-    }
-    
+    const isSessionRequest = url.pathname.endsWith('/session') || url.pathname.includes('/session')
+
     if (process.env.NODE_ENV === "development") {
       console.error("[NextAuth] Handler error:", error)
     }
-    
+
     // #region agent log
     fetch('http://127.0.0.1:7243/ingest/8bf28703-bae7-4dfb-bbed-261788013e7a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'app/api/auth/[...nextauth]/route.ts:88',message:'NextAuth handler: Error caught',data:{errorMessage:error?.message,errorCode:error?.code,errorName:error?.name,isGoogleCallback,errorStack:error?.stack?.substring(0,500)},timestamp:Date.now(),runId:'run1',hypothesisId:'D'})}).catch(()=>{});
     // #endregion
-    
-    throw error
+
+    // Return JSON so the client never gets HTML (avoids CLIENT_FETCH_ERROR "Unexpected token '<'")
+    if (isSessionRequest) {
+      return NextResponse.json(
+        { error: error?.message || 'Session fetch failed' },
+        { status: 500 }
+      )
+    }
+    // For any other auth API error, still return JSON so the client never receives an HTML error page
+    return NextResponse.json(
+      { error: error?.message || 'Auth request failed' },
+      { status: 500 }
+    )
   }
 }
 

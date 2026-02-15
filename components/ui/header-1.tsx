@@ -77,14 +77,10 @@ export function Header() {
 					))}
 					{status === 'authenticated' && session ? (
 						<>
-							{(session.user as any).subscriptionStatus === 'active' && (
-								<Button 
-									variant="outline"
-									onClick={() => {
-										window.location.href = '/dashboard'
-									}}
-								>
-									Go to Dashboard
+							{/* Only show Dashboard if they have a paid plan (active subscription) */}
+							{(session.user as any)?.subscriptionStatus === 'active' && (
+								<Button variant="outline" asChild>
+									<Link href="/dashboard">Dashboard</Link>
 								</Button>
 							)}
 							<Button
@@ -160,19 +156,16 @@ export function Header() {
 				<div className="flex flex-col gap-2">
 					{status === 'authenticated' && session ? (
 						<>
-							{(session.user as any).subscriptionStatus === 'active' && (
-								<Button 
-									variant="outline" 
-									className="w-full bg-transparent"
-									onClick={() => {
-										setOpen(false)
-										window.location.href = '/dashboard'
-									}}
-								>
-									Go to Dashboard
+							{/* Only show Dashboard if they have a paid plan (active subscription) */}
+							{(session.user as any)?.subscriptionStatus === 'active' && (
+								<Button variant="outline" asChild className="w-full">
+									<Link href="/dashboard" onClick={() => setOpen(false)}>
+										Dashboard
+									</Link>
 								</Button>
 							)}
 							<Button 
+								variant="outline"
 								className="w-full"
 								onClick={() => {
 									setOpen(false)

@@ -282,6 +282,8 @@ if (typeof window === 'undefined') {
 // #endregion
 
 export const authOptions: NextAuthOptions = {
+  // Allow requests when Host differs from NEXTAUTH_URL (e.g. localhost vs 127.0.0.1, or behind proxy)
+  trustHost: true,
   // Use PrismaAdapter - it handles Account/Session creation automatically
   // We'll supplement it with manual token saving in events.signIn
   adapter,

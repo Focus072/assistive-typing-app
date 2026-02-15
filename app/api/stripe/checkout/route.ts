@@ -31,7 +31,7 @@ async function createCheckoutSession(
   // Use request origin so success/cancel URLs are always valid (no dependency on NEXTAUTH_URL)
   const origin = requestOrigin.replace(/\/+$/, '')
   const successUrl = `${origin}/dashboard?checkout=success`
-  const cancelUrl = `${origin}/pricing?checkout=cancelled`
+  const cancelUrl = `${origin}/`
 
   console.log('[CHECKOUT] Creating session:', {
     userId: session.user.id,

@@ -55,7 +55,7 @@ DATABASE_URL=postgresql://user:password@host:5432/database?sslmode=require
 5. Configure OAuth consent screen
 6. Add authorized redirect URIs:
    - Production: `https://your-domain.com/api/auth/callback/google`
-   - Development: `http://localhost:3000/api/auth/callback/google`
+   - Local (this app): `http://localhost:3002/api/auth/callback/google`
 
 ```env
 GOOGLE_CLIENT_ID=<from-google-cloud-console>

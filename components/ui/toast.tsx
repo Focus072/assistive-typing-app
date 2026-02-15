@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, useCallback, useEffect } from "react"
+import { createContext, useContext, useState, useCallback, useEffect, useRef } from "react"
 import { useDashboardTheme } from "@/app/dashboard/layout"
 
 type ToastType = "success" | "error" | "info" | "warning"
@@ -68,10 +68,19 @@ function ToastContainer({ toasts, removeToast }: { toasts: Toast[]; removeToast:
 function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
   const { isDark } = useDashboardTheme()
   const [progress, setProgress] = useState(100)
+  const mountedRef = useRef(true)
+
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
 
   useEffect(() => {
     if (toast.duration && toast.duration > 0) {
       const interval = setInterval(() => {
+        if (!mountedRef.current) return
         setProgress((prev) => {
           const newProgress = prev - (100 / (toast.duration! / 100))
           if (newProgress <= 0) {

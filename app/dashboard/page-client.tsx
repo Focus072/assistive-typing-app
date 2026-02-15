@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useState, useEffect, useCallback, useRef, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
@@ -82,6 +82,64 @@ function DashboardSkeleton() {
   )
 }
 
+function PaymentProcessingModal({
+  isDark,
+  remainingSeconds,
+  onContinue,
+}: {
+  isDark: boolean
+  remainingSeconds: number
+  onContinue: () => void
+}) {
+  const [showContinue, setShowContinue] = useState(false)
+  useEffect(() => {
+    const id = setTimeout(() => setShowContinue(true), 10_000) // After 10s, allow dismiss so user is never stuck
+    return () => clearTimeout(id)
+  }, [])
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div className={`rounded-2xl border p-8 max-w-md w-full mx-4 ${
+        isDark ? "bg-black border-white/20" : "bg-white border-black/10"
+      }`}>
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+          <div className="text-center space-y-2">
+            <h3 className={`text-lg font-semibold ${isDark ? "text-white" : "text-black"}`}>
+              Finalizing your access...
+            </h3>
+            <p className={`text-sm ${isDark ? "text-white/70" : "text-black/70"}`}>
+              Your payment was successful! We're processing your subscription.
+              {remainingSeconds > 0 && (
+                <span className="block mt-2 text-xs">
+                  This may take up to {remainingSeconds} seconds...
+                </span>
+              )}
+            </p>
+          </div>
+          {showContinue && (
+            <div className="flex flex-col items-center gap-2 w-full">
+              <p className={`text-xs ${isDark ? "text-white/50" : "text-black/50"}`}>
+                Taking longer? Your access will update shortly.
+              </p>
+              <button
+                type="button"
+                onClick={onContinue}
+                className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                  isDark
+                    ? "bg-white/15 hover:bg-white/25 text-white"
+                    : "bg-black/10 hover:bg-black/20 text-black"
+                }`}
+              >
+                Continue to dashboard
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function DashboardContent() {
   const router = useRouter()
   const { data: session, status, update: updateSession } = useSession()
@@ -110,6 +168,8 @@ function DashboardContent() {
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const timerUpdateRef = useRef<NodeJS.Timeout | null>(null)
   const gracePeriodTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const userContinuedRef = useRef(false)
+  const hasShownPaymentSuccessToastRef = useRef(false)
   const GRACE_PERIOD_MS = 30 * 1000 // 30 seconds
   const POLLING_INTERVAL_MS = 3 * 1000 // Poll every 3 seconds
 
@@ -139,24 +199,29 @@ function DashboardContent() {
     }
   }, [isProcessingPayment, gracePeriodStart])
 
-  // Handle checkout success with grace period and polling
+  // Handle checkout success with grace period and polling (defer setState to avoid update-before-mount)
   useEffect(() => {
     if (checkoutParam === "success" && status === "authenticated") {
       const subscriptionStatus = (session?.user as any)?.subscriptionStatus
       
-      // If subscription is already active, proceed normally
+      // If subscription is already active, proceed normally (show toast only once)
       if (subscriptionStatus === 'active') {
         updateSession().then(() => {
-          toast.addToast("Payment Successful! Your plan has been upgraded. Enjoy your new features!", "success")
+          if (!hasShownPaymentSuccessToastRef.current) {
+            hasShownPaymentSuccessToastRef.current = true
+            toast.addToast("Payment Successful! Your plan has been upgraded. Enjoy your new features!", "success")
+          }
           setShowConfetti(true)
           router.replace("/dashboard", { scroll: false })
         })
         return
       }
       
-      // Start grace period
-      setIsProcessingPayment(true)
-      setGracePeriodStart(Date.now())
+      // Start grace period (defer so component is committed before state update)
+      let deferredId: ReturnType<typeof setTimeout> | null = setTimeout(() => {
+        setIsProcessingPayment(true)
+        setGracePeriodStart(Date.now())
+      }, 0)
       
       // Initial session refresh
       updateSession().catch((error) => {
@@ -177,6 +242,7 @@ function DashboardContent() {
       
       // Cleanup: Stop polling after grace period expires
       gracePeriodTimeoutRef.current = setTimeout(() => {
+        if (userContinuedRef.current) return
         if (pollingIntervalRef.current) {
           clearInterval(pollingIntervalRef.current)
           pollingIntervalRef.current = null
@@ -184,17 +250,21 @@ function DashboardContent() {
         
         // Check one final time
         updateSession().then(() => {
+          if (userContinuedRef.current) return
           // Give a moment for session to update, then check
           setTimeout(() => {
+            if (userContinuedRef.current) return
             const finalStatus = (session?.user as any)?.subscriptionStatus
             if (finalStatus === 'active') {
               setIsProcessingPayment(false)
               setGracePeriodStart(null)
-              toast.addToast("Payment Successful! Your plan has been upgraded. Enjoy your new features!", "success")
+              if (!hasShownPaymentSuccessToastRef.current) {
+                hasShownPaymentSuccessToastRef.current = true
+                toast.addToast("Payment Successful! Your plan has been upgraded. Enjoy your new features!", "success")
+              }
               setShowConfetti(true)
               router.replace("/dashboard", { scroll: false })
             } else {
-              // Grace period expired, redirect to pricing
               setIsProcessingPayment(false)
               setGracePeriodStart(null)
               toast.addToast("Payment is being processed. Please wait a moment and refresh the page.", "info")
@@ -202,6 +272,7 @@ function DashboardContent() {
             }
           }, 500)
         }).catch((error) => {
+          if (userContinuedRef.current) return
           console.error("Failed to check final status:", error)
           setIsProcessingPayment(false)
           setGracePeriodStart(null)
@@ -210,6 +281,7 @@ function DashboardContent() {
       }, GRACE_PERIOD_MS)
       
       return () => {
+        if (deferredId != null) clearTimeout(deferredId)
         if (pollingIntervalRef.current) {
           clearInterval(pollingIntervalRef.current)
           pollingIntervalRef.current = null
@@ -231,14 +303,25 @@ function DashboardContent() {
     if (isProcessingPayment && session) {
       const subscriptionStatus = (session.user as any)?.subscriptionStatus
       if (subscriptionStatus === 'active') {
-        // Success! Stop polling and show success message
+        // Success! Stop polling and timers, then show success message
         if (pollingIntervalRef.current) {
           clearInterval(pollingIntervalRef.current)
           pollingIntervalRef.current = null
         }
+        if (gracePeriodTimeoutRef.current) {
+          clearTimeout(gracePeriodTimeoutRef.current)
+          gracePeriodTimeoutRef.current = null
+        }
+        if (timerUpdateRef.current) {
+          clearTimeout(timerUpdateRef.current)
+          timerUpdateRef.current = null
+        }
         setIsProcessingPayment(false)
         setGracePeriodStart(null)
-        toast.addToast("Payment Successful! Your plan has been upgraded. Enjoy your new features!", "success")
+        if (!hasShownPaymentSuccessToastRef.current) {
+          hasShownPaymentSuccessToastRef.current = true
+          toast.addToast("Payment Successful! Your plan has been upgraded. Enjoy your new features!", "success")
+        }
         setShowConfetti(true)
         router.replace("/dashboard", { scroll: false })
       }
@@ -268,17 +351,23 @@ function DashboardContent() {
     }
   }, [textContent, showTextInput])
 
-  // Fetch document URL when documentId changes
+  // Fetch document URL when documentId changes (defer sync setState to avoid update-before-mount in Next.js 16)
   useEffect(() => {
     if (!documentId) {
-      setDocumentUrl(null)
-      setIframeError(false)
-      return
+      const id = setTimeout(() => {
+        setDocumentUrl(null)
+        setIframeError(false)
+      }, 0)
+      return () => clearTimeout(id)
     }
 
     let cancelled = false
-    setLoadingDocumentUrl(true)
-    setIframeError(false) // Reset iframe error when document changes
+    const syncId = setTimeout(() => {
+      if (!cancelled) {
+        setLoadingDocumentUrl(true)
+        setIframeError(false)
+      }
+    }, 0)
 
     const fetchDocumentUrl = async () => {
       try {
@@ -307,6 +396,7 @@ function DashboardContent() {
 
     return () => {
       cancelled = true
+      clearTimeout(syncId)
     }
   }, [documentId])
 
@@ -739,34 +829,29 @@ function DashboardContent() {
       
       {/* Payment Processing Overlay */}
       {isProcessingPayment && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className={`rounded-2xl border p-8 max-w-md w-full mx-4 ${
-            isDark 
-              ? "bg-black border-white/20" 
-              : "bg-white border-black/10"
-          }`}>
-            <div className="flex flex-col items-center gap-4">
-              <div className="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
-              <div className="text-center space-y-2">
-                <h3 className={`text-lg font-semibold ${
-                  isDark ? "text-white" : "text-black"
-                }`}>
-                  Finalizing your access...
-                </h3>
-                <p className={`text-sm ${
-                  isDark ? "text-white/70" : "text-black/70"
-                }`}>
-                  Your payment was successful! We're processing your subscription.
-                  {remainingSeconds > 0 && (
-                    <span className="block mt-2 text-xs">
-                      This may take up to {remainingSeconds} seconds...
-                    </span>
-                  )}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
+        <PaymentProcessingModal
+          isDark={isDark}
+          remainingSeconds={remainingSeconds}
+          onContinue={() => {
+            userContinuedRef.current = true
+            setIsProcessingPayment(false)
+            setGracePeriodStart(null)
+            if (pollingIntervalRef.current) {
+              clearInterval(pollingIntervalRef.current)
+              pollingIntervalRef.current = null
+            }
+            if (gracePeriodTimeoutRef.current) {
+              clearTimeout(gracePeriodTimeoutRef.current)
+              gracePeriodTimeoutRef.current = null
+            }
+            if (timerUpdateRef.current) {
+              clearTimeout(timerUpdateRef.current)
+              timerUpdateRef.current = null
+            }
+            // Keep ?checkout=success so the server still allows access (subscription may not be active yet)
+            router.replace("/dashboard?checkout=success", { scroll: false })
+          }}
+        />
       )}
       
       <DocumentPreviewModal
