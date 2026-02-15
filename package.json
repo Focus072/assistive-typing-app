@@ -10,7 +10,9 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
+    "db:verify": "tsx scripts/verify-db-schema.ts",
     "setup:check": "node scripts/check-setup.js",
     "verify": "tsx scripts/verify-integration.ts"
   },
