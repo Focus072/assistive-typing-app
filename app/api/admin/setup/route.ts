@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 import { z } from "zod"
+import { isAdminEmail } from "@/lib/admin"
 
 export const dynamic = "force-dynamic"
 
@@ -28,9 +29,7 @@ export async function POST(request: Request) {
     // Convert username to email
     const email = getEmailFromUsername(username)
 
-    // Check if email is in admin emails
-    const adminEmails = process.env.ADMIN_EMAILS?.split(",").map(e => e.trim()) || []
-    if (!adminEmails.includes(email)) {
+    if (!isAdminEmail(email)) {
       return NextResponse.json(
         { error: "Username is not authorized as admin" },
         { status: 403 }

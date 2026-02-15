@@ -599,7 +599,7 @@ export const SignInPage = ({ className }: SignInPageProps) => {
                   <span className="absolute inline-flex h-full w-full rounded-full bg-red-400 animate-ping opacity-75" />
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-red-400" />
                 </span>
-                Waitlist over — Live access now available
+                Live access now available
               </span>
             </div>
 

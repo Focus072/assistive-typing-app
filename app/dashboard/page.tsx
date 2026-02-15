@@ -20,22 +20,22 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const params = await searchParams
   const checkoutSuccess = params.checkout === 'success'
   
-  // Check subscription status from database
+  const planTier = (session.user as { planTier?: string }).planTier
+  const role = (session.user as { role?: string | null }).role
+  const isAdmin = planTier === "ADMIN" || role === "ADMIN"
+
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { subscriptionStatus: true },
+    select: { subscriptionStatus: true, planTier: true },
   })
-  
-  // Grace period: If checkout=success, allow 30 seconds for webhook to process
-  // Otherwise, redirect to pricing if subscription is not active
-  if (user?.subscriptionStatus !== 'active') {
+
+  const hasAccess = user?.subscriptionStatus === "active" || user?.planTier === "ADMIN" || isAdmin
+
+  if (!hasAccess) {
     if (checkoutSuccess) {
-      // Allow grace period - pass through to client component which will handle polling
       return <DashboardPageClient />
-      } else {
-      // No grace period, redirect immediately
-      redirect('/#pricing')
     }
+    redirect("/#pricing")
   }
   
   return <DashboardPageClient />

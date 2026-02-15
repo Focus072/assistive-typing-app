@@ -22,7 +22,7 @@ export function HowItWorksContent() {
   const rendererRef = useRef<WebGLRenderer>()
   const animationIdRef = useRef<number>()
 
-  // Three.js background effect (same as waitlist page)
+  // Three.js background effect
   useEffect(() => {
     if (!mountRef.current) return
 

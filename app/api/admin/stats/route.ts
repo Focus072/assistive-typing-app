@@ -2,19 +2,9 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { isAdminEmail } from "@/lib/admin"
 
 export const dynamic = "force-dynamic"
-
-// Check if user is admin (by email)
-function isAdmin(email: string | null | undefined): boolean {
-  if (!email) return false
-  // Always allow galaljobah@gmail.com as admin (independent of env var)
-  if (email === "galaljobah@gmail.com") {
-    return true
-  }
-  const adminEmails = process.env.ADMIN_EMAILS?.split(",").map(e => e.trim()) || []
-  return adminEmails.includes(email)
-}
 
 export async function GET() {
   try {
@@ -22,17 +12,12 @@ export async function GET() {
 
     // Check if user is admin (by email or fallback ID)
     const isFallbackAdmin = session?.user?.id === "admin-fallback" || session?.user?.id === "dev-admin-fallback"
-    const isAdminUser = session?.user?.email && isAdmin(session.user.email)
-    // Also check if email is galaljobah@gmail.com directly (fallback)
-    const isFallbackEmail = session?.user?.email === "galaljobah@gmail.com"
+    const isAdminUser = session?.user?.email && isAdminEmail(session.user.email)
 
-    if (!isFallbackAdmin && !isAdminUser && !isFallbackEmail) {
+    if (!isFallbackAdmin && !isAdminUser) {
       console.warn("[ADMIN] Unauthorized access attempt:", {
         userId: session?.user?.id,
         email: session?.user?.email,
-        isFallbackAdmin,
-        isAdminUser,
-        isFallbackEmail
       })
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
@@ -47,9 +32,11 @@ export async function GET() {
     let activeJobs = 0
     let completedJobs = 0
     let failedJobs = 0
-    let totalWaitlist = 0
     let googleOAuthUsers = 0
     let credentialUsers = 0
+    let totalDocuments = 0
+    let activeSubscribers = 0
+    let academicIntegrityAcceptedCount = 0
     let recentUsers: any[] = []
     let recentJobs: any[] = []
     let topUser: any = null
@@ -63,10 +50,12 @@ export async function GET() {
           activeJobs: 0,
           completedJobs: 0,
           failedJobs: 0,
-          totalWaitlist: 0,
           googleOAuthUsers: 0,
           credentialUsers: 0,
           successRate: 0,
+          totalDocuments: 0,
+          activeSubscribers: 0,
+          academicIntegrityAcceptedCount: 0,
         },
         topUser: null,
         recentUsers: [],
@@ -124,13 +113,6 @@ export async function GET() {
       }
 
       try {
-        totalWaitlist = await prisma.waitlistEmail.count()
-        console.log("[ADMIN STATS] Waitlist query successful:", totalWaitlist)
-      } catch (e: any) {
-        console.error("[ADMIN STATS] Waitlist query failed:", e?.message)
-      }
-
-      try {
         googleOAuthUsers = await prisma.user.count({
           where: {
             accounts: {
@@ -156,6 +138,28 @@ export async function GET() {
         console.log("[ADMIN STATS] Credential users query successful:", credentialUsers)
       } catch (e: any) {
         console.error("[ADMIN STATS] Credential users query failed:", e?.message)
+      }
+
+      try {
+        totalDocuments = await prisma.document.count()
+      } catch (e: any) {
+        console.error("[ADMIN STATS] Total documents query failed:", e?.message)
+      }
+
+      try {
+        activeSubscribers = await prisma.user.count({
+          where: { subscriptionStatus: "active" },
+        })
+      } catch (e: any) {
+        console.error("[ADMIN STATS] Active subscribers query failed:", e?.message)
+      }
+
+      try {
+        academicIntegrityAcceptedCount = await prisma.user.count({
+          where: { academicIntegrityAcceptedAt: { not: null } },
+        })
+      } catch (e: any) {
+        console.error("[ADMIN STATS] Academic integrity count query failed:", e?.message)
       }
 
       try {
@@ -214,7 +218,6 @@ export async function GET() {
         activeJobs,
         completedJobs,
         failedJobs,
-        totalWaitlist,
         googleOAuthUsers,
         credentialUsers,
         recentUsersCount: recentUsers.length,
@@ -253,7 +256,6 @@ export async function GET() {
         activeJobs,
         completedJobs,
         failedJobs,
-        totalWaitlist,
         googleOAuthUsers,
         credentialUsers,
       })
@@ -280,10 +282,12 @@ export async function GET() {
         activeJobs,
         completedJobs,
         failedJobs,
-        totalWaitlist,
         googleOAuthUsers,
         credentialUsers,
         successRate,
+        totalDocuments,
+        activeSubscribers,
+        academicIntegrityAcceptedCount,
       },
       topUser: topUser
         ? {

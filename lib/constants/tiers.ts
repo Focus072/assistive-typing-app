@@ -35,6 +35,12 @@ export const TIER_LIMITS: Record<PlanTier, TierLimits> = {
     maxJobHistory: null,
     allowedProfiles: ['steady', 'fatigue', 'burst', 'micropause', 'typing-test'],
   },
+  ADMIN: {
+    maxDurationMinutes: null,
+    maxJobsPerDay: null,
+    maxJobHistory: null,
+    allowedProfiles: ['steady', 'fatigue', 'burst', 'micropause', 'typing-test'],
+  },
 }
 
 export function getUserLimits(tier: PlanTier): TierLimits {

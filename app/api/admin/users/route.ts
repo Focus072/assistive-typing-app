@@ -2,34 +2,31 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { isAdminEmail } from "@/lib/admin"
 
 export const dynamic = "force-dynamic"
-
-function isAdmin(email: string | null | undefined): boolean {
-  if (!email) return false
-  // Always allow galaljobah@gmail.com as admin (independent of env var)
-  if (email === "galaljobah@gmail.com") {
-    return true
-  }
-  const adminEmails = process.env.ADMIN_EMAILS?.split(",").map(e => e.trim()) || []
-  return adminEmails.includes(email)
-}
 
 export async function GET(request: Request) {
   try {
     const session = await getServerSession(authOptions)
 
-    if (!session?.user?.email || !isAdmin(session.user.email)) {
+    if (!session?.user?.email || !isAdminEmail(session.user.email)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get("page") || "1")
     const limit = parseInt(searchParams.get("limit") || "50")
+    const acceptedOnly = searchParams.get("accepted") === "1"
     const skip = (page - 1) * limit
+
+    const where = acceptedOnly
+      ? { academicIntegrityAcceptedAt: { not: null } }
+      : undefined
 
     const [users, total] = await Promise.all([
       prisma.user.findMany({
+        where,
         skip,
         take: limit,
         select: {
@@ -39,6 +36,9 @@ export async function GET(request: Request) {
           image: true,
           createdAt: true,
           updatedAt: true,
+          planTier: true,
+          subscriptionStatus: true,
+          academicIntegrityAcceptedAt: true,
           _count: {
             select: {
               jobs: true,
@@ -48,7 +48,7 @@ export async function GET(request: Request) {
         },
         orderBy: { createdAt: "desc" },
       }),
-      prisma.user.count(),
+      prisma.user.count({ where }),
     ])
 
     return NextResponse.json({

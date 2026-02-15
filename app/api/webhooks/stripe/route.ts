@@ -83,14 +83,13 @@ export async function POST(request: Request) {
 
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription
-        
-        // Find user by subscription ID
+
         const user = await prisma.user.findUnique({
           where: { stripeSubscriptionId: subscription.id },
+          select: { id: true, planTier: true },
         })
 
-        if (user) {
-          // Reset user to FREE tier
+        if (user && user.planTier !== 'ADMIN') {
           await prisma.user.update({
             where: { id: user.id },
             data: {
@@ -99,30 +98,29 @@ export async function POST(request: Request) {
               stripeSubscriptionId: null,
             },
           })
-
           console.log(`[WEBHOOK] Reset user ${user.id} to FREE tier`)
+        } else if (user?.planTier === 'ADMIN') {
+          console.log(`[WEBHOOK] Skipping subscription.deleted for ADMIN user ${user.id}`)
         }
         break
       }
 
       case 'customer.subscription.updated': {
         const subscription = event.data.object as Stripe.Subscription
-        
-        // Find user by subscription ID
+
         const user = await prisma.user.findUnique({
           where: { stripeSubscriptionId: subscription.id },
+          select: { id: true, planTier: true },
         })
 
-        if (user) {
-          // Update subscription status
+        if (user && user.planTier !== 'ADMIN') {
           await prisma.user.update({
             where: { id: user.id },
-            data: {
-              subscriptionStatus: subscription.status,
-            },
+            data: { subscriptionStatus: subscription.status },
           })
-
           console.log(`[WEBHOOK] Updated subscription status for user ${user.id} to ${subscription.status}`)
+        } else if (user?.planTier === 'ADMIN') {
+          console.log(`[WEBHOOK] Skipping subscription.updated for ADMIN user ${user.id}`)
         }
         break
       }

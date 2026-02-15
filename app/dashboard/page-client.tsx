@@ -19,6 +19,7 @@ import { DocumentPreviewModal } from "@/components/DocumentPreviewModal"
 import { FormatMetadataModal } from "@/components/FormatMetadataModal"
 import { CustomFormatModal } from "@/components/CustomFormatModal"
 import { useToast } from "@/components/ui/toast"
+import { AcademicIntegrityGate } from "@/components/AcademicIntegrityGate"
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts"
 import { formatDuration, calculateTimeRemaining } from "@/lib/utils"
 import { useDashboardTheme } from "./layout"
@@ -64,9 +65,11 @@ function calculateCurrentWPM(
 
 export default function DashboardPageClient() {
   return (
-    <Suspense fallback={<DashboardSkeleton />}>
-      <DashboardContent />
-    </Suspense>
+    <AcademicIntegrityGate>
+      <Suspense fallback={<DashboardSkeleton />}>
+        <DashboardContent />
+      </Suspense>
+    </AcademicIntegrityGate>
   )
 }
 
@@ -202,10 +205,9 @@ function DashboardContent() {
   // Handle checkout success with grace period and polling (defer setState to avoid update-before-mount)
   useEffect(() => {
     if (checkoutParam === "success" && status === "authenticated") {
-      const subscriptionStatus = (session?.user as any)?.subscriptionStatus
-      
-      // If subscription is already active, proceed normally (show toast only once)
-      if (subscriptionStatus === 'active') {
+      const u = session?.user as any
+      const hasAccess = u?.subscriptionStatus === "active" || u?.planTier === "ADMIN" || u?.role === "ADMIN"
+      if (hasAccess) {
         updateSession().then(() => {
           if (!hasShownPaymentSuccessToastRef.current) {
             hasShownPaymentSuccessToastRef.current = true
@@ -254,8 +256,9 @@ function DashboardContent() {
           // Give a moment for session to update, then check
           setTimeout(() => {
             if (userContinuedRef.current) return
-            const finalStatus = (session?.user as any)?.subscriptionStatus
-            if (finalStatus === 'active') {
+            const u = session?.user as any
+            const hasAccess = u?.subscriptionStatus === "active" || u?.planTier === "ADMIN" || u?.role === "ADMIN"
+            if (hasAccess) {
               setIsProcessingPayment(false)
               setGracePeriodStart(null)
               if (!hasShownPaymentSuccessToastRef.current) {
@@ -301,8 +304,9 @@ function DashboardContent() {
   // Watch for session updates during grace period
   useEffect(() => {
     if (isProcessingPayment && session) {
-      const subscriptionStatus = (session.user as any)?.subscriptionStatus
-      if (subscriptionStatus === 'active') {
+      const u = session.user as any
+      const hasAccess = u?.subscriptionStatus === "active" || u?.planTier === "ADMIN" || u?.role === "ADMIN"
+      if (hasAccess) {
         // Success! Stop polling and timers, then show success message
         if (pollingIntervalRef.current) {
           clearInterval(pollingIntervalRef.current)

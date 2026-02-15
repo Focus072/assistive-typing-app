@@ -16,6 +16,7 @@ enum PlanTier {
   BASIC
   PRO
   UNLIMITED
+  ADMIN
 }
 
 model User {
@@ -28,6 +29,7 @@ model User {
   createdAt           DateTime     @default(now())
   updatedAt           DateTime?    @updatedAt // Made optional to avoid migration issues
   planTier            PlanTier     @default(FREE)
+  academicIntegrityAcceptedAt DateTime?
   stripeCustomerId    String?      @unique
   stripeSubscriptionId String?     @unique
   subscriptionStatus  String? // active, canceled, past_due, etc.
@@ -132,11 +134,8 @@ model Document {
   @@index([documentId])
 }
 
-model WaitlistEmail {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  createdAt DateTime @default(now())
-
-  @@index([email])
-  @@index([createdAt])
+model Setting {
+  id    String  @id @default(cuid())
+  key   String  @unique
+  value String? @db.Text
 }

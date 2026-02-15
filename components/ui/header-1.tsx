@@ -77,8 +77,14 @@ export function Header() {
 					))}
 					{status === 'authenticated' && session ? (
 						<>
-							{/* Only show Dashboard if they have a paid plan (active subscription) */}
-							{(session.user as any)?.subscriptionStatus === 'active' && (
+							{/* Admin link only for galaljobah (case-insensitive) */}
+							{session.user?.email?.toLowerCase() === 'galaljobah@gmail.com' && (
+								<Button variant="outline" asChild>
+									<Link href="/admin">Admin</Link>
+								</Button>
+							)}
+							{/* Dashboard when active subscription or admin */}
+							{((session.user as any)?.subscriptionStatus === 'active' || (session.user as any)?.planTier === 'ADMIN' || (session.user as any)?.role === 'ADMIN') && (
 								<Button variant="outline" asChild>
 									<Link href="/dashboard">Dashboard</Link>
 								</Button>
@@ -156,8 +162,12 @@ export function Header() {
 				<div className="flex flex-col gap-2">
 					{status === 'authenticated' && session ? (
 						<>
-							{/* Only show Dashboard if they have a paid plan (active subscription) */}
-							{(session.user as any)?.subscriptionStatus === 'active' && (
+							{session.user?.email?.toLowerCase() === 'galaljobah@gmail.com' && (
+								<Button variant="outline" asChild className="w-full">
+									<Link href="/admin" onClick={() => setOpen(false)}>Admin</Link>
+								</Button>
+							)}
+							{((session.user as any)?.subscriptionStatus === 'active' || (session.user as any)?.planTier === 'ADMIN' || (session.user as any)?.role === 'ADMIN') && (
 								<Button variant="outline" asChild className="w-full">
 									<Link href="/dashboard" onClick={() => setOpen(false)}>
 										Dashboard

@@ -6,6 +6,7 @@ import { inngest } from "@/inngest/client"
 import { z } from "zod"
 import { logger } from "@/lib/logger"
 import { getUserLimits, isProfileAllowed, PlanTier } from "@/lib/constants/tiers"
+import { getFreeTierOverrides } from "@/lib/settings"
 
 const MAX_CHARS = 50000
 
@@ -53,7 +54,12 @@ export async function POST(request: Request) {
     })
 
     const userTier: PlanTier = user?.planTier || 'FREE'
-    const limits = getUserLimits(userTier)
+    let limits = getUserLimits(userTier)
+    if (userTier === "FREE") {
+      const overrides = await getFreeTierOverrides()
+      if (overrides.maxJobsPerDay != null) limits = { ...limits, maxJobsPerDay: overrides.maxJobsPerDay }
+      if (overrides.maxJobHistory != null) limits = { ...limits, maxJobHistory: overrides.maxJobHistory }
+    }
 
     // Validate typing profile is allowed for user's tier
     if (!isProfileAllowed(userTier, validated.typingProfile)) {

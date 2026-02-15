@@ -19,7 +19,7 @@ export default function PrivacyPage() {
             ← Back to home
           </Link>
           <h1 className="text-4xl font-semibold mb-2">Privacy Policy</h1>
-          <p className="text-sm text-white/50">Last updated: December 22, 2025</p>
+          <p className="text-sm text-white/50">Last updated: February 2025</p>
         </div>
         <div className="space-y-6 text-white/70">
           <section className="space-y-4">
@@ -75,13 +75,18 @@ export default function PrivacyPage() {
             </p>
           </section>
           <section className="space-y-4">
-            <h2 className="text-xl font-semibold text-white">5. Google Account Access</h2>
+            <h2 className="text-xl font-semibold text-white">5. Google Docs Access — Human-Like Typing</h2>
             <p>
-              We request only the minimum Google Docs access needed to type into documents you select.
-              You can revoke access at any time through your Google account settings.
+              We access Google Docs (<code className="text-white/80">/auth/documents</code>) only to facilitate <strong>human-like typing</strong> at your request. We do not store essay content or document text long-term; we act as a bridge between the app and your Google Doc. Content flows through our systems only for the duration of the typing job and is not retained for purposes beyond that.
             </p>
             <p className="mt-2">
-              We do not allow human review of Google Docs content. Human access to your Google Docs content occurs only if strictly necessary for technical support and only with your explicit consent.
+              You can revoke access at any time through your Google account settings. We do not allow human review of Google Docs content except when strictly necessary for technical support and only with your explicit consent.
+            </p>
+          </section>
+          <section className="space-y-4">
+            <h2 className="text-xl font-semibold text-white">5a. Third-Party Services — Payments &amp; Auth</h2>
+            <p>
+              <strong>Stripe</strong> handles all payment processing. We do not store your full payment card details. <strong>Google</strong> handles authentication (OAuth). Your Google account credentials are never shared with us; we receive only tokens that allow us to perform the typing actions you request.
             </p>
           </section>
           <section className="space-y-4">

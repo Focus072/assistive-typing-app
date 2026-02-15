@@ -91,7 +91,7 @@ export function PricingContent() {
     }
   }
 
-  // Three.js background effect (same as waitlist and how-it-works pages)
+  // Three.js background effect (same as how-it-works page)
   useEffect(() => {
     if (!mountRef.current) return
 

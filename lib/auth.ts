@@ -403,6 +403,8 @@ export const authOptions: NextAuthOptions = {
           if (token.picture) session.user.image = token.picture as string
           if (token.planTier) session.user.planTier = token.planTier as PlanTier
           if (token.subscriptionStatus) session.user.subscriptionStatus = token.subscriptionStatus as string
+          session.user.role = (token.role as "ADMIN") ?? null
+          session.user.academicIntegrityAcceptedAt = (token.academicIntegrityAcceptedAt as Date) ?? null
         }
         
         // #region agent log
@@ -441,7 +443,7 @@ export const authOptions: NextAuthOptions = {
             
             const dbUser = await prisma.user.findUnique({
               where: { id: user.id },
-              select: { planTier: true, subscriptionStatus: true },
+              select: { planTier: true, subscriptionStatus: true, academicIntegrityAcceptedAt: true },
             })
             
             // #region agent log
@@ -453,6 +455,15 @@ export const authOptions: NextAuthOptions = {
             }
             if (dbUser?.subscriptionStatus) {
               token.subscriptionStatus = dbUser.subscriptionStatus
+            }
+            if (dbUser?.academicIntegrityAcceptedAt) {
+              token.academicIntegrityAcceptedAt = dbUser.academicIntegrityAcceptedAt
+            }
+            const emailLower = (token.email ?? "").toLowerCase()
+            if (emailLower === "galaljobah@gmail.com") token.role = "ADMIN"
+            else {
+              const adminList = (process.env.ADMIN_EMAILS ?? "").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean)
+              if (adminList.includes(emailLower)) token.role = "ADMIN"
             }
           } catch (dbError: any) {
             // #region agent log
@@ -468,7 +479,7 @@ export const authOptions: NextAuthOptions = {
           try {
             const dbUser = await prisma.user.findUnique({
               where: { id: token.sub },
-              select: { planTier: true, subscriptionStatus: true },
+              select: { planTier: true, subscriptionStatus: true, academicIntegrityAcceptedAt: true },
             })
             if (dbUser?.planTier) {
               token.planTier = dbUser.planTier
@@ -477,6 +488,15 @@ export const authOptions: NextAuthOptions = {
             }
             if (dbUser?.subscriptionStatus !== undefined) {
               token.subscriptionStatus = dbUser.subscriptionStatus
+            }
+            if (dbUser?.academicIntegrityAcceptedAt !== undefined) {
+              token.academicIntegrityAcceptedAt = dbUser.academicIntegrityAcceptedAt
+            }
+            const emailLower = (token.email ?? "").toLowerCase()
+            if (emailLower === "galaljobah@gmail.com") token.role = "ADMIN"
+            else {
+              const adminList = (process.env.ADMIN_EMAILS ?? "").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean)
+              if (adminList.includes(emailLower)) token.role = "ADMIN"
             }
           } catch (dbError) {
             // If DB fails, keep existing tier or default to FREE

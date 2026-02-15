@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { getUserLimits, PlanTier } from "@/lib/constants/tiers"
+import { getFreeTierOverrides } from "@/lib/settings"
 
 export const dynamic = 'force-dynamic'
 
@@ -24,7 +25,11 @@ export async function GET() {
     })
 
     const userTier: PlanTier = user?.planTier || 'FREE'
-    const limits = getUserLimits(userTier)
+    let limits = getUserLimits(userTier)
+    if (userTier === "FREE") {
+      const overrides = await getFreeTierOverrides()
+      if (overrides.maxJobHistory != null) limits = { ...limits, maxJobHistory: overrides.maxJobHistory }
+    }
 
     // Determine history limit
     const historyLimit = limits.maxJobHistory === null ? 10000 : limits.maxJobHistory

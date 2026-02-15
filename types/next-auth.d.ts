@@ -10,6 +10,8 @@ declare module "next-auth" {
       image?: string | null
       planTier?: PlanTier
       subscriptionStatus?: string | null
+      role?: "ADMIN" | null
+      academicIntegrityAcceptedAt?: Date | null
     }
   }
 }
@@ -18,6 +20,8 @@ declare module "next-auth/jwt" {
   interface JWT {
     planTier?: PlanTier
     subscriptionStatus?: string | null
+    role?: "ADMIN" | null
+    academicIntegrityAcceptedAt?: Date | null
   }
 }
 
