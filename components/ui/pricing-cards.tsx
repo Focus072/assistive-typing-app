@@ -40,7 +40,13 @@ export function PricingCards({ onCheckout, highlightPlan = 'unlimited' }: Pricin
       return
     }
 
-    // Authenticated users go directly to Stripe
+    // If user is logged in and already has active subscription, send them to dashboard
+    if ((session.user as any).subscriptionStatus === 'active') {
+      router.push('/dashboard')
+      return
+    }
+
+    // Authenticated users without active subscription go directly to Stripe checkout
     setIsLoading(tier)
     try {
       const response = await fetch('/api/stripe/checkout', {

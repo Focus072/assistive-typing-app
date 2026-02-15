@@ -9,7 +9,15 @@ declare module "next-auth" {
       name?: string | null
       image?: string | null
       planTier?: PlanTier
+      subscriptionStatus?: string | null
     }
+  }
+}
+
+declare module "next-auth/jwt" {
+  interface JWT {
+    planTier?: PlanTier
+    subscriptionStatus?: string | null
   }
 }
 

@@ -211,6 +211,7 @@ export const authOptions: NextAuthOptions = {
         if (token.name) session.user.name = token.name as string
         if (token.picture) session.user.image = token.picture as string
         if (token.planTier) session.user.planTier = token.planTier as PlanTier
+        if (token.subscriptionStatus) session.user.subscriptionStatus = token.subscriptionStatus as string
       }
       return session
     },
@@ -229,36 +230,46 @@ export const authOptions: NextAuthOptions = {
           token.name = user.name || undefined
           token.picture = user.image || undefined
           
-          // Fetch planTier from database on initial sign in
+          // Fetch planTier and subscriptionStatus from database on initial sign in
           try {
             const dbUser = await prisma.user.findUnique({
               where: { id: user.id },
-              select: { planTier: true },
+              select: { planTier: true, subscriptionStatus: true },
             })
             if (dbUser?.planTier) {
               token.planTier = dbUser.planTier
             }
+            if (dbUser?.subscriptionStatus) {
+              token.subscriptionStatus = dbUser.subscriptionStatus
+            }
           } catch (dbError) {
             // If DB fails, default to FREE
             token.planTier = 'FREE'
+            token.subscriptionStatus = null
           }
         } else if (token.sub) {
-          // On subsequent requests, refresh planTier from database
+          // On subsequent requests, refresh planTier and subscriptionStatus from database
           // This ensures tier updates (from webhooks) are reflected
           try {
             const dbUser = await prisma.user.findUnique({
               where: { id: token.sub },
-              select: { planTier: true },
+              select: { planTier: true, subscriptionStatus: true },
             })
             if (dbUser?.planTier) {
               token.planTier = dbUser.planTier
             } else {
               token.planTier = 'FREE'
             }
+            if (dbUser?.subscriptionStatus !== undefined) {
+              token.subscriptionStatus = dbUser.subscriptionStatus
+            }
           } catch (dbError) {
             // If DB fails, keep existing tier or default to FREE
             if (!token.planTier) {
               token.planTier = 'FREE'
+            }
+            if (!token.subscriptionStatus) {
+              token.subscriptionStatus = null
             }
           }
         } else {
