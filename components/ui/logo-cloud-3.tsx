@@ -21,7 +21,7 @@ export function LogoCloud({ className, logos, ...props }: LogoCloudProps) {
         className
       )}
     >
-      <InfiniteSlider gap={42} reverse speed={80} speedOnHover={25}>
+      <InfiniteSlider gap={42} reverse duration={80} durationOnHover={25}>
         {logos.map((logo) => (
           <img
             alt={logo.alt}
