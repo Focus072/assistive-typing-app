@@ -26,7 +26,7 @@ export function HomePageWithPricing({ className }: { className?: string }) {
     }
 
     if (status === 'unauthenticated' || !session) {
-      router.push(`/login?callbackUrl=${encodeURIComponent('/pricing')}`)
+      await signIn('google', { callbackUrl: '/pricing' })
       return
     }
 
@@ -40,7 +40,7 @@ export function HomePageWithPricing({ className }: { className?: string }) {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
         if (response.status === 401) {
-          router.push(`/login?callbackUrl=${encodeURIComponent('/pricing')}`)
+          await signIn('google', { callbackUrl: '/pricing' })
           return
         }
         throw new Error(errorData.error || `Failed to create checkout session (${response.status})`)

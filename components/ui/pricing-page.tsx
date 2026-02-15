@@ -2,7 +2,7 @@
 
 import React, { useRef, useEffect } from "react"
 import Link from "next/link"
-import { useSession } from "next-auth/react"
+import { useSession, signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import {
   Scene,
@@ -35,8 +35,8 @@ export function PricingContent() {
 
     // Check authentication
     if (status === 'unauthenticated' || !session) {
-      // Redirect to login with return URL
-      router.push(`/login?callbackUrl=${encodeURIComponent('/pricing')}`)
+      // Sign in with Google directly
+      await signIn('google', { callbackUrl: '/pricing' })
       return
     }
 
@@ -59,7 +59,7 @@ export function PricingContent() {
         
         // Handle unauthorized error specifically
         if (response.status === 401) {
-          router.push(`/login?callbackUrl=${encodeURIComponent('/pricing')}`)
+          await signIn('google', { callbackUrl: '/pricing' })
           return
         }
         

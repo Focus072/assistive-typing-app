@@ -3,7 +3,7 @@
 import React from "react"
 import { useSession, signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
-import { Clock, History, Shield, Zap, CheckCircle2 } from "lucide-react"
+import { Clock, History, Shield, Zap, CheckCircle2, Loader2 } from "lucide-react"
 
 interface PricingCardsProps {
   onCheckout?: (tier: 'basic' | 'pro' | 'unlimited') => void
@@ -13,8 +13,14 @@ interface PricingCardsProps {
 export function PricingCards({ onCheckout, highlightPlan = 'unlimited' }: PricingCardsProps) {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const [isLoading, setIsLoading] = React.useState<'basic' | 'pro' | 'unlimited' | null>(null)
 
   const handleCheckout = async (tier: 'basic' | 'pro' | 'unlimited') => {
+    // Prevent multiple clicks
+    if (isLoading !== null) {
+      return
+    }
+
     if (onCheckout) {
       onCheckout(tier)
       return
@@ -28,12 +34,14 @@ export function PricingCards({ onCheckout, highlightPlan = 'unlimited' }: Pricin
 
     // Require authentication before checkout
     if (status === 'unauthenticated' || !session) {
-      // Redirect to login with callback to pricing section
-      await signIn('google', { callbackUrl: '/#pricing' })
+      // Direct Google OAuth sign-in, then redirect to Stripe checkout for this tier
+      setIsLoading(tier)
+      await signIn('google', { callbackUrl: `/api/stripe/checkout?priceId=${tier}` })
       return
     }
 
     // Authenticated users go directly to Stripe
+    setIsLoading(tier)
     try {
       const response = await fetch('/api/stripe/checkout', {
         method: 'POST',
@@ -52,10 +60,12 @@ export function PricingCards({ onCheckout, highlightPlan = 'unlimited' }: Pricin
         }
         
         if (response.status === 401) {
-          router.push(`/login?callbackUrl=${encodeURIComponent('/pricing')}`)
+          // Keep loading state, will redirect to OAuth
+          await signIn('google', { callbackUrl: '/pricing' })
           return
         }
         
+        setIsLoading(null)
         throw new Error(errorData.error || errorData.message || `Failed to create checkout session (${response.status})`)
       }
 
@@ -71,6 +81,7 @@ export function PricingCards({ onCheckout, highlightPlan = 'unlimited' }: Pricin
       if (!errorMessage.includes('Unauthorized')) {
         alert(errorMessage)
       }
+      setIsLoading(null)
     }
   }
 
@@ -124,9 +135,17 @@ export function PricingCards({ onCheckout, highlightPlan = 'unlimited' }: Pricin
           <div className="mt-auto pt-4">
             <button
               onClick={() => handleCheckout('basic')}
-              className="w-full px-6 py-3.5 rounded-xl transition-all font-semibold bg-gray-800/80 border border-gray-700/50 text-white hover:bg-gray-700/80 hover:border-gray-600/50 hover:brightness-110"
+              disabled={isLoading === 'basic' || isLoading !== null}
+              className="w-full px-6 py-3.5 rounded-xl transition-all font-semibold bg-gray-800/80 border border-gray-700/50 text-white hover:bg-gray-700/80 hover:border-gray-600/50 hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {status === 'unauthenticated' || !session ? 'Sign in to Purchase' : 'Get Started'}
+              {isLoading === 'basic' ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Loading...</span>
+                </>
+              ) : (
+                status === 'unauthenticated' || !session ? 'Sign in to Purchase' : 'Get Started'
+              )}
             </button>
           </div>
         </div>
@@ -175,9 +194,17 @@ export function PricingCards({ onCheckout, highlightPlan = 'unlimited' }: Pricin
           <div className="mt-auto pt-4">
             <button
               onClick={() => handleCheckout('pro')}
-              className="w-full px-6 py-3.5 rounded-xl transition-all font-semibold bg-gray-800/80 border border-gray-700/50 text-white hover:bg-gray-700/80 hover:border-gray-600/50 hover:brightness-110"
+              disabled={isLoading === 'pro' || isLoading !== null}
+              className="w-full px-6 py-3.5 rounded-xl transition-all font-semibold bg-gray-800/80 border border-gray-700/50 text-white hover:bg-gray-700/80 hover:border-gray-600/50 hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {status === 'unauthenticated' || !session ? 'Sign in to Purchase' : 'Get Started'}
+              {isLoading === 'pro' ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Loading...</span>
+                </>
+              ) : (
+                status === 'unauthenticated' || !session ? 'Sign in to Purchase' : 'Get Started'
+              )}
             </button>
           </div>
         </div>
@@ -234,9 +261,17 @@ export function PricingCards({ onCheckout, highlightPlan = 'unlimited' }: Pricin
           <div className="mt-auto pt-4">
             <button
               onClick={() => handleCheckout('unlimited')}
-              className="w-full px-6 py-3.5 rounded-xl transition-all font-semibold bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg shadow-red-500/30 hover:shadow-xl hover:shadow-red-500/40 hover:brightness-110"
+              disabled={isLoading === 'unlimited' || isLoading !== null}
+              className="w-full px-6 py-3.5 rounded-xl transition-all font-semibold bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg shadow-red-500/30 hover:shadow-xl hover:shadow-red-500/40 hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {status === 'unauthenticated' || !session ? 'Sign in to Purchase' : 'Get Started'}
+              {isLoading === 'unlimited' ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Loading...</span>
+                </>
+              ) : (
+                status === 'unauthenticated' || !session ? 'Sign in to Purchase' : 'Get Started'
+              )}
             </button>
           </div>
         </div>

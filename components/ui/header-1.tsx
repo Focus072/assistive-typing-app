@@ -1,15 +1,19 @@
 'use client';
 import React from 'react';
 import Link from 'next/link';
+import { signIn, signOut, useSession } from 'next-auth/react';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { MenuToggleIcon } from '@/components/ui/menu-toggle-icon';
 import { useScroll } from '@/components/ui/use-scroll';
 import { createPortal } from 'react-dom';
+import { Loader2 } from 'lucide-react';
 
 export function Header() {
 	const [open, setOpen] = React.useState(false);
+	const [isLoading, setIsLoading] = React.useState(false);
 	const scrolled = useScroll(10);
+	const { data: session, status } = useSession();
 
 	const links = [
 		{
@@ -71,24 +75,44 @@ export function Header() {
 							{link.label}
 						</a>
 					))}
-					<Button 
-						variant="outline"
-						onClick={() => {
-							window.location.href = '/login'
-						}}
-					>
-						Sign In
-					</Button>
-					<Button
-						onClick={() => {
-							const pricingSection = document.getElementById('pricing')
-							if (pricingSection) {
-								pricingSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
-							}
-						}}
-					>
-						Get Started
-					</Button>
+					{status === 'authenticated' && session ? (
+						<>
+							<Button 
+								variant="outline"
+								onClick={() => {
+									window.location.href = '/dashboard'
+								}}
+							>
+								Dashboard
+							</Button>
+							<Button
+								variant="outline"
+								onClick={() => {
+									signOut({ callbackUrl: '/' })
+								}}
+							>
+								Sign Out
+							</Button>
+						</>
+					) : (
+						<Button 
+							onClick={() => {
+								if (isLoading) return
+								setIsLoading(true)
+								signIn('google', { callbackUrl: '/' })
+							}}
+							disabled={isLoading}
+						>
+							{isLoading ? (
+								<>
+									<Loader2 className="w-4 h-4 animate-spin mr-2" />
+									Loading...
+								</>
+							) : (
+								'Login with Google'
+							)}
+						</Button>
+					)}
 				</div>
 				<Button
 					size="icon"
@@ -132,27 +156,49 @@ export function Header() {
 					))}
 				</div>
 				<div className="flex flex-col gap-2">
-					<Button 
-						variant="outline" 
-						className="w-full bg-transparent"
-						onClick={() => {
-							window.location.href = '/login'
-						}}
-					>
-						Sign In
-					</Button>
-					<Button 
-						className="w-full"
-						onClick={() => {
-							setOpen(false)
-							const pricingSection = document.getElementById('pricing')
-							if (pricingSection) {
-								pricingSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
-							}
-						}}
-					>
-						Get Started
-					</Button>
+					{status === 'authenticated' && session ? (
+						<>
+							<Button 
+								variant="outline" 
+								className="w-full bg-transparent"
+								onClick={() => {
+									setOpen(false)
+									window.location.href = '/dashboard'
+								}}
+							>
+								Dashboard
+							</Button>
+							<Button 
+								className="w-full"
+								onClick={() => {
+									setOpen(false)
+									signOut({ callbackUrl: '/' })
+								}}
+							>
+								Sign Out
+							</Button>
+						</>
+					) : (
+						<Button 
+							className="w-full"
+							onClick={() => {
+								if (isLoading) return
+								setOpen(false)
+								setIsLoading(true)
+								signIn('google', { callbackUrl: '/' })
+							}}
+							disabled={isLoading}
+						>
+							{isLoading ? (
+								<>
+									<Loader2 className="w-4 h-4 animate-spin mr-2" />
+									Loading...
+								</>
+							) : (
+								'Login with Google'
+							)}
+						</Button>
+					)}
 				</div>
 			</MobileMenu>
 		</header>

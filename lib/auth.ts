@@ -2,12 +2,10 @@
 import "./suppress-warnings"
 
 import { NextAuthOptions } from "next-auth"
-import CredentialsProvider from "next-auth/providers/credentials"
 import GoogleProvider from "next-auth/providers/google"
 import { PrismaAdapter } from "@next-auth/prisma-adapter"
 import { prisma } from "@/lib/prisma"
 import { PlanTier } from "@prisma/client"
-import bcrypt from "bcryptjs"
 import { google } from "googleapis"
 
 // Wrap PrismaAdapter to catch errors and handle fallback users
@@ -147,132 +145,8 @@ export const authOptions: NextAuthOptions = {
   // We'll supplement it with manual token saving in events.signIn
   adapter,
   providers: [
-    CredentialsProvider({
-      name: "Credentials",
-      credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
-      },
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
-          return null
-        }
-
-        // Admin fallback: Check admin credentials for fallback when database fails
-        // This allows admin login even when database quota is exceeded
-        const adminEmails = process.env.ADMIN_EMAILS?.split(",").map(e => e.trim()) || []
-        const isAdminEmail = adminEmails.includes(credentials.email)
-        
-        // Log for debugging (remove sensitive data in production)
-        console.log("[AUTH] Authorize attempt:", {
-          email: credentials.email,
-          isAdminEmail,
-          adminEmailsCount: adminEmails.length,
-          hasPassword: !!credentials.password
-        })
-        
-        // Hardcoded admin credentials for fallback (works in dev and prod when DB fails)
-        // Check email and password directly, independent of ADMIN_EMAILS env var
-        const isAdminCredentials = credentials.email === "galaljobah@gmail.com" && credentials.password === "Galal1023**88"
-        
-        if (isAdminCredentials) {
-          console.log("[AUTH] Admin credentials matched, attempting authentication")
-          // Try to find or create user in database first (preferred path)
-          try {
-            let user = await prisma.user.findUnique({
-              where: { email: credentials.email },
-            })
-            
-            if (!user) {
-              // Create user if doesn't exist (but don't fail if DB is down)
-              try {
-                const hashedPassword = await bcrypt.hash(credentials.password, 10)
-                user = await prisma.user.create({
-                  data: {
-                    email: credentials.email,
-                    password: hashedPassword,
-                  },
-                })
-                console.log("[AUTH] Created admin user in database")
-              } catch (createError: any) {
-                // If DB is down, continue with fallback
-                console.warn("[AUTH] Could not create user in DB, using fallback:", createError?.message)
-              }
-            } else if (!user.password) {
-              // Update password if user exists but has no password
-              try {
-                const hashedPassword = await bcrypt.hash(credentials.password, 10)
-                await prisma.user.update({
-                  where: { email: credentials.email },
-                  data: { password: hashedPassword },
-                })
-                console.log("[AUTH] Updated admin password in database")
-              } catch (updateError: any) {
-                // If DB is down, continue with fallback
-                console.warn("[AUTH] Could not update password in DB, using fallback:", updateError?.message)
-              }
-            }
-            
-            // If we have a user from DB, use it
-            if (user?.id) {
-              return {
-                id: user.id,
-                email: user.email,
-              }
-            }
-          } catch (dbError: any) {
-            // Database is unavailable - use fallback
-            console.warn("[AUTH] Database unavailable, using fallback for admin:", dbError?.message)
-          }
-          
-          // Return fallback user (works even if DB is down)
-          // Use a consistent ID that works in both dev and prod
-          console.log("[AUTH] Returning fallback admin user")
-          return {
-            id: "admin-fallback",
-            email: credentials.email,
-          }
-        }
-        
-        // Log if admin email but wrong password
-        if (credentials.email === "galaljobah@gmail.com") {
-          console.warn("[AUTH] Admin email detected but password mismatch or not in ADMIN_EMAILS")
-        }
-
-        // Normal database authentication (for production or non-admin users)
-        try {
-          const user = await prisma.user.findUnique({
-            where: { email: credentials.email },
-          })
-
-          // Only allow email/password login if user has a password set
-          if (!user || !user.password) {
-            return null
-          }
-
-          const isValid = await bcrypt.compare(credentials.password, user.password)
-
-          if (!isValid) {
-            return null
-          }
-
-          return {
-            id: user.id,
-            email: user.email,
-          }
-        } catch (error: any) {
-          // Handle database connection errors gracefully
-          console.error("[Credentials] Database error during authentication:", error)
-          
-          // Re-throw with a user-friendly message that NextAuth will pass to the client
-          if (error?.message?.includes("quota") || error?.message?.includes("compute time")) {
-            throw new Error("Database service temporarily unavailable. Please try again in a few minutes.")
-          }
-          // For other database errors, return null to show generic credentials error
-          return null
-        }
-      },
-    }),
+    // Google OAuth is the only authentication method
+    // We require Google API permissions to automate typing in Google Docs
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
@@ -416,8 +290,12 @@ export const authOptions: NextAuthOptions = {
       }
     },
     async redirect({ url, baseUrl }) {
-      // Always redirect to dashboard after successful authentication
-      // This prevents OAuthCallback errors from redirecting to login
+      // If callbackUrl is provided (e.g., from deep link checkout), use it
+      // Otherwise, redirect to dashboard after successful authentication
+      if (url.startsWith(baseUrl)) {
+        return url
+      }
+      // Fallback to dashboard if no valid callback URL
       return `${baseUrl}/dashboard`
     },
   },
