@@ -7,7 +7,6 @@ The application requests minimal scopes required for functionality:
 - `openid` - Standard OAuth identifier
 - `email` - User email address
 - `profile` - Basic user profile information
-- `https://www.googleapis.com/auth/documents` - Read/write access to Google Docs
 - `https://www.googleapis.com/auth/drive.file` - Access only to files created by this app (most restrictive)
 
 **Note:** `drive.file` is the most restrictive scope - it only allows access to files created by the app. This is intentional for security.

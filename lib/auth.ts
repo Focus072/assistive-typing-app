@@ -295,10 +295,9 @@ export const authOptions: NextAuthOptions = {
         params: {
           // Minimal scopes required for typing into Google Docs:
           // - openid, email, profile: Standard OAuth user info
-          // - documents: Read/write access to Google Docs
           // - drive.file: Access only to files created by this app (most restrictive)
           scope:
-            "openid email profile https://www.googleapis.com/auth/documents https://www.googleapis.com/auth/drive.file",
+            "openid email profile https://www.googleapis.com/auth/drive.file",
           access_type: "offline", // Required to get refresh token
           prompt: "consent", // Always show consent screen to ensure refresh token
         },

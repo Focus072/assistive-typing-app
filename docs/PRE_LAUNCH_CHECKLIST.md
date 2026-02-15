@@ -28,7 +28,7 @@
   - [ ] App name: "typingisboring"
   - [ ] User support email
   - [ ] Developer contact email
-  - [ ] Scopes: `https://www.googleapis.com/auth/documents`, `https://www.googleapis.com/auth/drive.file`
+  - [ ] Scopes: `https://www.googleapis.com/auth/drive.file`
 - [ ] **Add Authorized Redirect URI**: `https://your-domain.com/api/auth/callback/google`
 - [ ] **Test OAuth flow** in production
 

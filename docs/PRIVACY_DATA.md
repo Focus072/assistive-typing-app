@@ -151,7 +151,6 @@ All API endpoints verify:
 We request minimal scopes:
 
 - `openid`, `email`, `profile`: Basic user info
-- `https://www.googleapis.com/auth/documents`: Read/write Google Docs
 - `https://www.googleapis.com/auth/drive.file`: Access only to files created by app
 
 **Note**: `drive.file` is the most restrictive scope - we can only access files we create, not all your Google Drive files.

@@ -77,7 +77,7 @@ export default function PrivacyPage() {
           <section className="space-y-4">
             <h2 className="text-xl font-semibold text-white">5. Google Docs Access — Human-Like Typing</h2>
             <p>
-              We access Google Docs (<code className="text-white/80">/auth/documents</code>) only to facilitate <strong>human-like typing</strong> at your request. We do not store essay content or document text long-term; we act as a bridge between the app and your Google Doc. Content flows through our systems only for the duration of the typing job and is not retained for purposes beyond that.
+              We access Google Docs only to facilitate <strong>human-like typing</strong> at your request. We do not store essay content or document text long-term; we act as a bridge between the app and your Google Doc. Content flows through our systems only for the duration of the typing job and is not retained for purposes beyond that.
             </p>
             <p className="mt-2">
               You can revoke access at any time through your Google account settings. We do not allow human review of Google Docs content except when strictly necessary for technical support and only with your explicit consent.

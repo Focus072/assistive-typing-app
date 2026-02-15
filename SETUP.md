@@ -17,7 +17,6 @@ DATABASE_URL=postgresql://username:password@localhost:5432/assistive_typing
 # Google OAuth
 GOOGLE_CLIENT_ID=your-google-client-id
 GOOGLE_CLIENT_SECRET=your-google-client-secret
-GOOGLE_DOCS_SCOPES=https://www.googleapis.com/auth/documents
 
 # Inngest
 INNGEST_EVENT_KEY=your-inngest-event-key
@@ -106,7 +105,7 @@ Copy the connection string to your `.env.local` file.
      - User support email: Your email
      - Developer contact: Your email
    - Add scopes:
-     - `https://www.googleapis.com/auth/documents`
+     - `https://www.googleapis.com/auth/drive.file`
    - Add test users (for development)
    - Save and continue
 
