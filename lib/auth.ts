@@ -351,10 +351,11 @@ export const authOptions: NextAuthOptions = {
       }
       
       // Ensure image is set from profile if missing
-      if (!user?.image && profile?.picture) {
-        user.image = profile.picture
-      } else if (!user?.image && (profile as any)?.image) {
-        user.image = (profile as any).image
+      const profileAny = profile as any
+      if (!user?.image && profileAny?.picture) {
+        user.image = profileAny.picture
+      } else if (!user?.image && profileAny?.image) {
+        user.image = profileAny.image
       }
       
       // For fallback admin users, allow sign-in even if adapter fails
