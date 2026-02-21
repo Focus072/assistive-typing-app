@@ -29,7 +29,7 @@ export async function AnnouncementsSection() {
   if (announcements.length === 0) return null
 
   return (
-    <section className="px-6 py-24 sm:py-32">
+    <section id="updates" className="px-6 py-24 sm:py-32">
       <div className="max-w-3xl mx-auto">
         {/* Section header */}
         <div className="mb-14 sm:mb-16">

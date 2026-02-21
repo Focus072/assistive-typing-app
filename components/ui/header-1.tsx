@@ -25,6 +25,10 @@ export function Header() {
 			href: '#about',
 		},
 		{
+			label: 'Updates',
+			href: '#updates',
+		},
+		{
 			label: 'Pricing',
 			href: '#pricing',
 		},
