@@ -77,8 +77,8 @@ export function Header() {
 					))}
 					{status === 'authenticated' && session ? (
 						<>
-							{/* Admin link only for galaljobah (case-insensitive) */}
-							{session.user?.email?.toLowerCase() === 'galaljobah@gmail.com' && (
+							{/* Admin link for users with ADMIN role */}
+							{(session.user as any)?.role === 'ADMIN' && (
 								<Button variant="outline" asChild>
 									<Link href="/admin">Admin</Link>
 								</Button>
@@ -164,7 +164,7 @@ export function Header() {
 				<div className="flex flex-col gap-2">
 					{status === 'authenticated' && session ? (
 						<>
-							{session.user?.email?.toLowerCase() === 'galaljobah@gmail.com' && (
+							{(session.user as any)?.role === 'ADMIN' && (
 								<Button variant="outline" asChild className="w-full">
 									<Link href="/admin" onClick={() => setOpen(false)}>Admin</Link>
 								</Button>

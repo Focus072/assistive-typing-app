@@ -5,7 +5,7 @@
  * for the given email and updates the user in the DB.
  *
  * Usage: npx tsx scripts/sync-stripe-subscription.ts <email>
- * Example: npx tsx scripts/sync-stripe-subscription.ts galaljobah@gmail.com
+ * Example: npx tsx scripts/sync-stripe-subscription.ts user@example.com
  *
  * Requires: .env or .env.local with STRIPE_SECRET_KEY, STRIPE_*_PRICE_ID, DATABASE_URL
  */

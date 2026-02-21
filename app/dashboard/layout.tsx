@@ -9,17 +9,6 @@ import { SignOutButton } from "@/components/SignOutButton"
 import { useEffect, useState } from "react"
 import { DashboardThemeContext } from "./theme-context"
 
-// Check if user is admin (client-side check)
-function isAdmin(email: string | null | undefined): boolean {
-  if (!email) return false
-  // Always allow galaljobah@gmail.com as admin (independent of env var)
-  if (email === "galaljobah@gmail.com") {
-    return true
-  }
-  // In production, you might want to check ADMIN_EMAILS env var
-  // but for client-side, we'll just check the hardcoded admin email
-  return false
-}
 
 export default function DashboardLayout({
   children,
@@ -189,7 +178,7 @@ export default function DashboardLayout({
                 </svg>
                 <span className="text-sm">Account</span>
               </Link>
-              {session?.user?.email && isAdmin(session.user.email) && (
+              {session?.user?.role === 'ADMIN' && (
                 <Link 
                   href="/admin" 
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors border ${
@@ -296,7 +285,7 @@ export default function DashboardLayout({
                     </svg>
                     Account
                   </Link>
-                  {session?.user?.email && isAdmin(session.user.email) && (
+                  {session?.user?.role === 'ADMIN' && (
                     <Link href="/admin" className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors border border-yellow-500/40 ${
                       isDark ? "text-white/80 hover:bg-white/10" : "text-black/80 hover:bg-black/5"
                     }`} onClick={() => setMobileMenuOpen(false)}>

@@ -386,11 +386,8 @@ export const authOptions: NextAuthOptions = {
               token.academicIntegrityAcceptedAt = dbUser.academicIntegrityAcceptedAt
             }
             const emailLower = (token.email ?? "").toLowerCase()
-            if (emailLower === "galaljobah@gmail.com") token.role = "ADMIN"
-            else {
-              const adminList = (process.env.ADMIN_EMAILS ?? "").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean)
-              if (adminList.includes(emailLower)) token.role = "ADMIN"
-            }
+            const adminList = (process.env.ADMIN_EMAILS ?? "").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean)
+            if (adminList.includes(emailLower)) token.role = "ADMIN"
           } catch (dbError: any) {
             // If DB fails, default to FREE
             token.planTier = 'FREE'
@@ -416,11 +413,8 @@ export const authOptions: NextAuthOptions = {
               token.academicIntegrityAcceptedAt = dbUser.academicIntegrityAcceptedAt
             }
             const emailLower = (token.email ?? "").toLowerCase()
-            if (emailLower === "galaljobah@gmail.com") token.role = "ADMIN"
-            else {
-              const adminList = (process.env.ADMIN_EMAILS ?? "").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean)
-              if (adminList.includes(emailLower)) token.role = "ADMIN"
-            }
+            const adminList = (process.env.ADMIN_EMAILS ?? "").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean)
+            if (adminList.includes(emailLower)) token.role = "ADMIN"
           } catch (dbError) {
             // If DB fails, keep existing tier or default to FREE
             if (!token.planTier) {

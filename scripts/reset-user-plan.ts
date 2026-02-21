@@ -9,7 +9,7 @@ import { PrismaClient } from '@prisma/client'
 const prisma = new PrismaClient()
 
 async function main() {
-  const email = process.argv[2] || 'galaljobah@gmail.com'
+  const email = process.argv[2] || process.env.ADMIN_EMAILS?.split(',')[0]?.trim() || ''
   console.log(`Resetting plan to FREE for: ${email}`)
 
   const user = await prisma.user.findUnique({

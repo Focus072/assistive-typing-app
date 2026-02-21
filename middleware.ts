@@ -19,7 +19,6 @@ function isStaticPath(pathname: string): boolean {
 function isAdminEmail(email: string | null | undefined): boolean {
   if (!email) return false
   const lower = email.toLowerCase()
-  if (lower === "galaljobah@gmail.com") return true
   const list = (process.env.ADMIN_EMAILS ?? "")
     .split(",")
     .map((e) => e.trim().toLowerCase())

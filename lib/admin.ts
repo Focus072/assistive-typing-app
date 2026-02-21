@@ -1,12 +1,11 @@
 /**
  * Admin utilities for authorization.
- * All email comparisons are case-insensitive so Galaljobah@gmail.com never locks out.
+ * Admin emails are configured via the ADMIN_EMAILS environment variable (comma-separated).
  */
 
 export function isAdminEmail(email: string | null | undefined): boolean {
   if (!email) return false
   const lower = email.toLowerCase()
-  if (lower === "galaljobah@gmail.com") return true
   const adminEmails = (process.env.ADMIN_EMAILS ?? "")
     .split(",")
     .map((e) => e.trim().toLowerCase())

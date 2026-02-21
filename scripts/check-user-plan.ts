@@ -2,7 +2,7 @@
 /**
  * Check which plan is linked to a user in the database.
  * Usage: npx tsx scripts/check-user-plan.ts [email]
- * Example: npx tsx scripts/check-user-plan.ts galaljobah@gmail.com
+ * Example: npx tsx scripts/check-user-plan.ts user@example.com
  */
 
 import { PrismaClient } from '@prisma/client'
@@ -10,7 +10,7 @@ import { PrismaClient } from '@prisma/client'
 const prisma = new PrismaClient()
 
 async function main() {
-  const email = process.argv[2] || 'galaljobah@gmail.com'
+  const email = process.argv[2] || process.env.ADMIN_EMAILS?.split(',')[0]?.trim() || ''
   console.log(`\nLooking up: ${email}\n`)
 
   const user = await prisma.user.findUnique({
