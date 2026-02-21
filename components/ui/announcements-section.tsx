@@ -1,10 +1,10 @@
 import { prisma } from "@/lib/prisma"
 
 const BADGE_STYLES: Record<string, string> = {
-  Feature: "bg-violet-500/20 text-violet-300 border-violet-500/30",
-  Fix: "bg-green-500/20 text-green-300 border-green-500/30",
-  Improvement: "bg-cyan-500/20 text-cyan-300 border-cyan-500/30",
-  Update: "bg-zinc-500/20 text-zinc-300 border-zinc-500/30",
+  Feature: "bg-purple-100 text-purple-700 border-purple-200",
+  Fix: "bg-green-100 text-green-700 border-green-200",
+  Improvement: "bg-blue-100 text-blue-700 border-blue-200",
+  Update: "bg-gray-100 text-gray-600 border-gray-200",
 }
 
 function formatDate(date: Date) {
@@ -29,49 +29,46 @@ export async function AnnouncementsSection() {
   if (announcements.length === 0) return <div id="updates" />
 
   return (
-    <section id="updates" className="px-6 py-24 sm:py-32">
-      <div className="max-w-3xl mx-auto">
+    <section id="updates" className="relative space-y-8 py-16 px-4">
+      <div className="mx-auto max-w-5xl">
         {/* Section header */}
-        <div className="mb-14 sm:mb-16">
-          <p className="text-xs font-semibold uppercase tracking-[0.15em] text-violet-400 mb-3">
-            Changelog
-          </p>
-          <h2 className="text-3xl sm:text-4xl font-semibold text-white tracking-tighter">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl sm:text-4xl font-semibold mb-3 tracking-tight">
             What&apos;s new
           </h2>
-          <p className="mt-3 text-zinc-400 text-base">
+          <p className="text-muted-foreground text-base sm:text-lg max-w-2xl mx-auto">
             Updates, improvements, and new features.
           </p>
         </div>
 
         {/* Timeline */}
-        <div className="relative">
-          {/* Vertical line */}
-          <div className="absolute left-[7.5rem] top-0 bottom-0 w-px bg-white/10 hidden sm:block" />
+        <div className="relative max-w-2xl mx-auto">
+          {/* Vertical connector line */}
+          <div className="absolute left-[7.5rem] top-2 bottom-2 w-px bg-border hidden sm:block" />
 
-          <div className="space-y-10">
+          <div className="space-y-8">
             {announcements.map((announcement) => (
-              <div key={announcement.id} className="sm:flex gap-8 group">
+              <div key={announcement.id} className="sm:flex gap-6 group">
                 {/* Date column */}
-                <div className="hidden sm:block w-28 shrink-0 pt-0.5 text-right">
-                  <span className="text-xs text-zinc-600 tabular-nums">
+                <div className="hidden sm:block w-28 shrink-0 pt-1 text-right">
+                  <span className="text-xs text-muted-foreground tabular-nums">
                     {formatDate(announcement.publishedAt ?? announcement.createdAt)}
                   </span>
                 </div>
 
                 {/* Dot */}
                 <div className="hidden sm:flex flex-col items-center shrink-0">
-                  <div className="w-3 h-3 rounded-full bg-zinc-700 border-2 border-zinc-900 group-hover:bg-violet-500 group-hover:border-violet-900 transition-colors mt-0.5 z-10" />
+                  <div className="w-2.5 h-2.5 rounded-full bg-border border-2 border-background group-hover:bg-primary group-hover:border-primary/20 transition-colors mt-1.5 z-10" />
                 </div>
 
-                {/* Content */}
-                <div className="flex-1 min-w-0 rounded-xl bg-white/[0.03] border border-white/10 p-5 hover:bg-white/[0.06] hover:border-white/15 transition-colors">
+                {/* Content card */}
+                <div className="flex-1 min-w-0 rounded-xl border border-border bg-muted/30 p-5 hover:bg-muted/50 transition-colors">
                   {/* Mobile date */}
-                  <p className="text-xs text-zinc-600 mb-3 sm:hidden">
+                  <p className="text-xs text-muted-foreground mb-2 sm:hidden">
                     {formatDate(announcement.publishedAt ?? announcement.createdAt)}
                   </p>
 
-                  <div className="flex items-center gap-2 mb-3">
+                  <div className="flex items-center gap-2 mb-2">
                     <span
                       className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${BADGE_STYLES[announcement.badge] ?? BADGE_STYLES.Update}`}
                     >
@@ -79,10 +76,10 @@ export async function AnnouncementsSection() {
                     </span>
                   </div>
 
-                  <h3 className="text-base font-semibold text-white mb-2">
+                  <h3 className="text-base font-semibold mb-1">
                     {announcement.title}
                   </h3>
-                  <p className="text-sm text-zinc-400 leading-relaxed whitespace-pre-line">
+                  <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
                     {announcement.content}
                   </p>
                 </div>
@@ -90,6 +87,9 @@ export async function AnnouncementsSection() {
             ))}
           </div>
         </div>
+
+        {/* Bottom separator matching other sections */}
+        <div className="h-px w-full shrink-0 bg-gray-200/90 mt-12" aria-hidden="true" />
       </div>
     </section>
   )
