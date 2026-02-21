@@ -16,10 +16,15 @@ function formatDate(date: Date) {
 }
 
 export async function AnnouncementsSection() {
-  const announcements = await prisma.announcement.findMany({
-    where: { published: true },
-    orderBy: { publishedAt: "desc" },
-  })
+  let announcements: Awaited<ReturnType<typeof prisma.announcement.findMany>> = []
+  try {
+    announcements = await prisma.announcement.findMany({
+      where: { published: true },
+      orderBy: { publishedAt: "desc" },
+    })
+  } catch {
+    return null
+  }
 
   if (announcements.length === 0) return null
 
