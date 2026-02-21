@@ -22,6 +22,7 @@ import {
   Settings,
   RefreshCw,
   Scale,
+  Megaphone,
 } from "lucide-react"
 
 interface AdminStats {
@@ -600,6 +601,16 @@ export default function AdminDashboard() {
               <div>
                 <h3 className="font-medium text-white">Job Monitoring</h3>
                 <p className="text-xs text-zinc-500">Monitor all typing jobs</p>
+              </div>
+            </Link>
+            <Link
+              href="/admin/announcements"
+              className="group flex items-center gap-3 p-4 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 hover:border-violet-500/50 transition-all"
+            >
+              <Megaphone className="w-5 h-5 text-violet-400 group-hover:text-violet-300" />
+              <div>
+                <h3 className="font-medium text-white">Announcements</h3>
+                <p className="text-xs text-zinc-500">Publish updates to landing page</p>
               </div>
             </Link>
           </div>
