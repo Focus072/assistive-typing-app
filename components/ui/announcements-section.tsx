@@ -23,10 +23,10 @@ export async function AnnouncementsSection() {
       orderBy: { publishedAt: "desc" },
     })
   } catch {
-    return null
+    return <div id="updates" />
   }
 
-  if (announcements.length === 0) return null
+  if (announcements.length === 0) return <div id="updates" />
 
   return (
     <section id="updates" className="px-6 py-24 sm:py-32">
