@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma"
 import { Header } from "@/components/ui/header-1"
 import { Footer } from "@/components/ui/footer"
 
+export const revalidate = 3600 // revalidate cached page every hour
+
 export const metadata: Metadata = {
   title: "Updates – Typing Is Boring",
   description: "The latest updates, improvements, and new features for Typing Is Boring.",

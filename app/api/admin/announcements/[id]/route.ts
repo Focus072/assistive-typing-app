@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth"
 import { isAdminEmail } from "@/lib/admin"
 import { prisma } from "@/lib/prisma"
 import { logger } from "@/lib/logger"
+import { patchAnnouncementSchema } from "@/lib/schemas/announcements"
 
 async function requireAdmin() {
   const session = await getServerSession(authOptions)
@@ -18,18 +19,18 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const { id } = await params
   try {
     const body = await req.json()
-    const data: Record<string, unknown> = {}
-    if (body.title !== undefined) data.title = body.title
-    if (body.content !== undefined) data.content = body.content
-    if (body.badge !== undefined) data.badge = body.badge
-    if (body.published !== undefined) {
-      data.published = body.published
-      data.publishedAt = body.published ? new Date() : null
+    const parsed = patchAnnouncementSchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Validation failed", issues: parsed.error.flatten().fieldErrors },
+        { status: 400 }
+      )
     }
-    const updated = await prisma.announcement.update({
-      where: { id },
-      data,
-    })
+    const data: Record<string, unknown> = { ...parsed.data }
+    if (parsed.data.published !== undefined) {
+      data.publishedAt = parsed.data.published ? new Date() : null
+    }
+    const updated = await prisma.announcement.update({ where: { id }, data })
     return NextResponse.json(updated)
   } catch (error: unknown) {
     logger.error("[API] PATCH /api/admin/announcements/[id] error:", error)

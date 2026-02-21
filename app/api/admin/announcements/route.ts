@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth"
 import { isAdminEmail } from "@/lib/admin"
 import { prisma } from "@/lib/prisma"
 import { logger } from "@/lib/logger"
+import { createAnnouncementSchema } from "@/lib/schemas/announcements"
 
 async function requireAdmin() {
   const session = await getServerSession(authOptions)
@@ -33,13 +34,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
   try {
-    const { title, content, badge } = await req.json()
-    if (!title || !content) {
-      return NextResponse.json({ error: "title and content are required" }, { status: 400 })
+    const body = await req.json()
+    const parsed = createAnnouncementSchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Validation failed", issues: parsed.error.flatten().fieldErrors },
+        { status: 400 }
+      )
     }
-    const announcement = await prisma.announcement.create({
-      data: { title, content, badge: badge || "Update" },
-    })
+    const announcement = await prisma.announcement.create({ data: parsed.data })
     return NextResponse.json(announcement, { status: 201 })
   } catch (error: unknown) {
     logger.error("[API] POST /api/admin/announcements error:", error)
