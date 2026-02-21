@@ -3,7 +3,6 @@ import { HeroSection, FeaturesSection, TrustSection, AboutSection } from "@/comp
 import { Header } from "@/components/ui/header-1"
 import { PricingCards } from "@/components/ui/pricing-cards"
 import { Footer } from "@/components/ui/footer"
-import { AnnouncementsSection } from "@/components/ui/announcements-section"
 
 export const metadata: Metadata = {
   title: "Typing Is Boring - Natural Typing for Google Docs",
@@ -24,7 +23,6 @@ export default function HomePage() {
         <FeaturesSection />
         <TrustSection />
         <AboutSection />
-        <AnnouncementsSection />
         <section id="pricing" className="px-6 py-32 sm:py-40">
           <div className="max-w-7xl mx-auto">
             <div className="text-center mb-12 sm:mb-16">
