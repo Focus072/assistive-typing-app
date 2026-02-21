@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { revalidatePath } from "next/cache"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { isAdminEmail } from "@/lib/admin"
@@ -43,6 +44,7 @@ export async function POST(req: NextRequest) {
       )
     }
     const announcement = await prisma.announcement.create({ data: parsed.data })
+    revalidatePath("/updates")
     return NextResponse.json(announcement, { status: 201 })
   } catch (error: unknown) {
     logger.error("[API] POST /api/admin/announcements error:", error)
