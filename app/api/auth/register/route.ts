@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
+import { logger } from "@/lib/logger"
 
 export const dynamic = 'force-dynamic'
 
@@ -50,7 +51,7 @@ export async function POST(request: Request) {
       { status: 201 }
     )
   } catch (error: unknown) {
-    console.error("Registration error:", error)
+    logger.error("Registration error:", error)
 
     // Provide more specific error messages
     const prismaError = error as { code?: string; message?: string }

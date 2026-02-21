@@ -1,4 +1,5 @@
 import type { TypingProfile } from "@/types"
+import { logger } from "@/lib/logger"
 import {
   getProfileRange,
   applyContextPauses,
@@ -356,7 +357,7 @@ export function buildDelayPlan(
   // Validate plan
   const validation = validateDelayPlan({ charDelays: enforced.charDelays, batchPauseMs: enforced.batchPauseMs })
   if (!validation.valid) {
-    console.warn("Delay plan validation failed:", validation.errors)
+    logger.warn("Delay plan validation failed:", validation.errors)
     // Return plan anyway, but log warning
   }
 

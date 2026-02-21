@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { isAdminEmail } from "@/lib/admin"
+import { logger } from "@/lib/logger"
 
 export const dynamic = "force-dynamic"
 
@@ -48,7 +49,7 @@ export async function GET(request: Request) {
       })),
     })
   } catch (error: unknown) {
-    console.error("[ADMIN ACTIVITY]", error)
+    logger.error("[ADMIN ACTIVITY]", error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to fetch activity" },
       { status: 500 }

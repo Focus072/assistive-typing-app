@@ -1,4 +1,5 @@
 import Stripe from 'stripe'
+import { logger } from '@/lib/logger'
 
 const stripeKey = process.env.STRIPE_SECRET_KEY
 const isTestMode = stripeKey?.startsWith('sk_test_') ?? false
@@ -43,11 +44,11 @@ const validatePriceIds = () => {
     const isTestPrice = priceId.includes('test') || priceId.startsWith('price_1')
     
     if (isTestMode && !isTestPrice && !priceId.startsWith('price_')) {
-      console.warn(`⚠️  Warning: Using test key but price ID "${priceId}" might be for live mode`)
+      logger.warn(`⚠️  Warning: Using test key but price ID "${priceId}" might be for live mode`)
     }
     
     if (!isTestMode && isTestPrice) {
-      console.warn(`⚠️  Warning: Using live key but price ID "${priceId}" appears to be for test mode`)
+      logger.warn(`⚠️  Warning: Using live key but price ID "${priceId}" appears to be for test mode`)
     }
   }
 }
@@ -59,13 +60,13 @@ if (process.env.NODE_ENV !== 'production') {
 
 // Validate that required price IDs are set
 if (!STRIPE_PRICE_IDS.unlimited) {
-  console.warn('⚠️  STRIPE_UNLIMITED_PRICE_ID is not set in environment variables')
+  logger.warn('⚠️  STRIPE_UNLIMITED_PRICE_ID is not set in environment variables')
 }
 if (!STRIPE_PRICE_IDS.basic) {
-  console.warn('⚠️  STRIPE_BASIC_PRICE_ID is not set in environment variables')
+  logger.warn('⚠️  STRIPE_BASIC_PRICE_ID is not set in environment variables')
 }
 if (!STRIPE_PRICE_IDS.pro) {
-  console.warn('⚠️  STRIPE_PRO_PRICE_ID is not set in environment variables')
+  logger.warn('⚠️  STRIPE_PRO_PRICE_ID is not set in environment variables')
 }
 
 export type SubscriptionTier = keyof typeof STRIPE_PRICE_IDS

@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useRef } from "react"
+import { logger } from "@/lib/logger"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
@@ -54,7 +55,7 @@ export function HomePageWithPricing({ className }: { className?: string }) {
         alert('Checkout started but redirect URL was missing. Please set NEXTAUTH_URL in Vercel (e.g. https://typingisboring.com).')
       }
     } catch (error) {
-      console.error('Checkout error:', error)
+      logger.error('Checkout error:', error)
       const errorMessage = error instanceof Error ? error.message : 'Failed to start checkout'
       if (!errorMessage.includes('Unauthorized')) {
         alert(errorMessage)

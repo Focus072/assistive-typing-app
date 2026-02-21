@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useMemo, useCallback, useState, useEffect } from "react";
+import { logger } from "@/lib/logger";
 
 type Uniforms = {
   [key: string]: {
@@ -46,7 +47,7 @@ export const Shader: React.FC<ShaderProps> = ({ source, uniforms, maxFps = 60 })
           useFrame: r3f.useFrame,
         });
       }).catch((error) => {
-        console.error("Failed to load THREE.js or react-three/fiber:", error);
+        logger.error("Failed to load THREE.js or react-three/fiber:", error);
       });
     }
   }, []);
@@ -111,7 +112,7 @@ export const Shader: React.FC<ShaderProps> = ({ source, uniforms, maxFps = 60 })
             };
             break;
           default:
-            console.error(`Invalid uniform type for '${uniformName}'.`);
+            logger.error(`Invalid uniform type for '${uniformName}'.`);
             break;
         }
       }

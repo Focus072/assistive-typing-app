@@ -101,9 +101,7 @@ export async function POST(request: Request) {
       )
     }
     
-    if (process.env.NODE_ENV === "development") {
-      console.error("Error resuming job:", error instanceof Error ? error.message : String(error))
-    }
+    logger.error("Error resuming job:", error instanceof Error ? error.message : String(error))
     return NextResponse.json(
       { error: "Failed to resume job" },
       { status: 500 }

@@ -1,0 +1,78 @@
+Process simplified
+=================
+
+Use this as your order of work so updates stay safe and organized.
+
+
+THE THREE STAGES
+----------------
+
+  Local       = App runs only on your computer (npm run dev). Nobody else sees it.
+  Testing     = A Preview URL from Vercel when you push a branch (not main). You check it before going live.
+  Production  = The live site everyone uses. Only updates when you merge into main.
+
+
+HOW TO WORK (IN ORDER)
+----------------------
+
+1. Never edit directly on main.
+   main = Production. Keep it clean.
+
+2. Create a new branch for each update (one goal per branch):
+   - Open terminal in your project folder.
+   - Run: git checkout main
+   - Run: git pull
+   - Run: git checkout -b your-branch-name
+   (Use a short name like fix-typo-homepage or update-pricing-text.)
+
+3. Work locally
+   - Edit your files in Cursor.
+   - Run: npm run dev
+   - Check everything in the browser on your computer.
+
+4. Send your branch to Testing
+   - Commit and push:
+     git add .
+     git commit -m "Short description of the change"
+     git push -u origin your-branch-name
+   - Vercel will build your branch and give you a Preview (Testing) URL.
+   - Open that URL and confirm everything looks good.
+
+5. Update Production only when Testing looks good
+   - Merge your branch into main (e.g. via GitHub Pull Request, or in terminal):
+     git checkout main
+     git merge your-branch-name
+     git push origin main
+   - Vercel will deploy main to Production. Users see the change then.
+
+
+ONE-LINE SUMMARY
+----------------
+
+Local (your PC) → create branch → edit → push = Testing URL → check it → merge to main = Production.
+
+
+VERCEL SETUP (ONE-TIME)
+-----------------------
+
+- In Vercel: Project → Settings → Git
+- Connect your Git repository if not already connected.
+- Set Production Branch to: main
+- Leave Preview enabled for other branches.
+
+Then: push any other branch = Testing. Push/merge to main = Production.
+
+
+IF SOMETHING GOES WRONG
+-----------------------
+
+- Production broken after a merge: In Vercel dashboard, Deployments → find the last good one → Promote to Production (rollback).
+- Testing looks wrong: Do not merge. Fix on the same branch, push again, check the new Preview URL.
+
+
+REMEMBER
+--------
+
+- One goal per branch.
+- Always work on a branch, never on main.
+- Check Testing before merging to main.

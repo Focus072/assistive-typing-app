@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { getDocumentWebViewLink } from "@/lib/google-drive"
+import { logger } from "@/lib/logger"
 
 export const dynamic = 'force-dynamic'
 
@@ -44,7 +45,7 @@ export async function GET(
       )
     }
     if (process.env.NODE_ENV === "development") {
-      console.error("Error fetching document URL:", error)
+      logger.error("Error fetching document URL:", error)
     }
     return NextResponse.json(
       { error: "Failed to fetch document URL" },

@@ -4,6 +4,7 @@ import "@/lib/suppress-warnings"
 import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
+import { logger } from "@/lib/logger"
 import { listDocuments } from "@/lib/google-docs"
 
 export const dynamic = 'force-dynamic'
@@ -31,7 +32,7 @@ export async function GET() {
     }
     
     if (process.env.NODE_ENV === "development") {
-      console.error("Error listing documents:", error)
+      logger.error("Error listing documents:", error)
     }
     return NextResponse.json(
       { error: "Failed to list documents" },

@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useRef, useEffect } from "react"
+import { logger } from "@/lib/logger"
 import Link from "next/link"
 import { useSession, signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
@@ -64,7 +65,7 @@ export function PricingContent() {
         }
         
         // Log full error details for debugging
-        console.error('Checkout API error:', {
+        logger.error('Checkout API error:', {
           status: response.status,
           statusText: response.statusText,
           error: errorData,
@@ -81,7 +82,7 @@ export function PricingContent() {
         alert('Checkout started but redirect URL was missing. Please set NEXTAUTH_URL in Vercel (e.g. https://typingisboring.com).')
       }
     } catch (error) {
-      console.error('Checkout error:', error)
+      logger.error('Checkout error:', error)
       const errorMessage = error instanceof Error ? error.message : 'Failed to start checkout'
       
       // Don't show alert for navigation (redirect to login)

@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { isAdminEmail } from "@/lib/admin"
+import { logger } from "@/lib/logger"
 
 export const dynamic = "force-dynamic"
 
@@ -24,7 +25,7 @@ export async function GET() {
     }
     return NextResponse.json(map)
   } catch (error: unknown) {
-    console.error("[ADMIN SETTINGS GET]", error)
+    logger.error("[ADMIN SETTINGS GET]", error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to fetch settings" },
       { status: 500 }
@@ -60,7 +61,7 @@ export async function PATCH(request: Request) {
     }
     return NextResponse.json(map)
   } catch (error: unknown) {
-    console.error("[ADMIN SETTINGS PATCH]", error)
+    logger.error("[ADMIN SETTINGS PATCH]", error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to update settings" },
       { status: 500 }

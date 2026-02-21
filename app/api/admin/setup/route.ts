@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 import { z } from "zod"
 import { isAdminEmail } from "@/lib/admin"
+import { logger } from "@/lib/logger"
 
 export const dynamic = "force-dynamic"
 
@@ -73,7 +74,7 @@ export async function POST(request: Request) {
       )
     }
 
-    console.error("Admin setup error:", error)
+    logger.error("Admin setup error:", error)
     return NextResponse.json(
       { error: "Failed to setup admin account" },
       { status: 500 }

@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { getUserLimits, PlanTier } from "@/lib/constants/tiers"
+import { logger } from "@/lib/logger"
 import { getFreeTierOverrides } from "@/lib/settings"
 
 export const dynamic = 'force-dynamic'
@@ -56,7 +57,7 @@ export async function GET() {
     return NextResponse.json({ jobs })
   } catch (error) {
     if (process.env.NODE_ENV === "development") {
-      console.error("Error fetching jobs:", error)
+      logger.error("Error fetching jobs:", error)
     }
     return NextResponse.json(
       { error: "Failed to fetch jobs" },

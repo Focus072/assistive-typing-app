@@ -250,12 +250,10 @@ export async function POST(request: Request) {
     } catch (err: unknown) {
       // Log error but don't block job creation
       const inngestErr = err as { message?: string; status?: number }
-      if (process.env.NODE_ENV === "development") {
-        console.error("Inngest dispatch failed (job still created and running):", {
+      logger.error("Inngest dispatch failed (job still created and running):", {
           error: inngestErr?.message,
           statusCode: inngestErr?.status,
         })
-      }
       await prisma.jobEvent.create({
         data: {
           jobId: job.id,
@@ -303,12 +301,10 @@ export async function POST(request: Request) {
     
     // Log error details only in development
     const errMsg = error instanceof Error ? error.message : String(error)
-    if (process.env.NODE_ENV === "development") {
-      console.error("[Start Job] Error:", {
-        message: errMsg,
-        name: error instanceof Error ? error.name : "unknown",
-      })
-    }
+    logger.error("[Start Job] Error:", {
+      message: errMsg,
+      name: error instanceof Error ? error.name : "unknown",
+    })
     return NextResponse.json(
       { error: "Failed to start job", message: errMsg },
       { status: 500 }

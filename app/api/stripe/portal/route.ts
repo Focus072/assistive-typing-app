@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { stripe as getStripe } from '@/lib/stripe'
+import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 
@@ -42,7 +43,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ url: portalSession.url })
   } catch (error: unknown) {
     const errMsg = error instanceof Error ? error.message : String(error)
-    console.error('[STRIPE PORTAL] Error:', errMsg)
+    logger.error('[STRIPE PORTAL] Error:', errMsg)
     return NextResponse.json(
       { error: errMsg || 'Failed to open billing portal' },
       { status: 500 }

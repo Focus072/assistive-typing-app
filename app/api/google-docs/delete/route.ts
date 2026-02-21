@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { deleteDocument } from "@/lib/google-docs"
+import { logger } from "@/lib/logger"
 
 export const dynamic = "force-dynamic"
 
@@ -38,7 +39,7 @@ export async function POST(request: Request) {
     }
 
     if (process.env.NODE_ENV === "development") {
-      console.error("Error deleting document:", {
+      logger.error("Error deleting document:", {
         message: googleError?.message,
         code: googleError?.code,
       })

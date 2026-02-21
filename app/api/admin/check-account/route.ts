@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { z } from "zod"
 import { isAdminEmail } from "@/lib/admin"
+import { logger } from "@/lib/logger"
 
 export const dynamic = "force-dynamic"
 
@@ -70,7 +71,7 @@ export async function POST(request: Request) {
       )
     }
 
-    console.error("Admin check error:", error)
+    logger.error("Admin check error:", error)
     return NextResponse.json(
       { error: "Failed to check account", details: error instanceof Error ? error.message : String(error) },
       { status: 500 }

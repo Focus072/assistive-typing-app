@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { logger } from "@/lib/logger"
 
 export const dynamic = 'force-dynamic'
 
@@ -103,7 +104,7 @@ export async function GET(request: Request) {
           } catch (error) {
             // Log error but continue polling
             if (process.env.NODE_ENV === "development") {
-              console.error("Error polling job:", error)
+              logger.error("Error polling job:", error)
             }
             clearInterval(interval)
             controller.close()
@@ -127,7 +128,7 @@ export async function GET(request: Request) {
     })
   } catch (error) {
     if (process.env.NODE_ENV === "development") {
-      console.error("Error streaming progress:", error)
+      logger.error("Error streaming progress:", error)
     }
     return NextResponse.json(
       { error: "Failed to stream progress" },

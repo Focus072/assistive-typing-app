@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { logger } from "@/lib/logger"
 
 export const dynamic = "force-dynamic"
 
@@ -19,7 +20,7 @@ export async function POST() {
 
     return NextResponse.json({ success: true })
   } catch (error: unknown) {
-    console.error("[LEGAL] accept-academic-integrity error:", error)
+    logger.error("[LEGAL] accept-academic-integrity error:", error)
     return NextResponse.json(
       { error: "Failed to record acceptance" },
       { status: 500 }

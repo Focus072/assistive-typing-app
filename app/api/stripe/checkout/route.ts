@@ -5,6 +5,7 @@ import { stripe as getStripe, STRIPE_PRICE_IDS, type SubscriptionTier } from '@/
 import { z } from 'zod'
 import type { Session } from 'next-auth'
 import type Stripe from 'stripe'
+import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,7 +23,7 @@ async function createCheckoutSession(
   const priceId = STRIPE_PRICE_IDS[tier]
 
   if (!priceId || priceId.trim() === '') {
-    console.error(`Missing price ID for tier: ${tier}`, {
+    logger.error(`Missing price ID for tier: ${tier}`, {
       basic: STRIPE_PRICE_IDS.basic,
       pro: STRIPE_PRICE_IDS.pro,
       unlimited: STRIPE_PRICE_IDS.unlimited,
@@ -35,7 +36,7 @@ async function createCheckoutSession(
   const successUrl = `${origin}/dashboard?checkout=success`
   const cancelUrl = `${origin}/`
 
-  console.log('[CHECKOUT] Creating session:', {
+  logger.log('[CHECKOUT] Creating session:', {
     userId: session.user.id,
     email: session.user.email,
     tier,
@@ -119,7 +120,7 @@ export async function GET(request: Request) {
     } catch (stripeError: unknown) {
       // Handle Stripe-specific errors
       const se = stripeError as Stripe.errors.StripeError
-      console.error('[STRIPE ERROR] Checkout session creation failed:', {
+      logger.error('[STRIPE ERROR] Checkout session creation failed:', {
         type: se.type,
         code: se.code,
         message: se.message,
@@ -152,7 +153,7 @@ export async function GET(request: Request) {
     }
 
     // Enhanced error logging
-    console.error('Stripe checkout GET error:', error)
+    logger.error('Stripe checkout GET error:', error)
     const url = new URL(request.url)
     const pricingUrl = new URL('/pricing', url.origin)
     pricingUrl.searchParams.set('error', error instanceof Error ? error.message : 'Failed to create checkout session')
@@ -179,7 +180,7 @@ export async function POST(request: Request) {
     // 2b. Fail fast if price ID not configured (e.g. missing on Vercel)
     const priceId = STRIPE_PRICE_IDS[validated.priceId]
     if (!priceId?.trim()) {
-      console.error(`[CHECKOUT] Missing price ID for tier: ${validated.priceId}. Set STRIPE_*_PRICE_ID in Vercel.`)
+      logger.error(`[CHECKOUT] Missing price ID for tier: ${validated.priceId}. Set STRIPE_*_PRICE_ID in Vercel.`)
       return NextResponse.json(
         {
           error: `Checkout not configured for ${validated.priceId}. Add STRIPE_${validated.priceId.toUpperCase()}_PRICE_ID (and other STRIPE_* env vars) in Vercel → Project → Settings → Environment Variables.`,
@@ -200,7 +201,7 @@ export async function POST(request: Request) {
     } catch (stripeError: unknown) {
       // Handle Stripe-specific and config errors (e.g. missing price ID on Vercel)
       const se = stripeError as Stripe.errors.StripeError
-      console.error('[STRIPE ERROR] Checkout session creation failed:', {
+      logger.error('[STRIPE ERROR] Checkout session creation failed:', {
         type: se?.type,
         code: se?.code,
         message: se?.message,
@@ -240,19 +241,19 @@ export async function POST(request: Request) {
     }
 
     // Enhanced error logging
-    console.error('Stripe checkout error:', error)
+    logger.error('Stripe checkout error:', error)
     if (error instanceof Error) {
-      console.error('Error message:', error.message)
-      console.error('Error stack:', error.stack)
+      logger.error('Error message:', error.message)
+      logger.error('Error stack:', error.stack)
     }
     
     // Check if it's a Stripe error
     if (typeof error === 'object' && error !== null && 'type' in error) {
       const stripeError = error as Stripe.errors.StripeError
-      console.error('Stripe error type:', stripeError.type)
-      console.error('Stripe error code:', stripeError.code)
-      console.error('Stripe error message:', stripeError.message)
-      console.error('Stripe error details:', JSON.stringify(stripeError, null, 2))
+      logger.error('Stripe error type:', stripeError.type)
+      logger.error('Stripe error code:', stripeError.code)
+      logger.error('Stripe error message:', stripeError.message)
+      logger.error('Stripe error details:', JSON.stringify(stripeError, null, 2))
 
       return NextResponse.json(
         {

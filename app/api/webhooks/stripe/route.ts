@@ -3,6 +3,7 @@ import { headers } from 'next/headers'
 import { stripe as getStripe } from '@/lib/stripe'
 import { prisma } from '@/lib/prisma'
 import Stripe from 'stripe'
+import { logger } from '@/lib/logger'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,7 +30,7 @@ export async function POST(request: Request) {
       process.env.STRIPE_WEBHOOK_SECRET!
     )
   } catch (err: unknown) {
-    console.error('Webhook signature verification failed:', err instanceof Error ? err.message : String(err))
+    logger.error('Webhook signature verification failed:', err instanceof Error ? err.message : String(err))
     return NextResponse.json(
       { error: `Webhook Error: ${err instanceof Error ? err.message : String(err)}` },
       { status: 400 }
@@ -46,7 +47,7 @@ export async function POST(request: Request) {
         const userId = session.client_reference_id
         
         if (!userId) {
-          console.error('No client_reference_id in checkout session')
+          logger.error('No client_reference_id in checkout session')
           return NextResponse.json(
             { error: 'No user ID found' },
             { status: 400 }
@@ -77,7 +78,7 @@ export async function POST(request: Request) {
           },
         })
 
-        console.log(`[WEBHOOK] Updated user ${userId} to ${planTier} plan`)
+        logger.log(`[WEBHOOK] Updated user ${userId} to ${planTier} plan`)
         break
       }
 
@@ -98,9 +99,9 @@ export async function POST(request: Request) {
               stripeSubscriptionId: null,
             },
           })
-          console.log(`[WEBHOOK] Reset user ${user.id} to FREE tier`)
+          logger.log(`[WEBHOOK] Reset user ${user.id} to FREE tier`)
         } else if (user?.planTier === 'ADMIN') {
-          console.log(`[WEBHOOK] Skipping subscription.deleted for ADMIN user ${user.id}`)
+          logger.log(`[WEBHOOK] Skipping subscription.deleted for ADMIN user ${user.id}`)
         }
         break
       }
@@ -118,20 +119,20 @@ export async function POST(request: Request) {
             where: { id: user.id },
             data: { subscriptionStatus: subscription.status },
           })
-          console.log(`[WEBHOOK] Updated subscription status for user ${user.id} to ${subscription.status}`)
+          logger.log(`[WEBHOOK] Updated subscription status for user ${user.id} to ${subscription.status}`)
         } else if (user?.planTier === 'ADMIN') {
-          console.log(`[WEBHOOK] Skipping subscription.updated for ADMIN user ${user.id}`)
+          logger.log(`[WEBHOOK] Skipping subscription.updated for ADMIN user ${user.id}`)
         }
         break
       }
 
       default:
-        console.log(`[WEBHOOK] Unhandled event type: ${event.type}`)
+        logger.log(`[WEBHOOK] Unhandled event type: ${event.type}`)
     }
 
     return NextResponse.json({ received: true })
   } catch (error: unknown) {
-    console.error('Webhook handler error:', error)
+    logger.error('Webhook handler error:', error)
     return NextResponse.json(
       { error: 'Webhook handler failed' },
       { status: 500 }

@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { createDocument } from "@/lib/google-docs"
 import type { DocumentFormat } from "@/types"
+import { logger } from "@/lib/logger"
 import type { FormatMetadata } from "@/components/FormatMetadataModal"
 import type { CustomFormatConfig } from "@/components/CustomFormatModal"
 
@@ -47,7 +48,7 @@ export async function POST(request: Request) {
     }
 
     if (process.env.NODE_ENV === "development") {
-      console.error("Error creating document:", {
+      logger.error("Error creating document:", {
         message: googleError?.message,
         code: googleError?.code,
       })

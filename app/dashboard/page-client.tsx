@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { signIn } from "next-auth/react"
+import { logger } from "@/lib/logger"
 import Link from "next/link"
 import { TextInput } from "@/components/TextInput"
 import { TimeSelector } from "@/components/TimeSelector"
@@ -228,7 +229,7 @@ function DashboardContent() {
       
       // Initial session refresh
       updateSession().catch((error) => {
-        console.error("Failed to refresh session:", error)
+        logger.error("Failed to refresh session:", error)
       })
       
       // Start polling for subscription status
@@ -239,7 +240,7 @@ function DashboardContent() {
           // Check session state (will be updated by the hook)
           // We'll check it in the next effect that watches session changes
         } catch (error) {
-          console.error("Failed to refresh session during polling:", error)
+          logger.error("Failed to refresh session during polling:", error)
         }
       }, POLLING_INTERVAL_MS)
       
@@ -277,7 +278,7 @@ function DashboardContent() {
           }, 500)
         }).catch((error) => {
           if (userContinuedRef.current) return
-          console.error("Failed to check final status:", error)
+          logger.error("Failed to check final status:", error)
           setIsProcessingPayment(false)
           setGracePeriodStart(null)
           router.push("/#pricing")
@@ -386,7 +387,7 @@ function DashboardContent() {
         }
       } catch (error) {
         if (!cancelled) {
-          console.error("Error fetching document URL:", error)
+          logger.error("Error fetching document URL:", error)
           // Fallback to constructed URL if API fails
           setDocumentUrl(`https://docs.google.com/document/d/${documentId}/edit`)
         }

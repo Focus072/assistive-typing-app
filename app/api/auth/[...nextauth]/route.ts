@@ -4,6 +4,7 @@ import "@/lib/suppress-warnings"
 import NextAuth from "next-auth"
 import { NextResponse } from "next/server"
 import { authOptions } from "@/lib/auth"
+import { logger } from "@/lib/logger"
 
 const handler = NextAuth(authOptions)
 
@@ -33,7 +34,7 @@ async function handleRequest(
     if (isCredentialsCallback && response.status === 401) {
       // Check if this might be a database-related 401 for admin fallback
       // In this case, we'll let the error propagate but log it
-      console.warn("[NextAuth] Credentials callback returned 401 - this might be a database issue")
+      logger.warn("[NextAuth] Credentials callback returned 401 - this might be a database issue")
     }
 
     return response
@@ -42,7 +43,7 @@ async function handleRequest(
     const isSessionRequest = url.pathname.endsWith('/session') || url.pathname.includes('/session')
 
     if (process.env.NODE_ENV === "development") {
-      console.error("[NextAuth] Handler error:", error)
+      logger.error("[NextAuth] Handler error:", error)
     }
 
     const errMsg = error instanceof Error ? error.message : 'Unknown error'

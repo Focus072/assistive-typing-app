@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { isAdminEmail } from "@/lib/admin"
+import { logger } from "@/lib/logger"
 
 export const dynamic = "force-dynamic"
 
@@ -69,7 +70,7 @@ export async function GET(request: Request) {
       },
     })
   } catch (error: unknown) {
-    console.error("Admin jobs error:", error)
+    logger.error("Admin jobs error:", error)
     return NextResponse.json(
       { error: "Failed to fetch jobs" },
       { status: 500 }

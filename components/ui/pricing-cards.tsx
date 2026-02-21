@@ -1,6 +1,7 @@
 "use client"
 
 import React from "react"
+import { logger } from "@/lib/logger"
 import { useSession, signIn } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { Clock, History, Shield, Zap, CheckCircle2, Loader2 } from "lucide-react"
@@ -84,7 +85,7 @@ export function PricingCards({ onCheckout, highlightPlan = 'unlimited' }: Pricin
         alert('Checkout started but redirect URL was missing. Please set NEXTAUTH_URL in Vercel (e.g. https://typingisboring.com).')
       }
     } catch (error) {
-      console.error('Checkout error:', error)
+      logger.error('Checkout error:', error)
       const errorMessage = error instanceof Error ? error.message : 'Failed to start checkout'
       
       if (!errorMessage.includes('Unauthorized')) {

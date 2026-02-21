@@ -78,9 +78,7 @@ export async function POST(request: Request) {
       )
     }
 
-    if (process.env.NODE_ENV === "development") {
-      console.error("Error pausing job:", error instanceof Error ? error.message : String(error))
-    }
+    logger.error("Error pausing job:", error instanceof Error ? error.message : String(error))
     return NextResponse.json(
       { error: "Failed to pause job" },
       { status: 500 }

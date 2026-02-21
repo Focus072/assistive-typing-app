@@ -1,4 +1,5 @@
 import { chooseBatchSize, createTypingBatch, MIN_INTERVAL_MS, TypingBatch } from "./batching"
+import { logger } from "@/lib/logger"
 import { buildDelayPlan, computeBaseCharDelayMs } from "./typing-delays"
 import { validateEngineSignature } from "./typing-engine-validation"
 import type { TypingProfile } from "@/types"
@@ -43,7 +44,7 @@ export function validateEngineInputs(
 
   // Warn if testWPM is provided for non-typing-test profile (but don't fail)
   if (profile !== "typing-test" && testWPM !== undefined) {
-    console.warn(`testWPM (${testWPM}) provided for non-typing-test profile (${profile}), ignoring`)
+    logger.warn(`testWPM (${testWPM}) provided for non-typing-test profile (${profile}), ignoring`)
   }
 
   return { valid: true }
@@ -120,10 +121,10 @@ export function buildBatchPlan(
       progress
     )
     if (!validation.valid) {
-      console.warn("Engine signature validation failed:", validation.errors)
+      logger.warn("Engine signature validation failed:", validation.errors)
     }
     if (validation.warnings.length > 0) {
-      console.warn("Engine signature warnings:", validation.warnings)
+      logger.warn("Engine signature warnings:", validation.warnings)
     }
   }
 

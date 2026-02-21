@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { logger } from "@/lib/logger"
 
 export const dynamic = 'force-dynamic'
 
@@ -53,7 +54,7 @@ export async function GET(
     return NextResponse.json({ job })
   } catch (error) {
     if (process.env.NODE_ENV === "development") {
-    console.error("Error fetching job:", error)
+    logger.error("Error fetching job:", error)
     }
     return NextResponse.json(
       { error: "Failed to fetch job" },
