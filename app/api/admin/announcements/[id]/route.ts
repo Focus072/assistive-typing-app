@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { revalidatePath } from "next/cache"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { isAdminEmail } from "@/lib/admin"
@@ -31,6 +32,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       data.publishedAt = parsed.data.published ? new Date() : null
     }
     const updated = await prisma.announcement.update({ where: { id }, data })
+    revalidatePath("/updates")
     return NextResponse.json(updated)
   } catch (error: unknown) {
     logger.error("[API] PATCH /api/admin/announcements/[id] error:", error)
@@ -45,6 +47,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const { id } = await params
   try {
     await prisma.announcement.delete({ where: { id } })
+    revalidatePath("/updates")
     return NextResponse.json({ success: true })
   } catch (error: unknown) {
     logger.error("[API] DELETE /api/admin/announcements/[id] error:", error)
