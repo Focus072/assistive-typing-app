@@ -35,8 +35,9 @@ export async function POST(request: Request) {
     await renameDocument(session.user.id, documentId, title)
 
     return NextResponse.json({ success: true })
-  } catch (error: any) {
-    if (error.message === "GOOGLE_AUTH_REVOKED") {
+  } catch (error: unknown) {
+    const googleError = error as { message?: string; code?: number }
+    if (googleError.message === "GOOGLE_AUTH_REVOKED") {
       return NextResponse.json(
         { error: "Google authentication required", code: "GOOGLE_AUTH_REVOKED" },
         { status: 401 }
@@ -45,15 +46,15 @@ export async function POST(request: Request) {
 
     if (process.env.NODE_ENV === "development") {
       console.error("Error renaming document:", {
-        message: error?.message,
-        code: error?.code,
+        message: googleError?.message,
+        code: googleError?.code,
       })
     }
 
     return NextResponse.json(
       {
         error: "Failed to rename document",
-        code: error?.code,
+        code: googleError?.code,
       },
       { status: 500 }
     )

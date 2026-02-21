@@ -40,10 +40,11 @@ export async function POST(request: Request) {
     })
 
     return NextResponse.json({ url: portalSession.url })
-  } catch (error: any) {
-    console.error('[STRIPE PORTAL] Error:', error?.message)
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : String(error)
+    console.error('[STRIPE PORTAL] Error:', errMsg)
     return NextResponse.json(
-      { error: error?.message || 'Failed to open billing portal' },
+      { error: errMsg || 'Failed to open billing portal' },
       { status: 500 }
     )
   }

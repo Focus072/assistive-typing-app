@@ -230,9 +230,9 @@ export async function POST(request: Request) {
         durationMinutes: validated.durationMinutes,
         typingProfile: validated.typingProfile,
       })
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Handle transaction errors
-      if (error.message && error.message.includes("active typing job")) {
+      if (error instanceof Error && error.message.includes("active typing job")) {
         return NextResponse.json(
           { error: error.message },
           { status: 400 }
@@ -247,21 +247,22 @@ export async function POST(request: Request) {
         name: "job/start",
         data: { jobId: job.id },
       })
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Log error but don't block job creation
+      const inngestErr = err as { message?: string; status?: number }
       if (process.env.NODE_ENV === "development") {
         console.error("Inngest dispatch failed (job still created and running):", {
-          error: err?.message,
-          statusCode: err?.status,
+          error: inngestErr?.message,
+          statusCode: inngestErr?.status,
         })
       }
       await prisma.jobEvent.create({
         data: {
           jobId: job.id,
           type: "start_dispatch_failed",
-          details: JSON.stringify({ 
-            message: err?.message ?? "unknown error",
-            statusCode: err?.status,
+          details: JSON.stringify({
+            message: inngestErr?.message ?? "unknown error",
+            statusCode: inngestErr?.status,
             hasEventKey: !!process.env.INNGEST_EVENT_KEY,
           }),
         },
@@ -270,10 +271,10 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ jobId: job.id })
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error instanceof z.ZodError) {
       // Create user-friendly error message
-      const errorMessages = error.errors.map((err: any) => {
+      const errorMessages = error.errors.map((err) => {
         const field = err.path.join('.')
         if (err.code === 'invalid_type') {
           return `${field}: expected ${err.expected}, got ${err.received}`
@@ -301,14 +302,15 @@ export async function POST(request: Request) {
     }
     
     // Log error details only in development
+    const errMsg = error instanceof Error ? error.message : String(error)
     if (process.env.NODE_ENV === "development") {
       console.error("[Start Job] Error:", {
-        message: error?.message,
-        name: error?.name,
+        message: errMsg,
+        name: error instanceof Error ? error.name : "unknown",
       })
     }
     return NextResponse.json(
-      { error: "Failed to start job", message: error?.message },
+      { error: "Failed to start job", message: errMsg },
       { status: 500 }
     )
   }

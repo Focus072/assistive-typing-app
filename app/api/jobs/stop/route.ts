@@ -95,16 +95,16 @@ export async function POST(request: Request) {
     })
 
     return NextResponse.json({ success: true })
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: "Validation failed", message: error.errors.map(e => e.message).join("; ") },
         { status: 400 }
       )
     }
-    
+
     if (process.env.NODE_ENV === "development") {
-      console.error("Error stopping job:", error?.message)
+      console.error("Error stopping job:", error instanceof Error ? error.message : String(error))
     }
     return NextResponse.json(
       { error: "Failed to stop job" },

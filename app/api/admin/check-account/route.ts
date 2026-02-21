@@ -62,7 +62,7 @@ export async function POST(request: Request) {
         ? "Account exists and has a password set. You can log in."
         : "Account exists but no password is set. Use /api/admin/setup to set a password.",
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: error.errors[0].message },
@@ -72,7 +72,7 @@ export async function POST(request: Request) {
 
     console.error("Admin check error:", error)
     return NextResponse.json(
-      { error: "Failed to check account", details: error.message },
+      { error: "Failed to check account", details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     )
   }

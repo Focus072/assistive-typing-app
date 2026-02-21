@@ -28,10 +28,10 @@ export async function POST(request: Request) {
       signature,
       process.env.STRIPE_WEBHOOK_SECRET!
     )
-  } catch (err: any) {
-    console.error('Webhook signature verification failed:', err.message)
+  } catch (err: unknown) {
+    console.error('Webhook signature verification failed:', err instanceof Error ? err.message : String(err))
     return NextResponse.json(
-      { error: `Webhook Error: ${err.message}` },
+      { error: `Webhook Error: ${err instanceof Error ? err.message : String(err)}` },
       { status: 400 }
     )
   }
@@ -130,7 +130,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ received: true })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Webhook handler error:', error)
     return NextResponse.json(
       { error: 'Webhook handler failed' },

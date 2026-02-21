@@ -3,6 +3,38 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { isAdminEmail } from "@/lib/admin"
+import type { Prisma } from "@prisma/client"
+
+type RecentUser = Prisma.UserGetPayload<{
+  select: {
+    id: true
+    email: true
+    name: true
+    image: true
+    createdAt: true
+    accounts: { select: { provider: true } }
+  }
+}>
+
+type RecentJob = Prisma.JobGetPayload<{
+  select: {
+    id: true
+    userId: true
+    status: true
+    createdAt: true
+    completedAt: true
+    totalChars: true
+  }
+}>
+
+type TopUser = Prisma.UserGetPayload<{
+  select: {
+    id: true
+    email: true
+    name: true
+    _count: { select: { jobs: true } }
+  }
+}> | null
 
 export const dynamic = "force-dynamic"
 
@@ -37,9 +69,9 @@ export async function GET() {
     let totalDocuments = 0
     let activeSubscribers = 0
     let academicIntegrityAcceptedCount = 0
-    let recentUsers: any[] = []
-    let recentJobs: any[] = []
-    let topUser: any = null
+    let recentUsers: RecentUser[] = []
+    let recentJobs: RecentJob[] = []
+    let topUser: TopUser = null
 
     // If using fallback admin ID (database unavailable), return empty stats
     if (shouldUseFallback) {
@@ -70,15 +102,15 @@ export async function GET() {
       try {
         totalUsers = await prisma.user.count()
         console.log("[ADMIN STATS] Total users query successful:", totalUsers)
-      } catch (e: any) {
-        console.error("[ADMIN STATS] Total users query failed:", e?.message)
+      } catch (e: unknown) {
+        console.error("[ADMIN STATS] Total users query failed:", e instanceof Error ? e.message : String(e))
       }
 
       try {
         totalJobs = await prisma.job.count()
         console.log("[ADMIN STATS] Total jobs query successful:", totalJobs)
-      } catch (e: any) {
-        console.error("[ADMIN STATS] Total jobs query failed:", e?.message)
+      } catch (e: unknown) {
+        console.error("[ADMIN STATS] Total jobs query failed:", e instanceof Error ? e.message : String(e))
       }
 
       try {
@@ -90,8 +122,8 @@ export async function GET() {
           },
         })
         console.log("[ADMIN STATS] Active jobs query successful:", activeJobs)
-      } catch (e: any) {
-        console.error("[ADMIN STATS] Active jobs query failed:", e?.message)
+      } catch (e: unknown) {
+        console.error("[ADMIN STATS] Active jobs query failed:", e instanceof Error ? e.message : String(e))
       }
 
       try {
@@ -99,8 +131,8 @@ export async function GET() {
           where: { status: "completed" },
         })
         console.log("[ADMIN STATS] Completed jobs query successful:", completedJobs)
-      } catch (e: any) {
-        console.error("[ADMIN STATS] Completed jobs query failed:", e?.message)
+      } catch (e: unknown) {
+        console.error("[ADMIN STATS] Completed jobs query failed:", e instanceof Error ? e.message : String(e))
       }
 
       try {
@@ -108,8 +140,8 @@ export async function GET() {
           where: { status: "failed" },
         })
         console.log("[ADMIN STATS] Failed jobs query successful:", failedJobs)
-      } catch (e: any) {
-        console.error("[ADMIN STATS] Failed jobs query failed:", e?.message)
+      } catch (e: unknown) {
+        console.error("[ADMIN STATS] Failed jobs query failed:", e instanceof Error ? e.message : String(e))
       }
 
       try {
@@ -123,8 +155,8 @@ export async function GET() {
           },
         })
         console.log("[ADMIN STATS] Google OAuth users query successful:", googleOAuthUsers)
-      } catch (e: any) {
-        console.error("[ADMIN STATS] Google OAuth users query failed:", e?.message)
+      } catch (e: unknown) {
+        console.error("[ADMIN STATS] Google OAuth users query failed:", e instanceof Error ? e.message : String(e))
       }
 
       try {
@@ -136,30 +168,30 @@ export async function GET() {
           },
         })
         console.log("[ADMIN STATS] Credential users query successful:", credentialUsers)
-      } catch (e: any) {
-        console.error("[ADMIN STATS] Credential users query failed:", e?.message)
+      } catch (e: unknown) {
+        console.error("[ADMIN STATS] Credential users query failed:", e instanceof Error ? e.message : String(e))
       }
 
       try {
         totalDocuments = await prisma.document.count()
-      } catch (e: any) {
-        console.error("[ADMIN STATS] Total documents query failed:", e?.message)
+      } catch (e: unknown) {
+        console.error("[ADMIN STATS] Total documents query failed:", e instanceof Error ? e.message : String(e))
       }
 
       try {
         activeSubscribers = await prisma.user.count({
           where: { subscriptionStatus: "active" },
         })
-      } catch (e: any) {
-        console.error("[ADMIN STATS] Active subscribers query failed:", e?.message)
+      } catch (e: unknown) {
+        console.error("[ADMIN STATS] Active subscribers query failed:", e instanceof Error ? e.message : String(e))
       }
 
       try {
         academicIntegrityAcceptedCount = await prisma.user.count({
           where: { academicIntegrityAcceptedAt: { not: null } },
         })
-      } catch (e: any) {
-        console.error("[ADMIN STATS] Academic integrity count query failed:", e?.message)
+      } catch (e: unknown) {
+        console.error("[ADMIN STATS] Academic integrity count query failed:", e instanceof Error ? e.message : String(e))
       }
 
       try {
@@ -185,8 +217,8 @@ export async function GET() {
           take: 10,
         })
         console.log("[ADMIN STATS] Recent users query successful, count:", recentUsers.length)
-      } catch (e: any) {
-        console.error("[ADMIN STATS] Recent users query failed:", e?.message)
+      } catch (e: unknown) {
+        console.error("[ADMIN STATS] Recent users query failed:", e instanceof Error ? e.message : String(e))
       }
 
       try {
@@ -208,8 +240,8 @@ export async function GET() {
           take: 20,
         })
         console.log("[ADMIN STATS] Recent jobs query successful, count:", recentJobs.length)
-      } catch (e: any) {
-        console.error("[ADMIN STATS] Recent jobs query failed:", e?.message)
+      } catch (e: unknown) {
+        console.error("[ADMIN STATS] Recent jobs query failed:", e instanceof Error ? e.message : String(e))
       }
 
       console.log("[ADMIN STATS] Database query successful:", {
@@ -240,13 +272,13 @@ export async function GET() {
           },
         },
       })
-    } catch (dbError: any) {
+    } catch (dbError: unknown) {
       // If database fails, log the error with full details
+      const dbErr = dbError instanceof Error ? dbError : new Error(String(dbError))
       console.error("[ADMIN STATS] Database error:", {
-        message: dbError?.message,
-        code: dbError?.code,
-        name: dbError?.name,
-        stack: dbError?.stack,
+        message: dbErr.message,
+        name: dbErr.name,
+        stack: dbErr.stack,
       })
       
       // Log what we have so far
@@ -300,7 +332,7 @@ export async function GET() {
       recentUsers,
       recentJobs,
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Admin stats error:", error)
     return NextResponse.json(
       { error: "Failed to fetch admin stats" },

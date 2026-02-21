@@ -7,6 +7,7 @@ import { PrismaAdapter } from "@next-auth/prisma-adapter"
 import { prisma } from "@/lib/prisma"
 import { PlanTier } from "@prisma/client"
 import { google } from "googleapis"
+import type { AdapterUser, AdapterAccount, AdapterSession, VerificationToken } from "next-auth/adapters"
 
 // Wrap PrismaAdapter to catch errors and handle fallback users
 const baseAdapter = PrismaAdapter(prisma)
@@ -14,7 +15,7 @@ const baseAdapter = PrismaAdapter(prisma)
 // Create a wrapper adapter that handles fallback users gracefully
 const adapter = {
   ...baseAdapter,
-  async createUser(user: any) {
+  async createUser(user: AdapterUser) {
     // For fallback users, skip database creation
     if (user.id === "admin-fallback" || user.id === "dev-admin-fallback") {
       console.warn("[AUTH] Skipping database user creation for fallback admin")
@@ -49,9 +50,10 @@ const adapter = {
       const createdUser = await baseAdapter.createUser!(userData)
 
       return createdUser
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Handle duplicate email error (P2002 is Prisma unique constraint violation)
-      if (error?.code === 'P2002' && error?.meta?.target?.includes('email')) {
+      const prismaError = error as { code?: string; meta?: { target?: string[] }; message?: string; stack?: string }
+      if (prismaError?.code === 'P2002' && prismaError?.meta?.target?.includes('email')) {
         console.log("[AUTH] User with email already exists, fetching existing user", { email: user.email })
         // User already exists, fetch and return it
         const existingUser = await prisma.user.findUnique({
@@ -70,17 +72,17 @@ const adapter = {
 
       // Log detailed error for debugging
       console.error("[AUTH] createUser error:", {
-        code: error?.code,
-        message: error?.message,
-        meta: error?.meta,
+        code: prismaError?.code,
+        message: prismaError?.message,
+        meta: prismaError?.meta,
         userEmail: user.email,
-        stack: error?.stack,
+        stack: prismaError?.stack,
       })
 
       throw error
     }
   },
-  async linkAccount(account: any) {
+  async linkAccount(account: AdapterAccount) {
     // For fallback users, skip account linking
     if (account.userId === "admin-fallback" || account.userId === "dev-admin-fallback") {
       console.warn("[AUTH] Skipping account linking for fallback admin")
@@ -116,9 +118,10 @@ const adapter = {
       const linkedAccount = await baseAdapter.linkAccount!(account)
 
       return linkedAccount
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Handle duplicate account error (P2002 is Prisma unique constraint violation)
-      if (error?.code === 'P2002' && error?.meta?.target?.includes('provider')) {
+      const prismaError = error as { code?: string; meta?: { target?: string[] }; message?: string }
+      if (prismaError?.code === 'P2002' && prismaError?.meta?.target?.includes('provider')) {
         console.log("[AUTH] Account already linked, fetching existing account")
         // Account already exists, fetch and return it
         const existingAccount = await prisma.account.findUnique({
@@ -136,28 +139,28 @@ const adapter = {
 
       // Log detailed error for debugging
       console.error("[AUTH] linkAccount error:", {
-        code: error?.code,
-        message: error?.message,
-        meta: error?.meta,
+        code: prismaError?.code,
+        message: prismaError?.message,
+        meta: prismaError?.meta,
         provider: account.provider,
         userId: account.userId,
       })
 
       // If database fails, log but don't block (non-critical)
-      console.warn("[AUTH] Account linking failed (non-blocking):", error?.message)
+      console.warn("[AUTH] Account linking failed (non-blocking):", prismaError?.message)
       return account
     }
   },
-  async createSession(session: any) {
+  async createSession(session: AdapterSession) {
     // For fallback users, skip session creation (JWT handles it)
     if (session.userId === "admin-fallback" || session.userId === "dev-admin-fallback") {
       return session
     }
     try {
       return await baseAdapter.createSession!(session)
-    } catch (error: any) {
+    } catch (error: unknown) {
       // If database fails, return session anyway (JWT will handle it)
-      console.warn("[AUTH] Session creation failed (non-blocking):", error?.message)
+      console.warn("[AUTH] Session creation failed (non-blocking):", error instanceof Error ? error.message : String(error))
       return session
     }
   },
@@ -168,76 +171,76 @@ const adapter = {
     }
     try {
       return await baseAdapter.getUser!(id)
-    } catch (error: any) {
+    } catch (error: unknown) {
       // If database fails, return null (JWT will handle it)
-      console.warn("[AUTH] Get user failed (non-blocking):", error?.message)
+      console.warn("[AUTH] Get user failed (non-blocking):", error instanceof Error ? error.message : String(error))
       return null
     }
   },
   async getUserByEmail(email: string) {
     try {
       return await baseAdapter.getUserByEmail!(email)
-    } catch (error: any) {
+    } catch (error: unknown) {
       // If database fails, return null
-      console.warn("[AUTH] Get user by email failed (non-blocking):", error?.message)
+      console.warn("[AUTH] Get user by email failed (non-blocking):", error instanceof Error ? error.message : String(error))
       return null
     }
   },
-  async getUserByAccount(account: any) {
+  async getUserByAccount(account: Pick<AdapterAccount, "provider" | "providerAccountId">) {
     try {
       return await baseAdapter.getUserByAccount!(account)
-    } catch (error: any) {
+    } catch (error: unknown) {
       // If database fails, return null
-      console.warn("[AUTH] Get user by account failed (non-blocking):", error?.message)
+      console.warn("[AUTH] Get user by account failed (non-blocking):", error instanceof Error ? error.message : String(error))
       return null
     }
   },
-  async updateUser(user: any) {
+  async updateUser(user: Partial<AdapterUser> & Pick<AdapterUser, "id">) {
     // For fallback users, skip database update
     if (user.id === "admin-fallback" || user.id === "dev-admin-fallback") {
       return user
     }
     try {
       return await baseAdapter.updateUser!(user)
-    } catch (error: any) {
+    } catch (error: unknown) {
       // If database fails, return user anyway
-      console.warn("[AUTH] Update user failed (non-blocking):", error?.message)
-      return user
+      console.warn("[AUTH] Update user failed (non-blocking):", error instanceof Error ? error.message : String(error))
+      return user as AdapterUser
     }
   },
   async deleteSession(sessionToken: string): Promise<void> {
     try {
       await baseAdapter.deleteSession!(sessionToken)
-    } catch (error: any) {
+    } catch (error: unknown) {
       // If database fails, log but don't throw (non-blocking)
-      console.warn("[AUTH] Delete session failed (non-blocking):", error?.message)
+      console.warn("[AUTH] Delete session failed (non-blocking):", error instanceof Error ? error.message : String(error))
       // Return void (don't throw error)
     }
   },
-  async updateSession(session: any) {
+  async updateSession(session: Partial<AdapterSession> & Pick<AdapterSession, "sessionToken">) {
     try {
       return await baseAdapter.updateSession!(session)
-    } catch (error: any) {
+    } catch (error: unknown) {
       // If database fails, return session anyway
-      console.warn("[AUTH] Update session failed (non-blocking):", error?.message)
-      return session
+      console.warn("[AUTH] Update session failed (non-blocking):", error instanceof Error ? error.message : String(error))
+      return session as AdapterSession
     }
   },
-  async createVerificationToken(verificationToken: any) {
+  async createVerificationToken(verificationToken: VerificationToken) {
     try {
       return await baseAdapter.createVerificationToken!(verificationToken)
-    } catch (error: any) {
+    } catch (error: unknown) {
       // If database fails, return token anyway
-      console.warn("[AUTH] Create verification token failed (non-blocking):", error?.message)
+      console.warn("[AUTH] Create verification token failed (non-blocking):", error instanceof Error ? error.message : String(error))
       return verificationToken
     }
   },
-  async useVerificationToken(token: any) {
+  async useVerificationToken(token: { identifier: string; token: string }) {
     try {
       return await baseAdapter.useVerificationToken!(token)
-    } catch (error: any) {
+    } catch (error: unknown) {
       // If database fails, return null
-      console.warn("[AUTH] Use verification token failed (non-blocking):", error?.message)
+      console.warn("[AUTH] Use verification token failed (non-blocking):", error instanceof Error ? error.message : String(error))
       return null
     }
   },
@@ -292,9 +295,9 @@ export const authOptions: NextAuthOptions = {
         if (profile?.email) {
           user.email = profile.email
           console.log("[AUTH] signIn: Using email from profile", { email: profile.email })
-        } else if ((profile as any)?.emails?.[0]?.value) {
+        } else if ((profile as { emails?: { value: string }[] })?.emails?.[0]?.value) {
           // Some OAuth providers nest email in emails array
-          user.email = (profile as any).emails[0].value
+          user.email = (profile as { emails?: { value: string }[] }).emails![0].value
           console.log("[AUTH] signIn: Using email from profile.emails array", { email: user.email })
         } else {
           console.error("[AUTH] signIn: No email found in user or profile objects - rejecting sign-in")
@@ -308,11 +311,11 @@ export const authOptions: NextAuthOptions = {
       }
 
       // Ensure image is set from profile if missing
-      const profileAny = profile as any
-      if (!user?.image && profileAny?.picture) {
-        user.image = profileAny.picture
-      } else if (!user?.image && profileAny?.image) {
-        user.image = profileAny.image
+      const profileWithPicture = profile as { picture?: string; image?: string }
+      if (!user?.image && profileWithPicture?.picture) {
+        user.image = profileWithPicture.picture
+      } else if (!user?.image && profileWithPicture?.image) {
+        user.image = profileWithPicture.image
       }
 
       // For fallback admin users, allow sign-in even if adapter fails
@@ -326,10 +329,11 @@ export const authOptions: NextAuthOptions = {
       try {
         // Always return true - PrismaAdapter handles the rest
         return true
-      } catch (error: any) {
+      } catch (error: unknown) {
         // If database is unavailable and it's a fallback user, allow sign-in anyway
+        const errMsg = error instanceof Error ? error.message : String(error)
         if ((user?.id === "admin-fallback" || user?.id === "dev-admin-fallback") &&
-            (error?.message?.includes("quota") || error?.message?.includes("compute time"))) {
+            (errMsg?.includes("quota") || errMsg?.includes("compute time"))) {
           console.warn("[AUTH] Allowing fallback admin sign-in despite database error")
           return true
         }
@@ -355,7 +359,7 @@ export const authOptions: NextAuthOptions = {
         }
 
         return session
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("[AUTH] session callback error:", error)
         return session
       }
@@ -388,7 +392,7 @@ export const authOptions: NextAuthOptions = {
             const emailLower = (token.email ?? "").toLowerCase()
             const adminList = (process.env.ADMIN_EMAILS ?? "").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean)
             if (adminList.includes(emailLower)) token.role = "ADMIN"
-          } catch (dbError: any) {
+          } catch {
             // If DB fails, default to FREE
             token.planTier = 'FREE'
             token.subscriptionStatus = null
@@ -433,8 +437,7 @@ export const authOptions: NextAuthOptions = {
           token.refreshToken = account.refresh_token
         }
         return token
-      } catch (error: any) {
-        const errorMessage = error instanceof Error ? error.message : String(error)
+      } catch (error: unknown) {
         if (process.env.NODE_ENV === "development") {
           console.error("[NextAuth] Error in jwt callback:", error)
         }

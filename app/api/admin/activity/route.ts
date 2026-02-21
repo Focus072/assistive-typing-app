@@ -47,10 +47,10 @@ export async function GET(request: Request) {
         errorCode: j.errorCode,
       })),
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[ADMIN ACTIVITY]", error)
     return NextResponse.json(
-      { error: error?.message || "Failed to fetch activity" },
+      { error: error instanceof Error ? error.message : "Failed to fetch activity" },
       { status: 500 }
     )
   }

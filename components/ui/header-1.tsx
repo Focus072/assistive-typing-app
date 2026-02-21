@@ -78,13 +78,13 @@ export function Header() {
 					{status === 'authenticated' && session ? (
 						<>
 							{/* Admin link for users with ADMIN role */}
-							{(session.user as any)?.role === 'ADMIN' && (
+							{session.user?.role === 'ADMIN' && (
 								<Button variant="outline" asChild>
 									<Link href="/admin">Admin</Link>
 								</Button>
 							)}
 							{/* Dashboard when active subscription or admin */}
-							{((session.user as any)?.subscriptionStatus === 'active' || (session.user as any)?.planTier === 'ADMIN' || (session.user as any)?.role === 'ADMIN') && (
+							{(session.user?.subscriptionStatus === 'active' || session.user?.planTier === 'ADMIN' || session.user?.role === 'ADMIN') && (
 								<Button variant="outline" asChild>
 									<Link href="/dashboard">Dashboard</Link>
 								</Button>
@@ -164,12 +164,12 @@ export function Header() {
 				<div className="flex flex-col gap-2">
 					{status === 'authenticated' && session ? (
 						<>
-							{(session.user as any)?.role === 'ADMIN' && (
+							{session.user?.role === 'ADMIN' && (
 								<Button variant="outline" asChild className="w-full">
 									<Link href="/admin" onClick={() => setOpen(false)}>Admin</Link>
 								</Button>
 							)}
-							{((session.user as any)?.subscriptionStatus === 'active' || (session.user as any)?.planTier === 'ADMIN' || (session.user as any)?.role === 'ADMIN') && (
+							{(session.user?.subscriptionStatus === 'active' || session.user?.planTier === 'ADMIN' || session.user?.role === 'ADMIN') && (
 								<Button variant="outline" asChild className="w-full">
 									<Link href="/dashboard" onClick={() => setOpen(false)}>
 										Dashboard

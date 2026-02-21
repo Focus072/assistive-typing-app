@@ -119,8 +119,8 @@ export default function AdminUsersPage() {
       const data: UsersResponse = await response.json()
       setUsers(data.users)
       setPagination(data.pagination)
-    } catch (err: any) {
-      setError(err.message || "Failed to load users")
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to load users")
     } finally {
       setLoading(false)
     }

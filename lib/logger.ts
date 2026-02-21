@@ -7,16 +7,16 @@
 const isDevelopment = process.env.NODE_ENV === "development"
 
 interface LogContext {
-  [key: string]: any
+  [key: string]: unknown
 }
 
 export const logger = {
-  log: (...args: any[]) => {
+  log: (...args: unknown[]) => {
     if (isDevelopment) {
       console.log(...args)
     }
   },
-  error: (...args: any[]) => {
+  error: (...args: unknown[]) => {
     // Always log errors, but sanitize in production
     if (isDevelopment) {
       console.error(...args)
@@ -28,7 +28,7 @@ export const logger = {
         }
         if (typeof arg === "object" && arg !== null) {
           // Remove sensitive fields
-          const { stack, ...rest } = arg as any
+          const { stack, ...rest } = arg as Record<string, unknown>
           return rest
         }
         return arg
@@ -36,12 +36,12 @@ export const logger = {
       console.error(...sanitized)
     }
   },
-  warn: (...args: any[]) => {
+  warn: (...args: unknown[]) => {
     if (isDevelopment) {
       console.warn(...args)
     }
   },
-  debug: (...args: any[]) => {
+  debug: (...args: unknown[]) => {
     if (isDevelopment) {
       console.debug(...args)
     }

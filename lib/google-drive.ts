@@ -28,17 +28,18 @@ export async function getDocumentWebViewLink(
     }
 
     return response.data.webViewLink
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const googleError = error as { message?: string; code?: number }
     // Handle missing Google token
-    if (error.message === "Google OAuth token not found" || error.message?.includes("Google OAuth token")) {
+    if (googleError.message === "Google OAuth token not found" || googleError.message?.includes("Google OAuth token")) {
       throw new Error("GOOGLE_AUTH_REVOKED")
     }
     // Handle Google API auth errors
-    if (error.code === 401 || error.code === 403) {
+    if (googleError.code === 401 || googleError.code === 403) {
       throw new Error("GOOGLE_AUTH_REVOKED")
     }
     // Handle not found
-    if (error.code === 404) {
+    if (googleError.code === 404) {
       throw new Error("DOCUMENT_NOT_FOUND")
     }
     throw error

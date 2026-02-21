@@ -1,6 +1,9 @@
 import type { DocumentFormat } from "@/types"
 import type { FormatMetadata } from "@/components/FormatMetadataModal"
 import type { CustomFormatConfig } from "@/components/CustomFormatModal"
+import type { docs_v1 } from "googleapis"
+
+type DocsRequest = docs_v1.Schema$Request
 
 export interface FormatConfig {
   name: string
@@ -120,12 +123,12 @@ export function generateFormatRequests(
   documentId: string,
   metadata?: FormatMetadata,
   customConfig?: CustomFormatConfig
-): any[] {
+): DocsRequest[] {
   // Use custom config if format is custom, otherwise use default config
   const config = format === "custom" && customConfig
     ? { ...formatConfigs[format], ...customConfig }
     : formatConfigs[format]
-  const requests: any[] = []
+  const requests: DocsRequest[] = []
 
   // Set document margins (in points) - apply to entire document
   requests.push({
@@ -246,7 +249,7 @@ export function generateFormatRequests(
 
       // Apply formatting to all inserted content (this sets the style for the document)
       // Set paragraph style (line spacing, indentation)
-      const paragraphStyle: any = {
+      const paragraphStyle: docs_v1.Schema$ParagraphStyle = {
         spaceAbove: {
           magnitude: 0,
           unit: "PT",

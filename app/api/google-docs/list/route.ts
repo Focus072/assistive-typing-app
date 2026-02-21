@@ -22,8 +22,8 @@ export async function GET() {
     const documents = await listDocuments(session.user.id)
     
     return NextResponse.json({ documents })
-  } catch (error: any) {
-    if (error.message === "GOOGLE_AUTH_REVOKED") {
+  } catch (error: unknown) {
+    if (error instanceof Error && error.message === "GOOGLE_AUTH_REVOKED") {
       return NextResponse.json(
         { error: "Google authentication required", code: "GOOGLE_AUTH_REVOKED" },
         { status: 401 }

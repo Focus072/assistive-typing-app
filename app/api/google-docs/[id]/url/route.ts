@@ -29,14 +29,15 @@ export async function GET(
     const webViewLink = await getDocumentWebViewLink(session.user.id, id)
 
     return NextResponse.json({ url: webViewLink })
-  } catch (error: any) {
-    if (error.message === "GOOGLE_AUTH_REVOKED") {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : String(error)
+    if (errMsg === "GOOGLE_AUTH_REVOKED") {
       return NextResponse.json(
         { error: "Google authentication required" },
         { status: 401 }
       )
     }
-    if (error.message === "DOCUMENT_NOT_FOUND") {
+    if (errMsg === "DOCUMENT_NOT_FOUND") {
       return NextResponse.json(
         { error: "Document not found" },
         { status: 404 }

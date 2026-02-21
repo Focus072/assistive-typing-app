@@ -129,7 +129,7 @@ export const typingJob = inngest.createFunction(
           fresh.typingProfile as TypingProfile,
           fresh.testWPM ? Number(fresh.testWPM) : undefined
         )
-      } catch (error: any) {
+      } catch (error: unknown) {
         // Catch validation errors and mark job as failed
         logger.job.fail(jobId, fresh.userId, "ENGINE_VALIDATION_ERROR")
         await markFailed(jobId, "ENGINE_VALIDATION_ERROR")
@@ -137,8 +137,8 @@ export const typingJob = inngest.createFunction(
           data: {
             jobId,
             type: "failed",
-            details: JSON.stringify({ 
-              error: error?.message || "Unknown validation error",
+            details: JSON.stringify({
+              error: error instanceof Error ? error.message : "Unknown validation error",
               errorCode: "ENGINE_VALIDATION_ERROR"
             }),
           },
@@ -252,7 +252,7 @@ export const typingBatch = inngest.createFunction(
           fresh.typingProfile as TypingProfile,
           fresh.testWPM ? Number(fresh.testWPM) : undefined
         )
-      } catch (error: any) {
+      } catch (error: unknown) {
         // Catch validation errors and mark job as failed
         logger.job.fail(jobId, fresh.userId, "ENGINE_VALIDATION_ERROR")
         await markFailed(jobId, "ENGINE_VALIDATION_ERROR")
@@ -260,8 +260,8 @@ export const typingBatch = inngest.createFunction(
           data: {
             jobId,
             type: "failed",
-            details: JSON.stringify({ 
-              error: error?.message || "Unknown validation error",
+            details: JSON.stringify({
+              error: error instanceof Error ? error.message : "Unknown validation error",
               errorCode: "ENGINE_VALIDATION_ERROR"
             }),
           },

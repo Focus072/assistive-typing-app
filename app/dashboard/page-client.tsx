@@ -206,7 +206,7 @@ function DashboardContent() {
   // Handle checkout success with grace period and polling (defer setState to avoid update-before-mount)
   useEffect(() => {
     if (checkoutParam === "success" && status === "authenticated") {
-      const u = session?.user as any
+      const u = session?.user
       const hasAccess = u?.subscriptionStatus === "active" || u?.planTier === "ADMIN" || u?.role === "ADMIN"
       if (hasAccess) {
         updateSession().then(() => {
@@ -257,7 +257,7 @@ function DashboardContent() {
           // Give a moment for session to update, then check
           setTimeout(() => {
             if (userContinuedRef.current) return
-            const u = session?.user as any
+            const u = session?.user
             const hasAccess = u?.subscriptionStatus === "active" || u?.planTier === "ADMIN" || u?.role === "ADMIN"
             if (hasAccess) {
               setIsProcessingPayment(false)
@@ -305,7 +305,7 @@ function DashboardContent() {
   // Watch for session updates during grace period
   useEffect(() => {
     if (isProcessingPayment && session) {
-      const u = session.user as any
+      const u = session.user
       const hasAccess = u?.subscriptionStatus === "active" || u?.planTier === "ADMIN" || u?.role === "ADMIN"
       if (hasAccess) {
         // Success! Stop polling and timers, then show success message
@@ -615,19 +615,19 @@ function DashboardContent() {
       })
 
       if (!response.ok) {
-        let data: any = {}
+        let data: { error?: string; code?: string } = {}
         let errorMsg = "Failed to create document"
-        
+
         try {
           const responseText = await response.text()
           if (responseText) {
-            data = JSON.parse(responseText)
+            data = JSON.parse(responseText) as { error?: string; code?: string }
             errorMsg = data.error || errorMsg
           }
         } catch (parseError) {
           errorMsg = `Server error (${response.status})`
         }
-        
+
         if (data.code === "GOOGLE_AUTH_REVOKED" || response.status === 401) {
           errorMsg = "Please connect your Google account first"
         }
@@ -640,9 +640,9 @@ function DashboardContent() {
       const data = await response.json()
       toast.addToast(`Document created with ${documentFormat.toUpperCase()} formatting`, "success")
       return data.documentId
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Re-throw if it's already our error
-      if (error.message && error.message !== "Failed to create document") {
+      if (error instanceof Error && error.message !== "Failed to create document") {
         throw error
       }
       
@@ -686,13 +686,13 @@ function DashboardContent() {
       })
 
       if (!response.ok) {
-        let data: any = {}
+        let data: { message?: string; error?: string } = {}
         let errorMsg = "Failed to start job"
-        
+
         try {
           const responseText = await response.text()
           if (responseText) {
-            data = JSON.parse(responseText)
+            data = JSON.parse(responseText) as { message?: string; error?: string }
             errorMsg = data.message || data.error || errorMsg
           }
         } catch (parseError) {

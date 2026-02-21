@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { stripe as getStripe, STRIPE_PRICE_IDS, type SubscriptionTier } from '@/lib/stripe'
 import { z } from 'zod'
+import type { Session } from 'next-auth'
+import type Stripe from 'stripe'
 
 export const dynamic = 'force-dynamic'
 
@@ -13,7 +15,7 @@ const checkoutSchema = z.object({
 // Shared checkout logic for both GET and POST. Pass requestOrigin from request.url so redirect URLs are always valid.
 async function createCheckoutSession(
   tier: 'basic' | 'pro' | 'unlimited',
-  session: any,
+  session: Session,
   requestOrigin: string
 ) {
   // Get the Stripe Price ID for the selected tier
@@ -114,23 +116,24 @@ export async function GET(request: Request) {
           { status: 500 }
         )
       }
-    } catch (stripeError: any) {
+    } catch (stripeError: unknown) {
       // Handle Stripe-specific errors
+      const se = stripeError as Stripe.errors.StripeError
       console.error('[STRIPE ERROR] Checkout session creation failed:', {
-        type: stripeError.type,
-        code: stripeError.code,
-        message: stripeError.message,
-        param: stripeError.param,
+        type: se.type,
+        code: se.code,
+        message: se.message,
+        param: se.param,
         tier: validated.priceId,
       })
-      
+
       // Return user-friendly error message
       let errorMessage = 'Failed to create checkout session'
-      if (stripeError.type === 'StripeInvalidRequestError') {
-        if (stripeError.code === 'resource_missing') {
+      if (se.type === 'StripeInvalidRequestError') {
+        if (se.code === 'resource_missing') {
           errorMessage = `Price ID not found. Please check your Stripe configuration.`
-        } else if (stripeError.message) {
-          errorMessage = stripeError.message
+        } else if (se.message) {
+          errorMessage = se.message
         }
       }
       
@@ -194,34 +197,35 @@ export async function POST(request: Request) {
       return NextResponse.json({ 
         url: checkoutSession.url 
       })
-    } catch (stripeError: any) {
+    } catch (stripeError: unknown) {
       // Handle Stripe-specific and config errors (e.g. missing price ID on Vercel)
+      const se = stripeError as Stripe.errors.StripeError
       console.error('[STRIPE ERROR] Checkout session creation failed:', {
-        type: stripeError?.type,
-        code: stripeError?.code,
-        message: stripeError?.message,
-        param: stripeError?.param,
+        type: se?.type,
+        code: se?.code,
+        message: se?.message,
+        param: se?.param,
         tier: validated.priceId,
       })
 
       let errorMessage = 'Failed to create checkout session'
-      if (stripeError?.message?.includes('Price ID not configured') || stripeError?.message?.includes('environment variables')) {
-        errorMessage = stripeError.message
-      } else if (stripeError?.type === 'StripeInvalidRequestError') {
-        if (stripeError?.code === 'resource_missing') {
+      if (se?.message?.includes('Price ID not configured') || se?.message?.includes('environment variables')) {
+        errorMessage = se.message
+      } else if (se?.type === 'StripeInvalidRequestError') {
+        if (se?.code === 'resource_missing') {
           errorMessage = 'Price ID not found. Set STRIPE_BASIC_PRICE_ID, STRIPE_PRO_PRICE_ID, STRIPE_UNLIMITED_PRICE_ID in Vercel.'
-        } else if (stripeError?.message) {
-          errorMessage = stripeError.message
+        } else if (se?.message) {
+          errorMessage = se.message
         }
-      } else if (stripeError?.message) {
-        errorMessage = stripeError.message
+      } else if (se?.message) {
+        errorMessage = se.message
       }
 
       return NextResponse.json(
         {
           error: errorMessage,
-          type: stripeError?.type,
-          code: stripeError?.code,
+          type: se?.type,
+          code: se?.code,
         },
         { status: 400 }
       )
@@ -244,14 +248,14 @@ export async function POST(request: Request) {
     
     // Check if it's a Stripe error
     if (typeof error === 'object' && error !== null && 'type' in error) {
-      const stripeError = error as any
+      const stripeError = error as Stripe.errors.StripeError
       console.error('Stripe error type:', stripeError.type)
       console.error('Stripe error code:', stripeError.code)
       console.error('Stripe error message:', stripeError.message)
       console.error('Stripe error details:', JSON.stringify(stripeError, null, 2))
-      
+
       return NextResponse.json(
-        { 
+        {
           error: stripeError.message || 'Failed to create checkout session',
           type: stripeError.type,
           code: stripeError.code,

@@ -23,10 +23,10 @@ export async function GET() {
       map[k] = settings.find((s) => s.key === k)?.value ?? null
     }
     return NextResponse.json(map)
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[ADMIN SETTINGS GET]", error)
     return NextResponse.json(
-      { error: error?.message || "Failed to fetch settings" },
+      { error: error instanceof Error ? error.message : "Failed to fetch settings" },
       { status: 500 }
     )
   }
@@ -59,10 +59,10 @@ export async function PATCH(request: Request) {
       map[k] = settings.find((s) => s.key === k)?.value ?? null
     }
     return NextResponse.json(map)
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[ADMIN SETTINGS PATCH]", error)
     return NextResponse.json(
-      { error: error?.message || "Failed to update settings" },
+      { error: error instanceof Error ? error.message : "Failed to update settings" },
       { status: 500 }
     )
   }

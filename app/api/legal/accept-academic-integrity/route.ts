@@ -18,7 +18,7 @@ export async function POST() {
     })
 
     return NextResponse.json({ success: true })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[LEGAL] accept-academic-integrity error:", error)
     return NextResponse.json(
       { error: "Failed to record acceptance" },

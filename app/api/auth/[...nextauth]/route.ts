@@ -37,7 +37,7 @@ async function handleRequest(
     }
 
     return response
-  } catch (error: any) {
+  } catch (error: unknown) {
     const url = new URL(req.url)
     const isSessionRequest = url.pathname.endsWith('/session') || url.pathname.includes('/session')
 
@@ -45,16 +45,17 @@ async function handleRequest(
       console.error("[NextAuth] Handler error:", error)
     }
 
+    const errMsg = error instanceof Error ? error.message : 'Unknown error'
     // Return JSON so the client never gets HTML (avoids CLIENT_FETCH_ERROR "Unexpected token '<'")
     if (isSessionRequest) {
       return NextResponse.json(
-        { error: error?.message || 'Session fetch failed' },
+        { error: errMsg || 'Session fetch failed' },
         { status: 500 }
       )
     }
     // For any other auth API error, still return JSON so the client never receives an HTML error page
     return NextResponse.json(
-      { error: error?.message || 'Auth request failed' },
+      { error: errMsg || 'Auth request failed' },
       { status: 500 }
     )
   }

@@ -52,7 +52,7 @@ export async function GET(request: Request) {
       async start(controller) {
         const encoder = new TextEncoder()
         
-        const sendUpdate = (data: any) => {
+        const sendUpdate = (data: Record<string, unknown>) => {
           const message = `data: ${JSON.stringify(data)}\n\n`
           controller.enqueue(encoder.encode(message))
         }

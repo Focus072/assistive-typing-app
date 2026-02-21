@@ -8,6 +8,12 @@ import { hashString } from "./utils"
 import type { BatchInsertResult, TypingBatch } from "@/types"
 import type { FormatMetadata } from "@/components/FormatMetadataModal"
 
+/** Shape of errors thrown by googleapis and Google OAuth client */
+interface GoogleApiError {
+  message?: string
+  code?: number | string
+}
+
 const BATCH_SIZE = 20
 const MIN_INTERVAL_MS = 500
 
@@ -29,13 +35,14 @@ export async function listDocuments(userId: string) {
     })
 
     return response.data.files || []
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const googleError = error as GoogleApiError
     // Handle missing Google token
-    if (error.message === "Google OAuth token not found" || error.message?.includes("Google OAuth token")) {
+    if (googleError.message === "Google OAuth token not found" || googleError.message?.includes("Google OAuth token")) {
       throw new Error("GOOGLE_AUTH_REVOKED")
     }
     // Handle Google API auth errors
-    if (error.code === 401 || error.code === 403) {
+    if (googleError.code === 401 || googleError.code === 403) {
       throw new Error("GOOGLE_AUTH_REVOKED")
     }
     throw error
@@ -80,13 +87,14 @@ export async function createDocument(
     }
 
     return documentId
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const googleError = error as GoogleApiError
     // Handle missing Google token
-    if (error.message === "Google OAuth token not found" || error.message?.includes("Google OAuth token")) {
+    if (googleError.message === "Google OAuth token not found" || googleError.message?.includes("Google OAuth token")) {
       throw new Error("GOOGLE_AUTH_REVOKED")
     }
     // Handle Google API auth errors
-    if (error.code === 401 || error.code === 403) {
+    if (googleError.code === 401 || googleError.code === 403) {
       throw new Error("GOOGLE_AUTH_REVOKED")
     }
     throw error
@@ -108,13 +116,14 @@ export async function renameDocument(
         name: newTitle,
       },
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const googleError = error as GoogleApiError
     // Handle missing Google token
-    if (error.message === "Google OAuth token not found" || error.message?.includes("Google OAuth token")) {
+    if (googleError.message === "Google OAuth token not found" || googleError.message?.includes("Google OAuth token")) {
       throw new Error("GOOGLE_AUTH_REVOKED")
     }
     // Handle Google API auth errors
-    if (error.code === 401 || error.code === 403) {
+    if (googleError.code === 401 || googleError.code === 403) {
       throw new Error("GOOGLE_AUTH_REVOKED")
     }
     throw error
@@ -136,13 +145,14 @@ export async function deleteDocument(
         trashed: true,
       },
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const googleError = error as GoogleApiError
     // Handle missing Google token
-    if (error.message === "Google OAuth token not found" || error.message?.includes("Google OAuth token")) {
+    if (googleError.message === "Google OAuth token not found" || googleError.message?.includes("Google OAuth token")) {
       throw new Error("GOOGLE_AUTH_REVOKED")
     }
     // Handle Google API auth errors
-    if (error.code === 401 || error.code === 403) {
+    if (googleError.code === 401 || googleError.code === 403) {
       throw new Error("GOOGLE_AUTH_REVOKED")
     }
     throw error
@@ -172,13 +182,14 @@ export async function getDocumentEndIndex(userId: string, documentId: string): P
     }
 
     return lastIndex - 1 // Subtract 1 because endIndex is exclusive
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const googleError = error as GoogleApiError
     // Handle missing Google token
-    if (error.message === "Google OAuth token not found" || error.message?.includes("Google OAuth token")) {
+    if (googleError.message === "Google OAuth token not found" || googleError.message?.includes("Google OAuth token")) {
       throw new Error("GOOGLE_AUTH_REVOKED")
     }
     // Handle Google API auth errors
-    if (error.code === 401 || error.code === 403) {
+    if (googleError.code === 401 || googleError.code === 403) {
       throw new Error("GOOGLE_AUTH_REVOKED")
     }
     throw error
@@ -236,23 +247,24 @@ export async function insertBatch(
     const response = await docs.documents.batchUpdate(request)
     
     // Get revision ID if available (not always returned by Google)
-    const revisionId = (response.data as any).revisionId as string | undefined
+    const revisionId = (response.data as { revisionId?: string }).revisionId
 
     return {
       success: true,
       revisionId: revisionId || "success",
       insertedChars: batch.text.length,
     }
-  } catch (error: any) {
-    if (error.code === 401 || error.code === 403) {
+  } catch (error: unknown) {
+    const googleError = error as GoogleApiError
+    if (googleError.code === 401 || googleError.code === 403) {
       return {
         success: false,
         error: "GOOGLE_AUTH_REVOKED",
         insertedChars: 0,
       }
     }
-    
-    if (error.code === 429) {
+
+    if (googleError.code === 429) {
       return {
         success: false,
         error: "RATE_LIMIT",
@@ -262,7 +274,7 @@ export async function insertBatch(
 
     return {
       success: false,
-      error: error.message || "Unknown error",
+      error: googleError.message || "Unknown error",
       insertedChars: 0,
     }
   }

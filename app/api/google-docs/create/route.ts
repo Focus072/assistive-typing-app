@@ -37,38 +37,39 @@ export async function POST(request: Request) {
     )
     
     return NextResponse.json({ documentId })
-  } catch (error: any) {
-    if (error.message === "GOOGLE_AUTH_REVOKED") {
+  } catch (error: unknown) {
+    const googleError = error as { message?: string; code?: number }
+    if (googleError.message === "GOOGLE_AUTH_REVOKED") {
       return NextResponse.json(
         { error: "Google authentication required", code: "GOOGLE_AUTH_REVOKED" },
         { status: 401 }
       )
     }
-    
+
     if (process.env.NODE_ENV === "development") {
       console.error("Error creating document:", {
-        message: error?.message,
-        code: error?.code,
+        message: googleError?.message,
+        code: googleError?.code,
       })
     }
-    
+
     // Provide more specific error messages
     let errorMessage = "Failed to create document"
-    if (error?.code === 401 || error?.code === 403) {
+    if (googleError?.code === 401 || googleError?.code === 403) {
       errorMessage = "Google authentication required. Please reconnect your Google account."
-    } else if (error?.code === 429) {
+    } else if (googleError?.code === 429) {
       errorMessage = "Rate limit exceeded. Please try again in a moment."
-    } else if (error?.message) {
-      errorMessage = error.message
+    } else if (googleError?.message) {
+      errorMessage = googleError.message
     }
-    
+
     return NextResponse.json(
-      { 
+      {
         error: errorMessage,
-        code: error?.code,
-        details: process.env.NODE_ENV === "development" ? error?.message : undefined
+        code: googleError?.code,
+        details: process.env.NODE_ENV === "development" ? googleError?.message : undefined
       },
-      { status: error?.code === 401 || error?.code === 403 ? 401 : 500 }
+      { status: googleError?.code === 401 || googleError?.code === 403 ? 401 : 500 }
     )
   }
 }

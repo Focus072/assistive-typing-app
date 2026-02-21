@@ -41,7 +41,7 @@ export function PricingCards({ onCheckout, highlightPlan = 'unlimited' }: Pricin
     }
 
     // If user is logged in and already has active subscription, send them to dashboard
-    if ((session.user as any).subscriptionStatus === 'active') {
+    if (session.user.subscriptionStatus === 'active') {
       router.push('/dashboard')
       return
     }

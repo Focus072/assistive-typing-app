@@ -93,7 +93,7 @@ export async function POST(request: Request) {
     logger.job.resume(jobId, session.user.id)
 
     return NextResponse.json({ success: true })
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: "Validation failed", message: error.errors.map(e => e.message).join("; ") },

@@ -47,13 +47,13 @@ export async function PATCH(
     })
     console.log(`[ADMIN] Admin ${session.user.email} changed User ${userId} to tier ${planTier}`)
     return NextResponse.json(user)
-  } catch (error: any) {
-    if (error?.name === "ZodError") {
+  } catch (error: unknown) {
+    if (error instanceof z.ZodError) {
       return NextResponse.json({ error: "Invalid planTier" }, { status: 400 })
     }
     console.error("[ADMIN] Tier update error:", error)
     return NextResponse.json(
-      { error: error?.message || "Failed to update tier" },
+      { error: error instanceof Error ? error.message : "Failed to update tier" },
       { status: 500 }
     )
   }

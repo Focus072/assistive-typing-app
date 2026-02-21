@@ -115,8 +115,8 @@ function AdminJobsContent() {
       if (data.jobs.length > 0 && data.jobs[0].user) {
         setUserEmail(data.jobs[0].user.email)
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to load jobs")
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to load jobs")
     } finally {
       setLoading(false)
     }

@@ -21,7 +21,7 @@ export async function GET(request: Request) {
     const status = searchParams.get("status") || undefined
     const userId = searchParams.get("userId") || undefined
 
-    const where: any = {}
+    const where: { status?: string; userId?: string } = {}
     if (status) {
       where.status = status
     }
@@ -68,7 +68,7 @@ export async function GET(request: Request) {
         totalPages: Math.ceil(total / limit),
       },
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Admin jobs error:", error)
     return NextResponse.json(
       { error: "Failed to fetch jobs" },

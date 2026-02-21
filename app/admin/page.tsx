@@ -142,8 +142,8 @@ export default function AdminDashboard() {
       }
       if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error || "Failed to fetch stats")
       setStats(await response.json())
-    } catch (err: any) {
-      setError(err.message || "Failed to load admin dashboard")
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to load admin dashboard")
     } finally {
       setLoading(false)
     }
