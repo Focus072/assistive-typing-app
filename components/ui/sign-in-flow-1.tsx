@@ -12,31 +12,11 @@ import { PricingCards } from "@/components/ui/pricing-cards";
 // Lazy getter for DynamicShader to prevent module-level evaluation
 // This function is only called when DotMatrix component mounts, not during module initialization
 const getDynamicShader = () => {
-  // #region agent log
-  if (process.env.NODE_ENV === "development") {
-    fetch('http://127.0.0.1:7243/ingest/8bf28703-bae7-4dfb-bbed-261788013e7a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'sign-in-flow-1.tsx:13',message:'getDynamicShader called - creating dynamic import',data:{timestamp:Date.now(),typeofWindow:typeof window},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'A'})}).catch(()=>{});
-  }
-  // #endregion
   return dynamic(
     () => {
-      // #region agent log
-      if (process.env.NODE_ENV === "development") {
-        fetch('http://127.0.0.1:7243/ingest/8bf28703-bae7-4dfb-bbed-261788013e7a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'sign-in-flow-1.tsx:14',message:'Dynamic import factory function called',data:{timestamp:Date.now(),typeofWindow:typeof window},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'B'})}).catch(()=>{});
-      }
-      // #endregion
       return import("./CanvasShader").then((mod) => {
-        // #region agent log
-        if (process.env.NODE_ENV === "development") {
-          fetch('http://127.0.0.1:7243/ingest/8bf28703-bae7-4dfb-bbed-261788013e7a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'sign-in-flow-1.tsx:15',message:'CanvasShader module imported successfully',data:{timestamp:Date.now(),hasShader:!!mod.Shader},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'C'})}).catch(()=>{});
-        }
-        // #endregion
         return { default: mod.Shader };
       }).catch((err) => {
-        // #region agent log
-        if (process.env.NODE_ENV === "development") {
-          fetch('http://127.0.0.1:7243/ingest/8bf28703-bae7-4dfb-bbed-261788013e7a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'sign-in-flow-1.tsx:16',message:'CanvasShader import failed',data:{timestamp:Date.now(),error:err?.message,errorStack:err?.stack},timestamp:Date.now(),sessionId:'debug-session',runId:'post-fix',hypothesisId:'C'})}).catch(()=>{});
-        }
-        // #endregion
         throw err;
       });
     },
