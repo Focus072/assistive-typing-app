@@ -539,12 +539,58 @@ export const authOptions: NextAuthOptions = {
       fetch('http://127.0.0.1:7243/ingest/8bf28703-bae7-4dfb-bbed-261788013e7a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/auth.ts:303',message:'redirect callback: Entry',data:{url,baseUrl,urlStartsWithBase:url.startsWith(baseUrl)},timestamp:Date.now(),runId:'run1',hypothesisId:'D'})}).catch(()=>{});
       // #endregion
       
-      // If callbackUrl is provided (e.g., from deep link checkout), use it
-      // Otherwise, redirect to dashboard after successful authentication
-      const redirectUrl = url.startsWith(baseUrl) ? url : `${baseUrl}/dashboard`
+      // Helper to normalize URL for comparison (remove www, normalize protocol)
+      const normalizeForComparison = (urlStr: string): string => {
+        try {
+          const parsed = new URL(urlStr)
+          // Remove www. prefix if present
+          const hostname = parsed.hostname.replace(/^www\./, '')
+          // Return normalized origin + pathname
+          return `${parsed.protocol}//${hostname}${parsed.pathname}${parsed.search}`
+        } catch {
+          return urlStr
+        }
+      }
+      
+      // Helper to check if URL belongs to same site
+      const isSameSite = (urlToCheck: string, base: string): boolean => {
+        try {
+          const urlParsed = new URL(urlToCheck)
+          const baseParsed = new URL(base)
+          
+          // Normalize hostnames (remove www. prefix)
+          const urlHost = urlParsed.hostname.replace(/^www\./, '')
+          const baseHost = baseParsed.hostname.replace(/^www\./, '')
+          
+          // Same site if hostnames match (ignoring www)
+          return urlHost === baseHost
+        } catch {
+          // If URL parsing fails, check if it starts with baseUrl or is relative
+          return urlToCheck.startsWith(base) || urlToCheck.startsWith('/')
+        }
+      }
+      
+      let redirectUrl: string
+      
+      // Handle relative URLs (e.g., /dashboard)
+      if (url.startsWith('/')) {
+        redirectUrl = `${baseUrl}${url}`
+      }
+      // Handle same-site URLs (including www/non-www variants)
+      else if (isSameSite(url, baseUrl)) {
+        redirectUrl = url
+      }
+      // Handle URLs that start with baseUrl directly
+      else if (url.startsWith(baseUrl)) {
+        redirectUrl = url
+      }
+      // Default to dashboard for external/invalid URLs
+      else {
+        redirectUrl = `${baseUrl}/dashboard`
+      }
       
       // #region agent log
-      fetch('http://127.0.0.1:7243/ingest/8bf28703-bae7-4dfb-bbed-261788013e7a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/auth.ts:310',message:'redirect callback: Returning redirect URL',data:{redirectUrl,hasError:redirectUrl.includes('error=')},timestamp:Date.now(),runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+      fetch('http://127.0.0.1:7243/ingest/8bf28703-bae7-4dfb-bbed-261788013e7a',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'lib/auth.ts:310',message:'redirect callback: Returning redirect URL',data:{redirectUrl,hasError:redirectUrl.includes('error='),originalUrl:url,wasRelative:url.startsWith('/'),isSameSite:isSameSite(url,baseUrl)},timestamp:Date.now(),runId:'run1',hypothesisId:'D'})}).catch(()=>{});
       // #endregion
       
       return redirectUrl
