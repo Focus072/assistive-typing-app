@@ -2,7 +2,8 @@
 // This suppresses url.parse() deprecation warnings from NextAuth/Google APIs
 if (typeof process !== 'undefined') {
   const originalEmitWarning = process.emitWarning
-  process.emitWarning = function (warning: string | Error, ...args: Parameters<typeof process.emitWarning> extends [unknown, ...infer R] ? R : never) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  process.emitWarning = function (warning: any, ...args: any[]) {
     // Suppress DEP0169 (url.parse() deprecation) warnings
     if (
       typeof warning === 'string' &&
@@ -21,7 +22,7 @@ if (typeof process !== 'undefined') {
     }
     // Call original emitWarning for other warnings
     return originalEmitWarning.call(process, warning, ...args)
-  }
+  } as typeof process.emitWarning
 }
 
 

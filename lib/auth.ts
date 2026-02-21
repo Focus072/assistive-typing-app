@@ -198,7 +198,7 @@ const adapter = {
   async updateUser(user: Partial<AdapterUser> & Pick<AdapterUser, "id">) {
     // For fallback users, skip database update
     if (user.id === "admin-fallback" || user.id === "dev-admin-fallback") {
-      return user
+      return user as AdapterUser
     }
     try {
       return await baseAdapter.updateUser!(user)

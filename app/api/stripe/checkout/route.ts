@@ -50,7 +50,7 @@ async function createCheckoutSession(
     mode: 'subscription',
     payment_method_types: ['card'],
     client_reference_id: session.user.id, // Critical: Links payment to Prisma User ID
-    customer_email: session.user.email,
+    customer_email: session.user.email ?? undefined,
     line_items: [
       {
         price: priceId,
@@ -61,7 +61,7 @@ async function createCheckoutSession(
     cancel_url: cancelUrl,
     metadata: {
       userId: session.user.id,
-      email: session.user.email,
+      email: session.user.email ?? null,
       tier: tier,
     },
   })
