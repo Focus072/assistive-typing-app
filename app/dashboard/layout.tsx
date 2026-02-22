@@ -98,10 +98,10 @@ export default function DashboardLayout({
         )}
 
         {/* Header - Hamburger on mobile, full nav on md+ */}
-        <header className={`sticky top-0 z-50 border-b backdrop-blur-md w-full max-w-full overflow-x-hidden ${
+        <header className={`sticky top-0 z-50 border-b backdrop-blur-md w-full max-w-full ${
           isDark ? "border-[#333] bg-black/80" : "border-black/10 bg-white/95"
         }`}>
-          <div className="w-full max-w-full flex flex-nowrap h-14 md:h-20 items-center justify-between px-4 md:px-6 gap-2 overflow-x-hidden">
+          <div className="w-full max-w-full flex flex-nowrap h-14 md:h-20 items-center justify-between px-4 md:px-6 gap-2">
             {/* Left: Logo */}
             <Link 
               href="/dashboard" 
