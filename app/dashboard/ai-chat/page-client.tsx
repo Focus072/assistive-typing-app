@@ -168,7 +168,7 @@ export function AiChatClient() {
     <div className="flex flex-col h-[calc(100vh-3.5rem)] md:h-[calc(100vh-5rem)] -mt-4 md:-mt-8 -mx-4 md:-mx-6">
       {/* Header */}
       <div
-        className={`flex items-center justify-between px-4 md:px-6 py-3 border-b flex-shrink-0 ${
+        className={`flex items-center px-4 md:px-6 py-3 border-b flex-shrink-0 ${
           isDark ? "border-white/10 bg-black/40" : "border-black/10 bg-white/60"
         }`}
       >
@@ -190,23 +190,6 @@ export function AiChatClient() {
             AI Writing Assistant
           </h1>
         </div>
-        <span
-          className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-            limitReached
-              ? isDark
-                ? "bg-red-500/20 text-red-400"
-                : "bg-red-50 text-red-600"
-              : remaining <= 10
-              ? isDark
-                ? "bg-amber-500/20 text-amber-400"
-                : "bg-amber-50 text-amber-600"
-              : isDark
-              ? "bg-violet-500/20 text-violet-300"
-              : "bg-violet-50 text-violet-700"
-          }`}
-        >
-          {remaining}/50 messages today
-        </span>
       </div>
 
       {/* Messages */}

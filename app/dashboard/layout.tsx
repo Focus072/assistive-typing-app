@@ -6,7 +6,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { createPortal } from "react-dom"
 import { SignOutButton } from "@/components/SignOutButton"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { DashboardThemeContext } from "./theme-context"
 import { DashboardSidebar } from "@/components/DashboardSidebar"
 
@@ -21,11 +21,26 @@ export default function DashboardLayout({
   const pathname = usePathname()
   const [theme, setThemeState] = useState<"dark" | "light" | "system">("dark")
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const userMenuRef = useRef<HTMLDivElement>(null)
 
-  // Close mobile menu on route change
+  // Close menus on route change
   useEffect(() => {
     setMobileMenuOpen(false)
+    setUserMenuOpen(false)
   }, [pathname])
+
+  // Close user menu on outside click
+  useEffect(() => {
+    if (!userMenuOpen) return
+    function handleClick(e: MouseEvent) {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClick)
+    return () => document.removeEventListener("mousedown", handleClick)
+  }, [userMenuOpen])
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -142,57 +157,7 @@ export default function DashboardLayout({
             </div>
             
             {/* Desktop: Full nav (lg and up only) */}
-            <div className="hidden lg:flex flex-nowrap items-center gap-1 xl:gap-3 flex-shrink-0 min-w-0">
-              <Link 
-                href="/" 
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors ${
-                  isDark ? "text-white/70 hover:text-white hover:bg-white/10" : "text-black/70 hover:text-black hover:bg-black/5"
-                }`}
-                aria-label="Go to home page"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                </svg>
-                <span className="text-sm">Home</span>
-              </Link>
-              <Link
-                href="/dashboard/history"
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors ${
-                  isDark ? "text-white/70 hover:text-white hover:bg-white/10" : "text-black/70 hover:text-black hover:bg-black/5"
-                }`}
-                aria-label="View typing history"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span className="text-sm">History</span>
-              </Link>
-              <Link
-                href="/dashboard/account"
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors ${
-                  isDark ? "text-white/70 hover:text-white hover:bg-white/10" : "text-black/70 hover:text-black hover:bg-black/5"
-                }`}
-                aria-label="Account and subscription"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-                <span className="text-sm">Account</span>
-              </Link>
-              {session?.user?.role === 'ADMIN' && (
-                <Link
-                  href="/admin"
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors border ${
-                    isDark ? "text-white/70 hover:text-white hover:bg-white/10 border-yellow-500/30" : "text-black/70 hover:text-black hover:bg-black/5 border-yellow-500/30"
-                  }`}
-                  aria-label="Admin Dashboard"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                  </svg>
-                  <span className="text-sm">Admin</span>
-                </Link>
-              )}
+            <div className="hidden lg:flex flex-nowrap items-center gap-1 xl:gap-2 flex-shrink-0 min-w-0">
               {(session?.user?.planTier === "UNLIMITED" || session?.user?.role === "ADMIN") && (
                 <Link
                   href="/dashboard/ai-chat"
@@ -228,7 +193,11 @@ export default function DashboardLayout({
               </button>
               <Link
                 href="/dashboard"
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white border border-black text-black hover:bg-gray-50 text-sm font-medium transition-all"
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                  isDark
+                    ? "bg-white/10 hover:bg-white/20 text-white"
+                    : "bg-black text-white hover:bg-black/80"
+                }`}
                 aria-label="Dashboard"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -236,7 +205,84 @@ export default function DashboardLayout({
                 </svg>
                 Dashboard
               </Link>
-              <SignOutButton />
+
+              {/* User Menu dropdown */}
+              <div className="relative" ref={userMenuRef}>
+                <button
+                  onClick={() => setUserMenuOpen((o) => !o)}
+                  className={`min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg transition-colors ${
+                    isDark ? "bg-white/10 hover:bg-white/20 text-white" : "bg-black/5 hover:bg-black/10 text-black"
+                  }`}
+                  aria-label="User menu"
+                  aria-expanded={userMenuOpen}
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </button>
+                {userMenuOpen && (
+                  <div
+                    className={`absolute right-0 top-full mt-2 w-48 rounded-xl shadow-xl border overflow-hidden z-50 ${
+                      isDark
+                        ? "bg-black border-white/10"
+                        : "bg-white border-black/10"
+                    }`}
+                  >
+                    <div className="py-1.5">
+                      <Link
+                        href="/"
+                        className={`flex items-center gap-2.5 px-3 py-2 text-sm transition-colors ${
+                          isDark ? "text-white/70 hover:text-white hover:bg-white/[0.06]" : "text-black/70 hover:text-black hover:bg-black/[0.04]"
+                        }`}
+                      >
+                        <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                        </svg>
+                        Home
+                      </Link>
+                      <Link
+                        href="/dashboard/history"
+                        className={`flex items-center gap-2.5 px-3 py-2 text-sm transition-colors ${
+                          isDark ? "text-white/70 hover:text-white hover:bg-white/[0.06]" : "text-black/70 hover:text-black hover:bg-black/[0.04]"
+                        }`}
+                      >
+                        <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        History
+                      </Link>
+                      <Link
+                        href="/dashboard/account"
+                        className={`flex items-center gap-2.5 px-3 py-2 text-sm transition-colors ${
+                          isDark ? "text-white/70 hover:text-white hover:bg-white/[0.06]" : "text-black/70 hover:text-black hover:bg-black/[0.04]"
+                        }`}
+                      >
+                        <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                        Account
+                      </Link>
+                      {session?.user?.role === "ADMIN" && (
+                        <Link
+                          href="/admin"
+                          className={`flex items-center gap-2.5 px-3 py-2 text-sm transition-colors ${
+                            isDark ? "text-yellow-400/80 hover:text-yellow-300 hover:bg-white/[0.06]" : "text-yellow-700 hover:text-yellow-800 hover:bg-black/[0.04]"
+                          }`}
+                        >
+                          <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                          </svg>
+                          Admin
+                        </Link>
+                      )}
+                      <div className={`mx-2 my-1 border-t ${isDark ? "border-white/[0.08]" : "border-black/[0.07]"}`} />
+                      <div className="px-1.5 pb-1">
+                        <SignOutButton variant="ghost" isDark={isDark} />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </header>
@@ -349,8 +395,8 @@ export default function DashboardLayout({
                     Dashboard
                   </Link>
                   <div className="border-t border-white/10 border-black/10 my-2" />
-                  <div className="px-4 py-2">
-                    <SignOutButton />
+                  <div className="px-2 pb-2">
+                    <SignOutButton variant="ghost" isDark={isDark} />
                   </div>
                 </nav>
               </div>
