@@ -101,6 +101,10 @@ export async function POST(req: NextRequest) {
             }
           }
           controller.enqueue(encoder.encode("data: [DONE]\n\n"))
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : "AI request failed. Please try again."
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: msg })}\n\n`))
+          controller.enqueue(encoder.encode("data: [DONE]\n\n"))
         } finally {
           controller.close()
         }

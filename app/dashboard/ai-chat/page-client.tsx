@@ -38,10 +38,12 @@ export function AiChatClient() {
     setMessages((prev) => [...prev, { role: "assistant", content: "" }])
 
     try {
+      // Filter empty-content messages so Zod min(1) never trips on stale placeholders
+      const messagesForApi = nextMessages.filter((m) => m.content.trim().length > 0)
       const res = await fetch("/api/ai/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: nextMessages }),
+        body: JSON.stringify({ messages: messagesForApi }),
       })
 
       const remainingHeader = res.headers.get("X-RateLimit-Remaining")
@@ -96,20 +98,42 @@ export function AiChatClient() {
           const payload = line.slice(6)
           if (payload === "[DONE]") break
           try {
-            const { text } = JSON.parse(payload) as { text: string }
-            setMessages((prev) => {
-              const updated = [...prev]
-              updated[updated.length - 1] = {
-                role: "assistant",
-                content: updated[updated.length - 1].content + text,
-              }
-              return updated
-            })
+            const parsed = JSON.parse(payload) as { text?: string; error?: string }
+            if (parsed.error) {
+              setMessages((prev) => {
+                const updated = [...prev]
+                updated[updated.length - 1] = { role: "assistant", content: parsed.error! }
+                return updated
+              })
+            } else if (parsed.text) {
+              setMessages((prev) => {
+                const updated = [...prev]
+                updated[updated.length - 1] = {
+                  role: "assistant",
+                  content: updated[updated.length - 1].content + parsed.text,
+                }
+                return updated
+              })
+            }
           } catch {
             // malformed chunk — skip
           }
         }
       }
+
+      // If stream ended with no content (silent server error), show a fallback
+      setMessages((prev) => {
+        const last = prev[prev.length - 1]
+        if (last?.role === "assistant" && last.content === "") {
+          const updated = [...prev]
+          updated[updated.length - 1] = {
+            role: "assistant",
+            content: "No response received. Make sure ANTHROPIC_API_KEY is set and try again.",
+          }
+          return updated
+        }
+        return prev
+      })
     } catch {
       setMessages((prev) => {
         const updated = [...prev]
