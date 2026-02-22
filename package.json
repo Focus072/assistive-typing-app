@@ -19,6 +19,7 @@
     "verify": "tsx scripts/verify-integration.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.78.0",
     "@next-auth/prisma-adapter": "^1.0.7",
     "@paper-design/shaders-react": "^0.0.71",
     "@prisma/client": "^5.19.0",
