@@ -11,6 +11,7 @@ export const metadata: Metadata = {
 export default async function AiChatPage() {
   const session = await getServerSession(authOptions)
   if (!session) redirect("/")
-  if (session.user.planTier !== "UNLIMITED") redirect("/dashboard?error=upgrade-required")
+  const allowed = session.user.planTier === "UNLIMITED" || session.user.role === "ADMIN"
+  if (!allowed) redirect("/dashboard?error=upgrade-required")
   return <AiChatClient />
 }

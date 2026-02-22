@@ -41,7 +41,8 @@ export async function POST(req: NextRequest) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
-  if (session.user.planTier !== "UNLIMITED") {
+  const allowed = session.user.planTier === "UNLIMITED" || session.user.role === "ADMIN"
+  if (!allowed) {
     return NextResponse.json(
       { error: "AI Chat is available to Unlimited members only." },
       { status: 403 }
