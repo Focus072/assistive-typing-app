@@ -6,6 +6,7 @@ import { Redis } from "@upstash/redis"
 import Anthropic from "@anthropic-ai/sdk"
 import { z } from "zod"
 import { logger } from "@/lib/logger"
+import { prisma } from "@/lib/prisma"
 
 const messageSchema = z.object({
   messages: z
@@ -17,6 +18,7 @@ const messageSchema = z.object({
     )
     .min(1)
     .max(50),
+  sessionId: z.string().cuid().optional(),
 })
 
 function buildDailyLimiter() {
@@ -76,6 +78,38 @@ export async function POST(req: NextRequest) {
     )
   }
 
+  const { messages, sessionId: incomingSessionId } = parsed.data
+
+  // Resolve or create chat session (best-effort — don't block the stream)
+  let chatSessionId: string | null = incomingSessionId ?? null
+  try {
+    if (!chatSessionId) {
+      const lastUserMsg = [...messages].reverse().find((m) => m.role === "user")
+      const title = lastUserMsg ? lastUserMsg.content.slice(0, 60) : "New Chat"
+      const newSession = await prisma.chatSession.create({
+        data: { userId: session.user.id, title },
+      })
+      chatSessionId = newSession.id
+    }
+    // Save incoming user message
+    const userMsg = messages[messages.length - 1]
+    if (userMsg.role === "user") {
+      await prisma.chatMessage.create({
+        data: {
+          sessionId: chatSessionId,
+          role: userMsg.role,
+          content: userMsg.content,
+          order: messages.length - 1,
+        },
+      })
+    }
+  } catch (err) {
+    logger.error("[API] chat session/message create error:", err)
+    // Non-fatal — stream continues even if DB write fails
+  }
+
+  const sessionIdForHeader = chatSessionId ?? ""
+
   try {
     const stream = client.messages.stream({
       model: "claude-sonnet-4-6",
@@ -87,12 +121,14 @@ export async function POST(req: NextRequest) {
     const encoder = new TextEncoder()
     const readable = new ReadableStream({
       async start(controller) {
+        let fullText = ""
         try {
           for await (const chunk of stream) {
             if (
               chunk.type === "content_block_delta" &&
               chunk.delta.type === "text_delta"
             ) {
+              fullText += chunk.delta.text
               controller.enqueue(
                 encoder.encode(
                   `data: ${JSON.stringify({ text: chunk.delta.text })}\n\n`
@@ -101,6 +137,26 @@ export async function POST(req: NextRequest) {
             }
           }
           controller.enqueue(encoder.encode("data: [DONE]\n\n"))
+
+          // Persist assistant reply after stream completes
+          if (chatSessionId && fullText) {
+            try {
+              await prisma.chatMessage.create({
+                data: {
+                  sessionId: chatSessionId,
+                  role: "assistant",
+                  content: fullText,
+                  order: messages.length,
+                },
+              })
+              await prisma.chatSession.update({
+                where: { id: chatSessionId },
+                data: { updatedAt: new Date() },
+              })
+            } catch (err) {
+              logger.error("[API] chat assistant message save error:", err)
+            }
+          }
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : "AI request failed. Please try again."
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: msg })}\n\n`))
@@ -116,6 +172,7 @@ export async function POST(req: NextRequest) {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
         "X-RateLimit-Remaining": String(remaining),
+        "X-Session-Id": sessionIdForHeader,
       },
     })
   } catch (error: unknown) {
