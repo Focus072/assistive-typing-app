@@ -8,6 +8,7 @@ import { createPortal } from "react-dom"
 import { SignOutButton } from "@/components/SignOutButton"
 import { useEffect, useState } from "react"
 import { DashboardThemeContext } from "./theme-context"
+import { DashboardSidebar } from "@/components/DashboardSidebar"
 
 
 export default function DashboardLayout({
@@ -179,8 +180,8 @@ export default function DashboardLayout({
                 <span className="text-sm">Account</span>
               </Link>
               {session?.user?.role === 'ADMIN' && (
-                <Link 
-                  href="/admin" 
+                <Link
+                  href="/admin"
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors border ${
                     isDark ? "text-white/70 hover:text-white hover:bg-white/10 border-yellow-500/30" : "text-black/70 hover:text-black hover:bg-black/5 border-yellow-500/30"
                   }`}
@@ -190,6 +191,22 @@ export default function DashboardLayout({
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                   </svg>
                   <span className="text-sm">Admin</span>
+                </Link>
+              )}
+              {session?.user?.planTier === "UNLIMITED" && (
+                <Link
+                  href="/dashboard/ai-chat"
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors border ${
+                    isDark
+                      ? "text-violet-300 hover:text-violet-200 hover:bg-violet-500/10 border-violet-500/30"
+                      : "text-violet-700 hover:text-violet-800 hover:bg-violet-50 border-violet-300/50"
+                  }`}
+                  aria-label="AI Writing Assistant"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                  </svg>
+                  <span className="text-sm">AI Chat</span>
                 </Link>
               )}
               <button
@@ -295,6 +312,16 @@ export default function DashboardLayout({
                       Admin
                     </Link>
                   )}
+                  {session?.user?.planTier === "UNLIMITED" && (
+                    <Link href="/dashboard/ai-chat" className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors border border-violet-500/30 ${
+                      isDark ? "text-violet-300 hover:bg-violet-500/10" : "text-violet-700 hover:bg-violet-50"
+                    }`} onClick={() => setMobileMenuOpen(false)}>
+                      <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                      </svg>
+                      AI Chat
+                    </Link>
+                  )}
                   <button
                     type="button"
                     onClick={() => { setTheme(isDark ? "light" : "dark"); setMobileMenuOpen(false); }}
@@ -331,10 +358,13 @@ export default function DashboardLayout({
           document.body
         )}
       
-      {/* Main content - Mobile lockdown: max-w-full, no horizontal scroll */}
-      <main className="relative z-10 w-full max-w-full overflow-x-hidden px-4 md:px-6 py-4 md:py-8 pb-8 min-h-[calc(100vh-8rem)] md:container md:mx-auto">
-        {children}
-      </main>
+      {/* Body: sidebar + main */}
+      <div className="relative z-10 flex min-h-[calc(100vh-3.5rem)] md:min-h-[calc(100vh-5rem)]">
+        {pathname === "/dashboard" && <DashboardSidebar isDark={isDark} />}
+        <main className="flex-1 w-full overflow-x-hidden px-4 md:px-6 py-4 md:py-8 pb-8">
+          {children}
+        </main>
+      </div>
       </div>
     </DashboardThemeContext.Provider>
   )
