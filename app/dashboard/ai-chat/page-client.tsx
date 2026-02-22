@@ -131,7 +131,7 @@ export function AiChatClient() {
       const res = await fetch("/api/ai/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: messagesForApi, sessionId: activeSessionId }),
+        body: JSON.stringify({ messages: messagesForApi, sessionId: activeSessionId ?? undefined }),
       })
 
       // Store the session id returned from a newly created session
