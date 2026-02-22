@@ -155,6 +155,30 @@ export default function DashboardLayout({
                 </svg>
                 <span className="text-sm">Home</span>
               </Link>
+              <Link
+                href="/dashboard/history"
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors ${
+                  isDark ? "text-white/70 hover:text-white hover:bg-white/10" : "text-black/70 hover:text-black hover:bg-black/5"
+                }`}
+                aria-label="View typing history"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="text-sm">History</span>
+              </Link>
+              <Link
+                href="/dashboard/account"
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors ${
+                  isDark ? "text-white/70 hover:text-white hover:bg-white/10" : "text-black/70 hover:text-black hover:bg-black/5"
+                }`}
+                aria-label="Account and subscription"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                <span className="text-sm">Account</span>
+              </Link>
               {session?.user?.role === 'ADMIN' && (
                 <Link
                   href="/admin"
@@ -261,6 +285,22 @@ export default function DashboardLayout({
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                     </svg>
                     Home
+                  </Link>
+                  <Link href="/dashboard/history" className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                    isDark ? "text-white/80 hover:bg-white/10" : "text-black/80 hover:bg-black/5"
+                  }`} onClick={() => setMobileMenuOpen(false)}>
+                    <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    History
+                  </Link>
+                  <Link href="/dashboard/account" className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                    isDark ? "text-white/80 hover:bg-white/10" : "text-black/80 hover:bg-black/5"
+                  }`} onClick={() => setMobileMenuOpen(false)}>
+                    <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    Account
                   </Link>
                   {session?.user?.role === 'ADMIN' && (
                     <Link href="/admin" className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors border border-yellow-500/40 ${
