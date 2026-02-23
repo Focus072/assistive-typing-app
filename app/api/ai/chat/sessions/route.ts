@@ -28,6 +28,8 @@ export async function GET() {
       sessions: sessions.map((s) => ({
         id: s.id,
         title: s.title,
+        pinned: s.pinned,
+        folder: s.folder ?? null,
         updatedAt: s.updatedAt.toISOString(),
         messageCount: s._count.messages,
       })),

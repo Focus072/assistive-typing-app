@@ -410,451 +410,181 @@ export function DocsSelector({
 
   return (
     <div className="space-y-3 w-full max-w-full overflow-x-hidden">
-      <label className={labelClasses}>
-        <svg
-          className={`w-4 h-4 ${isDark ? "text-white" : "text-black"}`}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-          />
-        </svg>
-        Google Doc
-        <span className="text-xs font-normal opacity-70">
-          Choose where we&apos;ll type
-        </span>
-      </label>
+      {/* Document List */}
+      <div className={`rounded-lg border overflow-hidden w-full max-w-full ${
+        isDark ? "bg-black/60 border-white/15" : "bg-white border-black/10"
+      }`}>
+        <div className="p-3 space-y-1.5">
+          {docs.length === 0 ? (
+            <div className="py-6 text-center">
+              <p className={`text-sm ${isDark ? "text-white/60" : "text-black/60"}`}>
+                No Google Docs found.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-1.5 max-h-64 overflow-y-auto">
+              {docs.map((doc) => {
+                const isSelected = value === doc.id;
+                const isRenaming = renamingId === doc.id;
+                const isBusy = deletingId === doc.id;
 
-      {/* Split-view layout - viewport-safe on mobile */}
-      <div
-        className={`rounded-lg border overflow-hidden w-full max-w-full ${
-          isDark
-            ? "bg-black/60 border-white/15"
-            : "bg-white border-black/10"
-        }`}
-      >
-        <div className="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-white/10 w-full max-w-full min-w-0">
-          {/* Left: Document List */}
-          <div className="p-3 md:p-4">
-            {docs.length === 0 ? (
-              <div className="py-8 text-center">
-                <p
-                  className={`text-sm ${
-                    isDark ? "text-white/60" : "text-black/60"
-                  }`}
-                >
-                  No Google Docs found.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-1.5 max-h-96 overflow-y-auto">
-                {docs.map((doc) => {
-                  const isSelected = value === doc.id;
-                  const isRenaming = renamingId === doc.id;
-                  const isBusy = deletingId === doc.id;
-
-                  return (
-                    <div
-                      key={doc.id}
-                      className={`group relative rounded-md transition-all flex items-center gap-2 min-w-0 max-w-full ${
-                        isSelected
-                          ? isDark
-                            ? "bg-emerald-500/10 border-2 border-emerald-400/40"
-                            : "bg-emerald-50 border-2 border-emerald-300"
-                          : isDark
-                          ? "border border-white/10 hover:border-white/20 hover:bg-white/5"
-                          : "border border-black/10 hover:border-black/20 hover:bg-gray-50"
-                      }`}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => onChange(doc.id)}
-                        className="flex-1 flex items-center gap-3 px-3 py-2.5 text-left min-w-0"
-                        disabled={isBusy}
-                      >
-                        <div
-                          className={`flex-shrink-0 w-2 h-2 rounded-full transition-colors ${
-                            isSelected
-                              ? "bg-emerald-400"
-                              : isDark
-                              ? "bg-white/30 group-hover:bg-white/50"
-                              : "bg-black/30 group-hover:bg-black/50"
-                          }`}
-                        />
-                        <div className="flex-1 min-w-0">
-                          {isRenaming ? (
-                            <input
-                              type="text"
-                              value={renameValue}
-                              onChange={(e) => setRenameValue(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                  handleConfirmRename(doc.id);
-                                } else if (e.key === "Escape") {
-                                  handleCancelRename();
-                                }
-                              }}
-                              onClick={(e) => e.stopPropagation()}
-                              className={`w-full rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 ${
-                                isDark
-                                  ? "bg-black border border-white/30 text-white focus:ring-white focus:border-white"
-                                  : "bg-white border border-black/20 text-black focus:ring-black focus:border-black"
-                              }`}
-                              autoFocus
-                            />
-                          ) : (
-                            <>
-                              <div
-                                className={`font-medium truncate text-sm ${
-                                  isDark ? "text-white" : "text-black"
-                                }`}
-                              >
-                                {doc.name}
-                              </div>
-                              {doc.modifiedTime && (
-                                <div
-                                  className={`text-xs mt-0.5 ${
-                                    isDark ? "text-white/50" : "text-black/50"
-                                  }`}
-                                >
-                                  Updated{" "}
-                                  {new Date(
-                                    doc.modifiedTime
-                                  ).toLocaleDateString()}
-                                </div>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      </button>
-                      {isRenaming ? (
-                        <div className="flex items-center gap-1 pr-2">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleConfirmRename(doc.id);
-                            }}
-                            disabled={isBusy}
-                            className="px-2 py-1 rounded text-xs bg-emerald-500 text-white hover:bg-emerald-400 disabled:opacity-50"
-                          >
-                            ✓
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleCancelRename();
-                            }}
-                            disabled={isBusy}
-                            className="px-2 py-1 rounded text-xs border border-white/20 text-white/70 hover:bg-white/10"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          ref={(el) => {
-                            menuButtonRefs.current[doc.id] = el;
-                          }}
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            e.preventDefault();
-                            const newMenuState = showActionsMenu === doc.id ? null : doc.id;
-                            
-                            // Pre-calculate position before opening menu
-                            if (newMenuState && menuButtonRefs.current[doc.id]) {
-                              const button = menuButtonRefs.current[doc.id];
-                              if (!button) return;
-                              const buttonRect = button.getBoundingClientRect();
-                              const viewportHeight = window.innerHeight;
-                              const estimatedMenuHeight = 120;
-                              const requiredSpace = estimatedMenuHeight + 8;
-                              
-                              // Calculate available space
-                              const viewportSpaceBelow = viewportHeight - buttonRect.bottom;
-                              const viewportSpaceAbove = buttonRect.top;
-                              
-                              // Default to below, only show above if not enough space below
-                              let shouldShowAbove = false;
-                              let menuTop = buttonRect.bottom + 4; // Default: below
-                              let menuRight = window.innerWidth - buttonRect.right;
-                              
-                              // Check if there's enough space below
-                              if (viewportSpaceBelow < requiredSpace) {
-                                // Not enough space below, check if we have space above
-                                if (viewportSpaceAbove >= requiredSpace) {
-                                  shouldShowAbove = true;
-                                  menuTop = buttonRect.top - estimatedMenuHeight - 4;
-                                } else {
-                                  // Not enough space either way, show below but adjust to fit viewport
-                                  menuTop = Math.max(8, viewportHeight - estimatedMenuHeight - 8);
-                                }
-                              }
-                              
-                              // Ensure menu stays within viewport bounds
-                              if (shouldShowAbove) {
-                                menuTop = Math.max(8, menuTop);
-                              } else {
-                                menuTop = Math.min(menuTop, viewportHeight - estimatedMenuHeight - 8);
-                              }
-                              
-                              // Set initial position immediately
-                              setMenuPosition(prev => ({ 
-                                ...prev, 
-                                [doc.id]: shouldShowAbove ? "above" : "below" 
-                              }));
-                              
-                              setMenuCoords(prev => ({
-                                ...prev,
-                                [doc.id]: { top: menuTop, right: menuRight }
-                              }));
-                            }
-                            
-                            setShowActionsMenu(newMenuState);
-                            
-                            // Scroll button into view if menu is opening
-                            if (newMenuState && menuButtonRefs.current[doc.id]) {
-                              setTimeout(() => {
-                                menuButtonRefs.current[doc.id]?.scrollIntoView({ 
-                                  behavior: 'smooth', 
-                                  block: 'nearest' 
-                                });
-                              }, 50);
-                            }
-                          }}
-                          className={`flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center rounded transition-colors mr-2 touch-manipulation ${
-                            isDark
-                              ? "text-white/40 hover:text-white hover:bg-white/10"
-                              : "text-black/40 hover:text-black hover:bg-black/10"
-                          }`}
-                          aria-label="Document actions"
-                        >
-                          <svg
-                            className="w-5 h-5"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
-                            />
-                          </svg>
-                        </button>
-                      )}
-
-                      {/* Actions menu (hidden by default, shown on click) */}
-                      {showActionsMenu === doc.id && !isRenaming && (
-                        <div
-                          ref={(el) => {
-                            menuRefs.current[doc.id] = el;
-                          }}
-                          className={`fixed z-50 rounded-lg border shadow-lg py-1 min-w-[140px] ${
-                            isDark
-                              ? "bg-black border-white/20"
-                              : "bg-white border-black/20"
-                          }`}
-                          onClick={(e) => e.stopPropagation()}
-                          style={{
-                            top: menuCoords[doc.id]?.top ?? 'auto',
-                            right: menuCoords[doc.id]?.right ?? 'auto',
-                            maxHeight: 'calc(100vh - 2rem)',
-                            overflowY: 'auto'
-                          }}
-                        >
-                          <button
-                            type="button"
-                            onClick={() => handleOpenInDocs(doc.id)}
-                            className={`w-full text-left px-3 py-2 text-sm transition-colors ${
-                              isDark
-                                ? "text-white/80 hover:bg-white/10"
-                                : "text-black/80 hover:bg-gray-50"
-                            }`}
-                          >
-                            Open in Google Docs
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleStartRename(doc)}
-                            disabled={isBusy}
-                            className={`w-full text-left px-3 py-2 text-sm transition-colors disabled:opacity-50 ${
-                              isDark
-                                ? "text-white/80 hover:bg-white/10"
-                                : "text-black/80 hover:bg-gray-50"
-                            }`}
-                          >
-                            Rename
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteDoc(doc.id)}
-                            disabled={isBusy}
-                            className={`w-full text-left px-3 py-2 text-sm transition-colors disabled:opacity-50 ${
-                              isDark
-                                ? "text-red-300 hover:bg-red-500/10"
-                                : "text-red-600 hover:bg-red-50"
-                            }`}
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Right: Preview/Confirmation Panel */}
-          <div
-            className={`p-3 md:p-4 flex flex-col ${
-              isDark ? "bg-white/5" : "bg-gray-50"
-            }`}
-          >
-            {selectedDoc ? (
-              <div className="space-y-4">
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <div
-                      className={`w-2 h-2 rounded-full ${
-                        isDark ? "bg-emerald-400" : "bg-emerald-500"
-                      }`}
-                    />
-                    <h3
-                      className={`font-semibold text-sm ${
-                        isDark ? "text-white" : "text-black"
-                      }`}
-                    >
-                      Selected Document
-                    </h3>
-                  </div>
+                return (
                   <div
-                    className={`rounded-lg p-3 ${
-                      isDark
-                        ? "bg-black/40 border border-white/10"
-                        : "bg-white border border-black/10"
+                    key={doc.id}
+                    className={`group relative rounded-md transition-all flex items-center gap-2 min-w-0 max-w-full ${
+                      isSelected
+                        ? isDark
+                          ? "bg-emerald-500/10 border-2 border-emerald-400/40"
+                          : "bg-emerald-50 border-2 border-emerald-300"
+                        : isDark
+                        ? "border border-white/10 hover:border-white/20 hover:bg-white/5"
+                        : "border border-black/10 hover:border-black/20 hover:bg-gray-50"
                     }`}
                   >
-                    <div
-                      className={`font-medium text-sm mb-1 truncate ${
-                        isDark ? "text-white" : "text-black"
-                      }`}
+                    <button
+                      type="button"
+                      onClick={() => onChange(doc.id)}
+                      className="flex-1 flex items-center gap-3 px-3 py-2.5 text-left min-w-0"
+                      disabled={isBusy}
                     >
-                      {selectedDoc.name}
-                    </div>
-                    {selectedDoc.modifiedTime && (
-                      <div
-                        className={`text-xs ${
-                          isDark ? "text-white/50" : "text-black/50"
+                      <div className={`flex-shrink-0 w-2 h-2 rounded-full transition-colors ${
+                        isSelected
+                          ? "bg-emerald-400"
+                          : isDark
+                          ? "bg-white/30 group-hover:bg-white/50"
+                          : "bg-black/30 group-hover:bg-black/50"
+                      }`} />
+                      <div className="flex-1 min-w-0">
+                        {isRenaming ? (
+                          <input
+                            type="text"
+                            value={renameValue}
+                            onChange={(e) => setRenameValue(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") handleConfirmRename(doc.id);
+                              else if (e.key === "Escape") handleCancelRename();
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className={`w-full rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 ${
+                              isDark
+                                ? "bg-black border border-white/30 text-white focus:ring-white focus:border-white"
+                                : "bg-white border border-black/20 text-black focus:ring-black focus:border-black"
+                            }`}
+                            autoFocus
+                          />
+                        ) : (
+                          <>
+                            <div className={`font-medium truncate text-sm ${isDark ? "text-white" : "text-black"}`}>
+                              {doc.name}
+                            </div>
+                            {doc.modifiedTime && (
+                              <div className={`text-xs mt-0.5 ${isDark ? "text-white/50" : "text-black/50"}`}>
+                                Updated {new Date(doc.modifiedTime).toLocaleDateString()}
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </button>
+                    {isRenaming ? (
+                      <div className="flex items-center gap-1 pr-2">
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); handleConfirmRename(doc.id); }}
+                          disabled={isBusy}
+                          className="px-2 py-1 rounded text-xs bg-emerald-500 text-white hover:bg-emerald-400 disabled:opacity-50"
+                        >✓</button>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); handleCancelRename(); }}
+                          disabled={isBusy}
+                          className="px-2 py-1 rounded text-xs border border-white/20 text-white/70 hover:bg-white/10"
+                        >✕</button>
+                      </div>
+                    ) : (
+                      <button
+                        ref={(el) => { menuButtonRefs.current[doc.id] = el; }}
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          const newMenuState = showActionsMenu === doc.id ? null : doc.id;
+                          if (newMenuState && menuButtonRefs.current[doc.id]) {
+                            const button = menuButtonRefs.current[doc.id];
+                            if (!button) return;
+                            const buttonRect = button.getBoundingClientRect();
+                            const viewportHeight = window.innerHeight;
+                            const estimatedMenuHeight = 120;
+                            const requiredSpace = estimatedMenuHeight + 8;
+                            const viewportSpaceBelow = viewportHeight - buttonRect.bottom;
+                            const viewportSpaceAbove = buttonRect.top;
+                            let shouldShowAbove = false;
+                            let menuTop = buttonRect.bottom + 4;
+                            const menuRight = window.innerWidth - buttonRect.right;
+                            if (viewportSpaceBelow < requiredSpace) {
+                              if (viewportSpaceAbove >= requiredSpace) {
+                                shouldShowAbove = true;
+                                menuTop = buttonRect.top - estimatedMenuHeight - 4;
+                              } else {
+                                menuTop = Math.max(8, viewportHeight - estimatedMenuHeight - 8);
+                              }
+                            }
+                            menuTop = shouldShowAbove ? Math.max(8, menuTop) : Math.min(menuTop, viewportHeight - estimatedMenuHeight - 8);
+                            setMenuPosition(prev => ({ ...prev, [doc.id]: shouldShowAbove ? "above" : "below" }));
+                            setMenuCoords(prev => ({ ...prev, [doc.id]: { top: menuTop, right: menuRight } }));
+                          }
+                          setShowActionsMenu(newMenuState);
+                          if (newMenuState && menuButtonRefs.current[doc.id]) {
+                            setTimeout(() => { menuButtonRefs.current[doc.id]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 50);
+                          }
+                        }}
+                        className={`flex-shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center rounded transition-colors mr-2 touch-manipulation ${
+                          isDark ? "text-white/40 hover:text-white hover:bg-white/10" : "text-black/40 hover:text-black hover:bg-black/10"
                         }`}
+                        aria-label="Document actions"
                       >
-                        Last updated:{" "}
-                        {new Date(
-                          selectedDoc.modifiedTime
-                        ).toLocaleDateString()}
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                        </svg>
+                      </button>
+                    )}
+
+                    {/* Actions menu */}
+                    {showActionsMenu === doc.id && !isRenaming && (
+                      <div
+                        ref={(el) => { menuRefs.current[doc.id] = el; }}
+                        className={`fixed z-50 rounded-lg border shadow-lg py-1 min-w-[140px] ${
+                          isDark ? "bg-black border-white/20" : "bg-white border-black/20"
+                        }`}
+                        onClick={(e) => e.stopPropagation()}
+                        style={{ top: menuCoords[doc.id]?.top ?? 'auto', right: menuCoords[doc.id]?.right ?? 'auto', maxHeight: 'calc(100vh - 2rem)', overflowY: 'auto' }}
+                      >
+                        <button type="button" onClick={() => handleOpenInDocs(doc.id)} className={`w-full text-left px-3 py-2 text-sm transition-colors ${isDark ? "text-white/80 hover:bg-white/10" : "text-black/80 hover:bg-gray-50"}`}>Open in Google Docs</button>
+                        <button type="button" onClick={() => handleStartRename(doc)} disabled={isBusy} className={`w-full text-left px-3 py-2 text-sm transition-colors disabled:opacity-50 ${isDark ? "text-white/80 hover:bg-white/10" : "text-black/80 hover:bg-gray-50"}`}>Rename</button>
+                        <button type="button" onClick={() => handleDeleteDoc(doc.id)} disabled={isBusy} className={`w-full text-left px-3 py-2 text-sm transition-colors disabled:opacity-50 ${isDark ? "text-red-300 hover:bg-red-500/10" : "text-red-600 hover:bg-red-50"}`}>Delete</button>
                       </div>
                     )}
                   </div>
-                </div>
-
-                <div
-                  className={`rounded-lg p-3 border ${
-                    isDark
-                      ? "bg-emerald-500/10 border-emerald-400/30"
-                      : "bg-emerald-50 border-emerald-200"
-                  }`}
-                >
-                  <div className="flex items-start gap-2">
-                    <svg
-                      className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
-                        isDark ? "text-emerald-300" : "text-emerald-600"
-                      }`}
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                    <div>
-                      <div
-                        className={`text-xs font-medium mb-1 ${
-                          isDark ? "text-emerald-200" : "text-emerald-700"
-                        }`}
-                      >
-                        Ready to type
-                      </div>
-                      <div
-                        className={`text-xs ${
-                          isDark ? "text-emerald-200/80" : "text-emerald-700/80"
-                        }`}
-                      >
-                        Text will be appended to the end of this document.
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="flex-1 flex flex-col items-center justify-center py-8">
-                <div
-                  className={`inline-flex items-center justify-center w-12 h-12 rounded-full mb-3 ${
-                    isDark ? "bg-white/10" : "bg-black/5"
-                  }`}
-                >
-                  <svg
-                    className={`w-6 h-6 ${
-                      isDark ? "text-white/40" : "text-black/40"
-                    }`}
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                    />
-                  </svg>
-                </div>
-                <p
-                  className={`text-sm mb-4 ${
-                    isDark ? "text-white/60" : "text-black/60"
-                  }`}
-                >
-                  Select a document from the list
-                </p>
-                {onCreateNew && (
-                  <button
-                    type="button"
-                    onClick={() => setShowCreateModal(true)}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      isDark
-                        ? "bg-white text-black hover:bg-white/90"
-                        : "bg-black text-white hover:bg-black/90"
-                    }`}
-                  >
-                    Create New Document
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
+                );
+              })}
+            </div>
+          )}
+          {onCreateNew && (
+            <div className={`pt-2 border-t ${isDark ? "border-white/10" : "border-black/10"}`}>
+              <button
+                type="button"
+                onClick={() => setShowCreateModal(true)}
+                className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+                  isDark ? "text-white/60 hover:text-white hover:bg-white/5" : "text-black/60 hover:text-black hover:bg-black/5"
+                }`}
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Create New Document
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

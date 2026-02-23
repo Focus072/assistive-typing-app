@@ -145,12 +145,15 @@ model ChatSession {
   id        String        @id @default(cuid())
   userId    String
   title     String        @default("New Chat")
+  pinned    Boolean       @default(false)
+  folder    String?
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
   user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   messages  ChatMessage[]
 
   @@index([userId, createdAt])
+  @@index([userId, pinned])
 }
 
 model ChatMessage {
@@ -159,6 +162,7 @@ model ChatMessage {
   role      String
   content   String      @db.Text
   order     Int
+  feedback  String?
   createdAt DateTime    @default(now())
   session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
