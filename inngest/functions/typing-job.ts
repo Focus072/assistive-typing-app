@@ -5,6 +5,9 @@ import { insertBatch, deleteText, handleThrottling, resetThrottling } from "@/li
 import type { TypingProfile } from "@/types"
 import { MIN_INTERVAL_MS } from "@/lib/batching"
 import { logger } from "@/lib/logger"
+import type { EngineState } from "@/lib/typing-state"
+
+const ENGINE_STATE_EVENT_TYPE = "engine_state"
 
 async function loadJob(jobId: string) {
   return prisma.job.findUnique({ where: { id: jobId } })
@@ -108,6 +111,36 @@ async function ensureRunnable(jobId: string) {
   return job
 }
 
+function parseEngineState(details?: string | null): EngineState | undefined {
+  if (!details) return undefined
+  try {
+    const parsed = JSON.parse(details) as EngineState
+    if (!parsed || typeof parsed !== "object") return undefined
+    if (!parsed.randomState || !parsed.temporalState) return undefined
+    return parsed
+  } catch {
+    return undefined
+  }
+}
+
+async function loadEngineState(jobId: string): Promise<EngineState | undefined> {
+  const event = await prisma.jobEvent.findFirst({
+    where: { jobId, type: ENGINE_STATE_EVENT_TYPE },
+    orderBy: { createdAt: "desc" },
+  })
+  return parseEngineState(event?.details)
+}
+
+async function saveEngineState(jobId: string, state: EngineState) {
+  await prisma.jobEvent.create({
+    data: {
+      jobId,
+      type: ENGINE_STATE_EVENT_TYPE,
+      details: JSON.stringify(state),
+    },
+  })
+}
+
 export const typingJob = inngest.createFunction(
   { id: "typing-job" },
   { event: "job/start" },
@@ -118,6 +151,7 @@ export const typingJob = inngest.createFunction(
 
     const next = await step.run("process-next-batch", async () => {
       const fresh = await ensureRunnable(jobId)
+      const engineState = await loadEngineState(jobId)
       
       let plan
       try {
@@ -127,7 +161,8 @@ export const typingJob = inngest.createFunction(
           fresh.totalChars,
           fresh.durationMinutes,
           fresh.typingProfile as TypingProfile,
-          fresh.testWPM ? Number(fresh.testWPM) : undefined
+          fresh.testWPM ? Number(fresh.testWPM) : undefined,
+          { jobId, engineState }
         )
       } catch (error: unknown) {
         // Catch validation errors and mark job as failed
@@ -214,6 +249,7 @@ export const typingJob = inngest.createFunction(
           }),
         },
       })
+      await saveEngineState(jobId, plan.engineState)
 
       await resetThrottling(jobId)
       return { done: false, delay: plan.totalDelayMs }
@@ -241,6 +277,7 @@ export const typingBatch = inngest.createFunction(
 
     const next = await step.run("process-next-batch", async () => {
       const fresh = await ensureRunnable(jobId)
+      const engineState = await loadEngineState(jobId)
       
       let plan
       try {
@@ -250,7 +287,8 @@ export const typingBatch = inngest.createFunction(
           fresh.totalChars,
           fresh.durationMinutes,
           fresh.typingProfile as TypingProfile,
-          fresh.testWPM ? Number(fresh.testWPM) : undefined
+          fresh.testWPM ? Number(fresh.testWPM) : undefined,
+          { jobId, engineState }
         )
       } catch (error: unknown) {
         // Catch validation errors and mark job as failed
@@ -333,6 +371,7 @@ export const typingBatch = inngest.createFunction(
           }),
         },
       })
+      await saveEngineState(jobId, plan.engineState)
 
       await resetThrottling(jobId)
       return { done: false, delay: plan.totalDelayMs }

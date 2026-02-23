@@ -29,6 +29,7 @@ export interface EngineState {
   randomState: RandomState
   temporalState: TemporalState
   wpmState?: WPMState // Only for typing-test profile
+  lastBatchSize?: number // Previous batch size for momentum-aware batching
 }
 
 /**
