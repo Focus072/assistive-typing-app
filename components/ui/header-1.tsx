@@ -2,6 +2,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { signIn, signOut, useSession } from 'next-auth/react';
+import { usePathname } from 'next/navigation';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { MenuToggleIcon } from '@/components/ui/menu-toggle-icon';
@@ -14,6 +15,7 @@ export function Header() {
 	const [isLoading, setIsLoading] = React.useState(false);
 	const scrolled = useScroll(10);
 	const { data: session, status } = useSession();
+	const pathname = usePathname();
 
 	const links = [
 		{
@@ -54,24 +56,25 @@ export function Header() {
 		>
 			<nav className="mx-auto flex h-14 w-full max-w-5xl items-center justify-between px-4">
 				<Link href="/" className="flex items-center" aria-label="Home">
-					<img 
-						src="/logo.svg" 
-						alt="Typing Is Boring" 
+					<img
+						src="/logo.svg"
+						alt="Typing Is Boring"
 						className="h-[186px] md:h-[210px] w-auto object-contain"
 					/>
 				</Link>
 				<div className="hidden items-center gap-2 md:flex">
 					{links.map((link) => (
-						<a 
-							key={link.label} 
-							className={buttonVariants({ variant: 'ghost' })} 
+						<a
+							key={link.label}
+							className={buttonVariants({ variant: 'ghost' })}
 							href={link.href}
 							onClick={(e) => {
 								if (link.href.startsWith('#')) {
 									e.preventDefault()
-									const element = document.getElementById(link.href.slice(1))
-									if (element) {
-										element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+									if (pathname === '/') {
+										document.getElementById(link.href.slice(1))?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+									} else {
+										window.location.href = '/' + link.href
 									}
 								}
 							}}
@@ -103,7 +106,7 @@ export function Header() {
 							</Button>
 						</>
 					) : (
-						<Button 
+						<Button
 							onClick={() => {
 								if (isLoading) return
 								setIsLoading(true)
@@ -150,12 +153,13 @@ export function Header() {
 								if (link.href.startsWith('#')) {
 									e.preventDefault()
 									setOpen(false)
-									setTimeout(() => {
-										const element = document.getElementById(link.href.slice(1))
-										if (element) {
-											element.scrollIntoView({ behavior: 'smooth', block: 'start' })
-										}
-									}, 100)
+									if (pathname === '/') {
+										setTimeout(() => {
+											document.getElementById(link.href.slice(1))?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+										}, 100)
+									} else {
+										window.location.href = '/' + link.href
+									}
 								} else {
 									setOpen(false)
 								}
@@ -180,7 +184,7 @@ export function Header() {
 									</Link>
 								</Button>
 							)}
-							<Button 
+							<Button
 								variant="outline"
 								className="w-full"
 								onClick={() => {
@@ -192,7 +196,7 @@ export function Header() {
 							</Button>
 						</>
 					) : (
-						<Button 
+						<Button
 							className="w-full"
 							onClick={() => {
 								if (isLoading) return
