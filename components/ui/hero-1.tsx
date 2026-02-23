@@ -183,7 +183,7 @@ export function TrustSection() {
 						</div>
 						<h3 className="text-lg font-semibold mb-2">Official Google OAuth</h3>
 						<p className="text-sm text-muted-foreground">
-							We use Google's official OAuth system. Your credentials are never stored or shared.
+							We use Google&apos;s official OAuth system. Your credentials are never stored or shared.
 						</p>
 					</div>
 					<div className="text-center">
@@ -209,8 +209,63 @@ export function TrustSection() {
 						</p>
 					</div>
 				</div>
-				{/* Thin gray separator matching header (1px, same tone) */}
+
+				{/* Thin gray separator */}
 				<div className="h-px w-full shrink-0 bg-gray-200/90 mt-8" aria-hidden="true" />
+
+				{/* Testimonials */}
+				<div className="mt-16">
+					<h3 className="text-center text-xl font-semibold mb-2 tracking-tight">
+						What students are saying
+					</h3>
+					<p className="text-center text-sm text-muted-foreground mb-10">
+						Real feedback from real users.
+					</p>
+					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+						<div className="rounded-xl border bg-card p-5 space-y-3">
+							<div className="flex gap-1 text-yellow-400 text-sm">★★★★★</div>
+							<p className="text-sm text-muted-foreground leading-relaxed">
+								&ldquo;I had a 3-page essay due in an hour. Used the AI chat to outline and draft it, then it typed everything into my doc automatically. Saved me completely.&rdquo;
+							</p>
+							<div className="text-xs font-medium">Jordan M. &mdash; 11th grade</div>
+						</div>
+						<div className="rounded-xl border bg-card p-5 space-y-3">
+							<div className="flex gap-1 text-yellow-400 text-sm">★★★★★</div>
+							<p className="text-sm text-muted-foreground leading-relaxed">
+								&ldquo;Got my essay outline done in 4 minutes. Would&apos;ve taken me an hour to organize my thoughts without it. The AI actually understands what I&apos;m going for.&rdquo;
+							</p>
+							<div className="text-xs font-medium">Marcus D. &mdash; College sophomore</div>
+						</div>
+						<div className="rounded-xl border bg-card p-5 space-y-3">
+							<div className="flex gap-1 text-yellow-400 text-sm">★★★★★</div>
+							<p className="text-sm text-muted-foreground leading-relaxed">
+								&ldquo;The typing automation is actually insane. I paste my essay and it types it naturally into Google Docs. No sketchy browser extensions, nothing shady.&rdquo;
+							</p>
+							<div className="text-xs font-medium">Aaliyah S. &mdash; 12th grade</div>
+						</div>
+						<div className="rounded-xl border bg-card p-5 space-y-3">
+							<div className="flex gap-1 text-yellow-400 text-sm">★★★★★</div>
+							<p className="text-sm text-muted-foreground leading-relaxed">
+								&ldquo;I was skeptical but the AI actually understands context. It helped me rewrite my bio lab report in a completely different tone and it still made sense.&rdquo;
+							</p>
+							<div className="text-xs font-medium">Priya K. &mdash; College freshman</div>
+						</div>
+						<div className="rounded-xl border bg-card p-5 space-y-3">
+							<div className="flex gap-1 text-yellow-400 text-sm">★★★★★</div>
+							<p className="text-sm text-muted-foreground leading-relaxed">
+								&ldquo;My teacher thinks I type way faster now lol. I use this every single week for history assignments. The chat history makes it easy to pick up where I left off.&rdquo;
+							</p>
+							<div className="text-xs font-medium">Tyler R. &mdash; 10th grade</div>
+						</div>
+						<div className="rounded-xl border bg-card p-5 space-y-3">
+							<div className="flex gap-1 text-yellow-400 text-sm">★★★★★</div>
+							<p className="text-sm text-muted-foreground leading-relaxed">
+								&ldquo;Honestly the best money I&apos;ve spent as a student. The AI modes are actually useful &mdash; not just a generic chatbot. It knows I&apos;m a student and talks to me like one.&rdquo;
+							</p>
+							<div className="text-xs font-medium">Devon A. &mdash; College junior</div>
+						</div>
+					</div>
+				</div>
 			</div>
 		</section>
 	);
@@ -225,7 +280,7 @@ export function AboutSection() {
 						About Typing Is Boring
 					</h2>
 					<p className="text-muted-foreground text-base sm:text-lg max-w-2xl mx-auto">
-						We're on a mission to make document creation effortless by automating the tedious parts of typing.
+						We&apos;re on a mission to make document creation effortless by automating the tedious parts of typing.
 					</p>
 				</div>
 				<div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -237,8 +292,8 @@ export function AboutSection() {
 						</div>
 						<h3 className="text-xl font-semibold mb-2">Our Mission</h3>
 						<p className="text-sm text-muted-foreground leading-relaxed">
-							Typing Is Boring was born from a simple idea: long documents shouldn't require hours of manual typing. 
-							We've built a tool that automates typing into Google Docs with natural, human-like rhythm, so you can 
+							Typing Is Boring was born from a simple idea: long documents shouldn&apos;t require hours of manual typing.
+							We&apos;ve built a tool that automates typing into Google Docs with natural, human-like rhythm, so you can
 							focus on what matters—your content, not the mechanics of typing it.
 						</p>
 					</div>
@@ -250,8 +305,8 @@ export function AboutSection() {
 						</div>
 						<h3 className="text-xl font-semibold mb-2">What We Do</h3>
 						<p className="text-sm text-muted-foreground leading-relaxed">
-							Using Google's official APIs, we type directly into your documents with realistic pacing, pauses, 
-							and bursts. No browser extensions, no copy-paste workarounds—just seamless, natural typing automation 
+							Using Google&apos;s official APIs, we type directly into your documents with realistic pacing, pauses,
+							and bursts. No browser extensions, no copy-paste workarounds—just seamless, natural typing automation
 							that respects your voice and style.
 						</p>
 					</div>
