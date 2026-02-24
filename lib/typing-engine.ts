@@ -87,6 +87,7 @@ function cloneEngineState(state?: EngineState): EngineState | undefined {
     temporalState: { ...state.temporalState },
     wpmState: state.wpmState ? { ...state.wpmState } : undefined,
     burstState: state.burstState ? { ...state.burstState } : undefined,
+    fatigueState: state.fatigueState ? { ...state.fatigueState } : undefined,
     lastBatchSize: state.lastBatchSize,
   }
 }
@@ -139,6 +140,9 @@ export function buildBatchPlan(
     if (existingState?.burstState) {
       emptyEngineState.burstState = existingState.burstState
     }
+    if (existingState?.fatigueState) {
+      emptyEngineState.fatigueState = existingState.fatigueState
+    }
     return {
       batch: null,
       totalDelayMs: 0,
@@ -152,7 +156,7 @@ export function buildBatchPlan(
   const baseCharDelay = computeBaseCharDelayMs(totalChars, durationMinutes)
   const progress = currentIndex / Math.max(1, totalChars)
 
-  const { charDelays, batchPauseMs, burstState: nextBurstState } = buildDelayPlan(
+  const { charDelays, batchPauseMs, burstState: nextBurstState, fatigueState: nextFatigueState } = buildDelayPlan(
     batch.text,
     baseCharDelay,
     profile,
@@ -161,7 +165,8 @@ export function buildBatchPlan(
     randomState,
     temporalState,
     wpmState,
-    existingState?.burstState
+    existingState?.burstState,
+    existingState?.fatigueState
   )
 
   // Runtime validation: verify engine signature matches profile
@@ -202,6 +207,9 @@ export function buildBatchPlan(
   }
   if (nextBurstState) {
     engineState.burstState = nextBurstState
+  }
+  if (nextFatigueState) {
+    engineState.fatigueState = nextFatigueState
   }
 
   return {

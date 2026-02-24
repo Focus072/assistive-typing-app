@@ -35,6 +35,18 @@ export interface BurstState {
 }
 
 /**
+ * Fatigue engine phase state.
+ * Alternates between buildup and short recovery windows.
+ */
+export type FatiguePhase = "build" | "recovery"
+
+export interface FatigueState {
+  phase: FatiguePhase
+  charsUntilTransition: number
+  fatigueLevel: number // 0..1 intensity used to scale fatigue behavior
+}
+
+/**
  * Combined engine state for a job.
  */
 export interface EngineState {
@@ -42,6 +54,7 @@ export interface EngineState {
   temporalState: TemporalState
   wpmState?: WPMState // Only for typing-test profile
   burstState?: BurstState // Only for burst profile
+  fatigueState?: FatigueState // Only for fatigue profile
   lastBatchSize?: number // Previous batch size for momentum-aware batching
 }
 

@@ -215,4 +215,80 @@ describe('buildBatchPlan state wiring', () => {
 
     expect(settleAvg).toBeGreaterThan(burstAvg)
   })
+
+  it('transitions fatigue phase from build to recovery', () => {
+    const plan = buildBatchPlan(
+      text,
+      0,
+      text.length,
+      5,
+      'fatigue',
+      undefined,
+      {
+        jobId: 'job-fatigue-transition',
+        engineState: {
+          randomState: createPRNG(17),
+          temporalState: createTemporalState(),
+          fatigueState: {
+            phase: 'build',
+            charsUntilTransition: 1,
+            fatigueLevel: 0.6,
+          },
+        },
+      }
+    )
+
+    expect(plan.engineState.fatigueState).toBeDefined()
+    expect(plan.engineState.fatigueState?.phase).toBe('recovery')
+    expect(plan.batchPauseMs).toBeGreaterThanOrEqual(180)
+  })
+
+  it('uses slower delays in fatigue build phase than recovery', () => {
+    const buildPlan = buildBatchPlan(
+      text,
+      0,
+      text.length,
+      5,
+      'fatigue',
+      undefined,
+      {
+        jobId: 'job-fatigue-build',
+        engineState: {
+          randomState: createPRNG(222),
+          temporalState: createTemporalState(),
+          fatigueState: {
+            phase: 'build',
+            charsUntilTransition: 40,
+            fatigueLevel: 0.8,
+          },
+        },
+      }
+    )
+
+    const recoveryPlan = buildBatchPlan(
+      text,
+      0,
+      text.length,
+      5,
+      'fatigue',
+      undefined,
+      {
+        jobId: 'job-fatigue-recovery',
+        engineState: {
+          randomState: createPRNG(222),
+          temporalState: createTemporalState(),
+          fatigueState: {
+            phase: 'recovery',
+            charsUntilTransition: 40,
+            fatigueLevel: 0.8,
+          },
+        },
+      }
+    )
+
+    const buildAvg = buildPlan.perCharDelays.reduce((a, b) => a + b, 0) / buildPlan.perCharDelays.length
+    const recoveryAvg = recoveryPlan.perCharDelays.reduce((a, b) => a + b, 0) / recoveryPlan.perCharDelays.length
+
+    expect(buildAvg).toBeGreaterThan(recoveryAvg)
+  })
 })
