@@ -127,7 +127,7 @@ export function buildBatchPlan(
   const wpmState = profile === "typing-test" ? (existingState?.wpmState ?? createWPMState()) : undefined
   const randomFn = () => nextRandom(randomState)
 
-  const batchSize = chooseBatchSize(existingState?.lastBatchSize, randomFn)
+  const batchSize = chooseBatchSize(existingState?.lastBatchSize)
   const batch = createTypingBatch(fullText, currentIndex, batchSize)
   if (!batch) {
     const emptyEngineState: EngineState = {
