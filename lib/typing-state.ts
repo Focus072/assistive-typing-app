@@ -22,6 +22,46 @@ export interface WPMState {
   batchCount: number // Number of batches processed
 }
 
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value))
+}
+
+/**
+ * Burst engine phase state.
+ * Enables runs of fast typing followed by short settle periods.
+ */
+export type BurstPhase = "burst" | "settle"
+
+export interface BurstState {
+  phase: BurstPhase
+  charsUntilTransition: number
+  pauseCooldownBatches: number
+}
+
+/**
+ * Fatigue engine phase state.
+ * Alternates between buildup and short recovery windows.
+ */
+export type FatiguePhase = "build" | "recovery"
+
+export interface FatigueState {
+  phase: FatiguePhase
+  charsUntilTransition: number
+  fatigueLevel: number // 0..1 intensity used to scale fatigue behavior
+}
+
+/**
+ * Steady engine phase state.
+ * Creates subtle long-window pace drift without abrupt changes.
+ */
+export type SteadyPhase = "focus" | "relaxed"
+
+export interface SteadyState {
+  phase: SteadyPhase
+  charsUntilTransition: number
+  paceMultiplier: number // ~0.95..1.05 to keep rhythm subtle
+}
+
 /**
  * Combined engine state for a job.
  */
@@ -29,6 +69,10 @@ export interface EngineState {
   randomState: RandomState
   temporalState: TemporalState
   wpmState?: WPMState // Only for typing-test profile
+  burstState?: BurstState // Only for burst profile
+  fatigueState?: FatigueState // Only for fatigue profile
+  steadyState?: SteadyState // Only for steady profile
+  lastBatchSize?: number // Previous batch size for momentum-aware batching
 }
 
 /**
@@ -116,13 +160,35 @@ export function updateWPMState(
     ? wpmDrift
     : alpha * wpmDrift + (1 - alpha) * state.wpmDriftEMA
 
-  // Apply gentle correction only after persistent drift (>5% for multiple batches)
+  // Apply bounded, smooth correction after persistent drift.
+  // Positive drift => typing too fast => increase delays (correctionFactor > 1).
+  // Negative drift => typing too slow => decrease delays (correctionFactor < 1).
+  // Wait for ~8 batches (~40 chars) to build a stable EMA before correcting.
+  // Early batches have high variance that would cause overcorrection.
+  const MIN_BATCHES_FOR_CORRECTION = 8
+  // Ignore drift < 2%: falls within normal human rhythm variance (noise floor).
+  const DRIFT_DEADBAND = 0.02
+  // Start correcting at 4% drift: meaningful but not yet disruptive.
+  const DRIFT_ACTIVATION = 0.04
+  // Max ±6% speed adjustment: enough to converge without perceptible lurching.
+  const MAX_CORRECTION_OFFSET = 0.06
+  // Move at most 0.4% per batch toward the target: gradual enough to be imperceptible.
+  const MAX_CORRECTION_STEP = 0.004
+
   let correctionFactor = state.correctionFactor
-  if (state.batchCount > 10 && Math.abs(newWPMDriftEMA) > 0.05) {
-    // Gentle correction: ±1-2% adjustment
-    const correction = Math.max(-0.02, Math.min(0.02, -newWPMDriftEMA * 0.3))
-    correctionFactor = 1.0 + correction
+  if (state.batchCount >= MIN_BATCHES_FOR_CORRECTION) {
+    if (Math.abs(newWPMDriftEMA) <= DRIFT_DEADBAND) {
+      // Near target: slowly decay correction back toward neutral.
+      const deltaToNeutral = 1.0 - correctionFactor
+      correctionFactor += clamp(deltaToNeutral, -MAX_CORRECTION_STEP, MAX_CORRECTION_STEP)
+    } else if (Math.abs(newWPMDriftEMA) >= DRIFT_ACTIVATION) {
+      const desiredCorrectionOffset = clamp(newWPMDriftEMA * 0.35, -MAX_CORRECTION_OFFSET, MAX_CORRECTION_OFFSET)
+      const desiredFactor = 1.0 + desiredCorrectionOffset
+      const delta = desiredFactor - correctionFactor
+      correctionFactor += clamp(delta, -MAX_CORRECTION_STEP, MAX_CORRECTION_STEP)
+    }
   }
+  correctionFactor = clamp(correctionFactor, 1 - MAX_CORRECTION_OFFSET, 1 + MAX_CORRECTION_OFFSET)
 
   return {
     cumulativeDelayMs: newCumulativeDelayMs,

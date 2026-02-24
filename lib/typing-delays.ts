@@ -11,19 +11,64 @@ import {
 } from "./typing-engine-core"
 import type { RandomState } from "./prng"
 import { nextRandom, randomInt as prngRandomInt } from "./prng"
-import type { TemporalState, WPMState } from "./typing-state"
+import type { BurstState, FatigueState, SteadyState, TemporalState, WPMState } from "./typing-state"
 
 export interface DelayPlan {
   charDelays: number[] // per-character delays
   batchPauseMs: number // extra pause after batch (punctuation/micro-pause)
+  burstState?: BurstState // next burst phase state (burst profile only)
+  fatigueState?: FatigueState // next fatigue phase state (fatigue profile only)
+  steadyState?: SteadyState // next steady phase state (steady profile only)
 }
 
 export interface TypingTestConfig {
   wpm: number // Words per minute from typing test
 }
 
+export interface MicropauseContextProfile {
+  triggerChance: number
+  pauseRange: { min: number; max: number }
+  difficultyScore: number
+}
+
 // Re-export for backward compatibility
 export { computeBaseCharDelayMs }
+
+/**
+ * Analyze text slice complexity to drive micropause behavior.
+ * Higher complexity increases both hesitation probability and pause length.
+ */
+export function analyzeMicropauseContext(textSlice: string): MicropauseContextProfile {
+  const punctuationCount = (textSlice.match(/[,:;!?]/g) ?? []).length
+  const sentenceBoundaryCount = (textSlice.match(/[.!?]/g) ?? []).length
+  const longWordCount = textSlice.split(/\s+/).filter((word) => word.length > 8).length
+  const caseTransitionCount = (textSlice.match(/[a-z][A-Z]/g) ?? []).length
+  const numericTokenCount = (textSlice.match(/\d+/g) ?? []).length
+
+  const difficultyScore =
+    punctuationCount * 0.55 +
+    sentenceBoundaryCount * 0.8 +
+    longWordCount * 0.6 +
+    caseTransitionCount * 0.5 +
+    numericTokenCount * 0.35
+
+  const normalizedDifficulty = Math.min(1, difficultyScore / 3.5)
+  const triggerChance = Math.min(0.72, 0.2 + normalizedDifficulty * 0.46)
+
+  let pauseRange: { min: number; max: number } = { min: 120, max: 240 }
+  if (difficultyScore > 1.4) {
+    pauseRange = { min: 170, max: 320 }
+  }
+  if (difficultyScore > 2.4) {
+    pauseRange = { min: 220, max: 430 }
+  }
+
+  return {
+    triggerChance,
+    pauseRange,
+    difficultyScore,
+  }
+}
 
 /**
  * Generate skewed/clustered noise for delay jitter.
@@ -67,23 +112,28 @@ function profileAdjustedDelay(
   // Apply profile-specific multiplier
   switch (profile) {
     case "steady":
-      return jitteredDelay * (0.95 + randomFn() * 0.1) // low variance
+      // 0.97-1.03: reflects a consistent typist with minimal rhythm drift
+      return jitteredDelay * (0.97 + randomFn() * 0.06)
     case "fatigue": {
       // Non-linear progress curve (not linear)
       const fatigueProgress = Math.pow(progress, 1.1)
-      const fatigue = 1 + fatigueProgress * (0.15 * (1 + randomFn() * 0.3)) // 5–15%+ as progress grows
-      return jitteredDelay * fatigue * (0.95 + randomFn() * 0.1)
+      // 0.18 base: reaches ~18% slowdown at full fatigue; 0.35 jitter keeps it organic
+      const fatigue = 1 + fatigueProgress * (0.18 * (1 + randomFn() * 0.35))
+      return jitteredDelay * fatigue * (0.96 + randomFn() * 0.1)
     }
     case "burst": {
-      // bursts: faster chars but occasional long pause handled elsewhere
-      return jitteredDelay * (0.7 + randomFn() * 0.2)
+      // 0.62-0.80: bursts are noticeably faster (~20-38% below base)
+      // Occasional long pauses handled by the burst state machine, not here
+      return jitteredDelay * (0.62 + randomFn() * 0.18)
     }
     case "micropause":
-      return jitteredDelay * (0.85 + randomFn() * 0.3)
+      // 0.95-1.22: wide range creates the uneven hesitation pattern
+      return jitteredDelay * (0.95 + randomFn() * 0.27)
     case "typing-test":
       // For typing test, use the test WPM with natural variance
       // Add some human-like variation: occasional faster bursts and slower moments
-      const variation = 0.85 + randomFn() * 0.3 // 85% to 115% of base
+      // 0.90-1.10: tighter than other profiles so WPM correction stays effective
+      const variation = 0.9 + randomFn() * 0.2
       return jitteredDelay * variation
     default:
       return jitteredDelay
@@ -100,10 +150,19 @@ function buildSteadyDelays(
   range: { min: number; max: number },
   progress: number,
   randomFn: () => number,
-  temporalDrift: number = 0
+  temporalDrift: number = 0,
+  steadyState?: SteadyState
 ): DelayPlan {
   const charDelays: number[] = []
   let batchPauseMs = 0
+  const currentState: SteadyState = steadyState ?? {
+    phase: "focus",
+    // 18-36 chars: ~4-8 small batches at the typical 3-8 char batch size
+    charsUntilTransition: coreRandomInt(18, 36, randomFn),
+    // Start in the faster half of the focus range (0.98-1.01)
+    paceMultiplier: 0.98 + randomFn() * 0.03,
+  }
+  const phaseMultiplier = Math.max(0.95, Math.min(1.05, currentState.paceMultiplier))
 
   for (let i = 0; i < textSlice.length; i++) {
     // Use range-based delay as primary, blend with duration target
@@ -111,14 +170,47 @@ function buildSteadyDelays(
     const blendRatio = 0.7
     const blended = rangeDelay * blendRatio + baseCharDelayMs * (1 - blendRatio)
 
-    const d = profileAdjustedDelay(blended, "steady", progress, randomFn, temporalDrift)
+    const d = profileAdjustedDelay(blended, "steady", progress, randomFn, temporalDrift) * phaseMultiplier
     charDelays.push(Math.max(50, Math.round(d)))
   }
 
   // Apply context pauses
   batchPauseMs = applyContextPauses(textSlice, batchPauseMs, randomFn)
 
-  return { charDelays, batchPauseMs }
+  // Steady rhythm windows: focus (slightly faster) and relaxed (slightly slower).
+  let nextPhase = currentState.phase
+  let charsUntilTransition = currentState.charsUntilTransition - textSlice.length
+  let nextPaceMultiplier = currentState.paceMultiplier
+
+  if (charsUntilTransition <= 0) {
+    if (currentState.phase === "focus") {
+      nextPhase = "relaxed"
+      // 12-26 chars: relaxed windows are shorter so focus dominates the rhythm
+      charsUntilTransition = coreRandomInt(12, 26, randomFn)
+      // 1.01-1.05: relaxed is 1-5% slower than baseline
+      nextPaceMultiplier = 1.01 + randomFn() * 0.04
+    } else {
+      nextPhase = "focus"
+      // 18-36 chars: longer focus windows match how humans sustain productive typing
+      charsUntilTransition = coreRandomInt(18, 36, randomFn)
+      // 0.97-1.00: focus is at or slightly below baseline pace
+      nextPaceMultiplier = 0.97 + randomFn() * 0.03
+    }
+  } else {
+    const target = currentState.phase === "focus" ? 0.985 : 1.025
+    const delta = (target - currentState.paceMultiplier) * 0.25
+    nextPaceMultiplier = Math.max(0.95, Math.min(1.05, currentState.paceMultiplier + delta))
+  }
+
+  return {
+    charDelays,
+    batchPauseMs,
+    steadyState: {
+      phase: nextPhase,
+      charsUntilTransition,
+      paceMultiplier: nextPaceMultiplier,
+    },
+  }
 }
 
 /**
@@ -131,10 +223,21 @@ function buildFatigueDelays(
   range: { min: number; max: number },
   progress: number,
   randomFn: () => number,
-  temporalDrift: number = 0
+  temporalDrift: number = 0,
+  fatigueState?: FatigueState
 ): DelayPlan {
   const charDelays: number[] = []
   let batchPauseMs = 0
+  const currentState: FatigueState = fatigueState ?? {
+    phase: "build",
+    // 14-30 chars: ~3-6 small batches before the first recovery check
+    charsUntilTransition: coreRandomInt(14, 30, randomFn),
+    // Start mid-range (0.2-0.4) so the opening doesn't feel artificially fresh
+    fatigueLevel: 0.2 + randomFn() * 0.2,
+  }
+  const phaseMultiplier = currentState.phase === "build"
+    ? 1 + currentState.fatigueLevel * (0.16 + randomFn() * 0.1)
+    : 1 + currentState.fatigueLevel * (0.03 + randomFn() * 0.05)
 
   for (let i = 0; i < textSlice.length; i++) {
     // Use range-based delay as primary, blend with duration target
@@ -142,14 +245,54 @@ function buildFatigueDelays(
     const blendRatio = 0.7
     const blended = rangeDelay * blendRatio + baseCharDelayMs * (1 - blendRatio)
 
-    const d = profileAdjustedDelay(blended, "fatigue", progress, randomFn, temporalDrift)
+    const d = profileAdjustedDelay(blended, "fatigue", progress, randomFn, temporalDrift) * phaseMultiplier
     charDelays.push(Math.max(50, Math.round(d)))
   }
 
   // Apply context pauses
   batchPauseMs = applyContextPauses(textSlice, batchPauseMs, randomFn)
 
-  return { charDelays, batchPauseMs }
+  // Fatigue cycle: build fatigue for longer windows, then briefly recover.
+  let nextPhase = currentState.phase
+  let charsUntilTransition = currentState.charsUntilTransition - textSlice.length
+  let nextFatigueLevel = currentState.fatigueLevel
+
+  // Normalize accumulation by chars processed so a 3-char and a 15-char batch
+  // accumulate fatigue proportionally. Reference is a nominal 5-char batch
+  // (midpoint of the typical 3-8 char batch range). Capped at 3x to prevent
+  // runaway on unusually large batches.
+  const NOMINAL_BATCH_CHARS = 5
+  const charScale = Math.min(3, textSlice.length / NOMINAL_BATCH_CHARS)
+
+  if (currentState.phase === "build") {
+    nextFatigueLevel = Math.min(1, nextFatigueLevel + (0.08 + randomFn() * 0.08) * charScale)
+  } else {
+    nextFatigueLevel = Math.max(0.1, nextFatigueLevel - (0.1 + randomFn() * 0.08) * charScale)
+  }
+
+  if (charsUntilTransition <= 0) {
+    if (currentState.phase === "build") {
+      nextPhase = "recovery"
+      // 6-14 chars: brief recovery window (~1-2 small batches)
+      charsUntilTransition = coreRandomInt(6, 14, randomFn)
+      // 180-380ms: a short mental-reset pause, noticeable but not jarring
+      batchPauseMs += coreRandomInt(180, 380, randomFn)
+    } else {
+      nextPhase = "build"
+      // Return to the same build window range as initialization
+      charsUntilTransition = coreRandomInt(14, 30, randomFn)
+    }
+  }
+
+  return {
+    charDelays,
+    batchPauseMs,
+    fatigueState: {
+      phase: nextPhase,
+      charsUntilTransition,
+      fatigueLevel: nextFatigueLevel,
+    },
+  }
 }
 
 /**
@@ -162,10 +305,18 @@ function buildBurstDelays(
   range: { min: number; max: number },
   progress: number,
   randomFn: () => number,
-  temporalDrift: number = 0
+  temporalDrift: number = 0,
+  burstState?: BurstState
 ): DelayPlan {
   const charDelays: number[] = []
   let batchPauseMs = 0
+  const currentState: BurstState = burstState ?? {
+    phase: "burst",
+    // 8-20 chars: short enough to feel like bursts, long enough to be distinct
+    charsUntilTransition: coreRandomInt(8, 20, randomFn),
+    pauseCooldownBatches: 0,
+  }
+  const phaseDelayMultiplier = currentState.phase === "settle" ? (1.18 + randomFn() * 0.12) : 1
 
   for (let i = 0; i < textSlice.length; i++) {
     // Use range-based delay as primary, blend with duration target
@@ -173,19 +324,52 @@ function buildBurstDelays(
     const blendRatio = 0.7
     const blended = rangeDelay * blendRatio + baseCharDelayMs * (1 - blendRatio)
 
-    const d = profileAdjustedDelay(blended, "burst", progress, randomFn, temporalDrift)
+    const d = profileAdjustedDelay(blended, "burst", progress, randomFn, temporalDrift) * phaseDelayMultiplier
     charDelays.push(Math.max(50, Math.round(d)))
   }
 
   // Apply context pauses
   batchPauseMs = applyContextPauses(textSlice, batchPauseMs, randomFn)
 
-  // Burst mode: occasional thinking pause
-  if (randomFn() < 0.25) {
-    batchPauseMs += coreRandomInt(600, 1200, randomFn)
+  // Burst state machine: fast runs ("burst") followed by short settle periods.
+  // Thinking pauses are tied to phase transitions and lightly rate-limited by cooldown.
+  let nextPhase = currentState.phase
+  let charsUntilTransition = currentState.charsUntilTransition - textSlice.length
+  let pauseCooldownBatches = Math.max(0, currentState.pauseCooldownBatches - 1)
+
+  if (charsUntilTransition <= 0) {
+    if (currentState.phase === "burst") {
+      nextPhase = "settle"
+      // 4-10 chars: settle periods are short so bursts dominate the pattern
+      charsUntilTransition = coreRandomInt(4, 10, randomFn)
+      if (pauseCooldownBatches === 0) {
+        // Longer pause at punctuation (thinking about next sentence) vs mid-sentence
+        // 500-900ms at boundaries, 350-700ms mid-text: both feel like a human regrouping
+        const hasBoundary = /[.!?,;:]/.test(textSlice)
+        const minPause = hasBoundary ? 500 : 350
+        const maxPause = hasBoundary ? 900 : 700
+        batchPauseMs += coreRandomInt(minPause, maxPause, randomFn)
+        // cooldown=2: prevents two pauses within consecutive batches
+        pauseCooldownBatches = 2
+      }
+    } else {
+      nextPhase = "burst"
+      charsUntilTransition = coreRandomInt(8, 20, randomFn)
+    }
+  } else if (nextPhase === "burst" && pauseCooldownBatches === 0 && randomFn() < 0.08) {
+    batchPauseMs += coreRandomInt(450, 900, randomFn)
+    pauseCooldownBatches = 2
   }
 
-  return { charDelays, batchPauseMs }
+  return {
+    charDelays,
+    batchPauseMs,
+    burstState: {
+      phase: nextPhase,
+      charsUntilTransition,
+      pauseCooldownBatches,
+    },
+  }
 }
 
 /**
@@ -202,6 +386,7 @@ function buildMicropauseDelays(
 ): DelayPlan {
   const charDelays: number[] = []
   let batchPauseMs = 0
+  const contextProfile = analyzeMicropauseContext(textSlice)
 
   for (let i = 0; i < textSlice.length; i++) {
     // Use range-based delay as primary, blend with duration target
@@ -209,16 +394,20 @@ function buildMicropauseDelays(
     const blendRatio = 0.7
     const blended = rangeDelay * blendRatio + baseCharDelayMs * (1 - blendRatio)
 
-    const d = profileAdjustedDelay(blended, "micropause", progress, randomFn, temporalDrift)
+    const ch = textSlice[i]
+    const charHesitation =
+      (/[,:;!?]/.test(ch) ? coreRandomInt(8, 28, randomFn) : 0) +
+      (/[A-Z]/.test(ch) ? coreRandomInt(3, 12, randomFn) : 0)
+    const d = profileAdjustedDelay(blended, "micropause", progress, randomFn, temporalDrift) + charHesitation
     charDelays.push(Math.max(50, Math.round(d)))
   }
 
   // Apply context pauses
   batchPauseMs = applyContextPauses(textSlice, batchPauseMs, randomFn)
 
-  // Micropause mode: frequent small hesitations
-  if (randomFn() < 0.4) {
-    batchPauseMs += coreRandomInt(100, 350, randomFn)
+  // Micropause mode: context-weighted hesitation probability and pause size.
+  if (randomFn() < contextProfile.triggerChance) {
+    batchPauseMs += coreRandomInt(contextProfile.pauseRange.min, contextProfile.pauseRange.max, randomFn)
   }
 
   return { charDelays, batchPauseMs }
@@ -239,17 +428,14 @@ function buildTypingTestDelays(
 ): DelayPlan {
   const charDelays: number[] = []
   let batchPauseMs = 0
+  const correctionMagnitude = Math.min(0.06, Math.abs(wpmCorrectionFactor - 1))
+  const blendRatio = Math.min(0.9, 0.82 + correctionMagnitude * 1.3)
 
   for (let i = 0; i < textSlice.length; i++) {
     // Use range-based delay as primary, blend with duration target
-    // For typing-test profile, use more of the WPM-based range (80%) vs duration target (20%)
-    // Apply gentle WPM correction factor
+    // For typing-test profile, prioritize WPM range and slightly increase
+    // that priority when correction is active.
     const rangeDelay = coreRandomInt(range.min, range.max, randomFn)
-    let blendRatio = 0.8
-    
-    // Gentle adaptive blending: only adjust after persistent drift (handled in state)
-    // For now, use base 80% blend ratio
-    
     const blended = (rangeDelay * blendRatio + baseCharDelayMs * (1 - blendRatio)) * wpmCorrectionFactor
 
     const d = profileAdjustedDelay(blended, "typing-test", progress, randomFn, temporalDrift)
@@ -279,7 +465,10 @@ function buildDelayPlanCore(
   testWPM: number | undefined,
   randomFn: () => number,
   temporalDrift: number = 0,
-  wpmCorrectionFactor: number = 1.0
+  wpmCorrectionFactor: number = 1.0,
+  burstState?: BurstState,
+  fatigueState?: FatigueState,
+  steadyState?: SteadyState
 ): DelayPlan {
   // Get speed range based on profile
   // For typing-test with extreme WPM, use clamped range
@@ -294,11 +483,11 @@ function buildDelayPlanCore(
   // Route to profile-specific builder
   switch (profile) {
     case "steady":
-      return buildSteadyDelays(textSlice, baseCharDelayMs, range, globalProgress, randomFn, temporalDrift)
+      return buildSteadyDelays(textSlice, baseCharDelayMs, range, globalProgress, randomFn, temporalDrift, steadyState)
     case "fatigue":
-      return buildFatigueDelays(textSlice, baseCharDelayMs, range, globalProgress, randomFn, temporalDrift)
+      return buildFatigueDelays(textSlice, baseCharDelayMs, range, globalProgress, randomFn, temporalDrift, fatigueState)
     case "burst":
-      return buildBurstDelays(textSlice, baseCharDelayMs, range, globalProgress, randomFn, temporalDrift)
+      return buildBurstDelays(textSlice, baseCharDelayMs, range, globalProgress, randomFn, temporalDrift, burstState)
     case "micropause":
       return buildMicropauseDelays(textSlice, baseCharDelayMs, range, globalProgress, randomFn, temporalDrift)
     case "typing-test":
@@ -324,7 +513,10 @@ export function buildDelayPlan(
   testWPM?: number, // WPM from typing test for "typing-test" profile
   randomState?: RandomState, // Optional PRNG state
   temporalState?: TemporalState, // Optional temporal state for drift
-  wpmState?: WPMState // Optional WPM state for typing-test corrections
+  wpmState?: WPMState, // Optional WPM state for typing-test corrections
+  burstState?: BurstState, // Optional burst phase state
+  fatigueState?: FatigueState, // Optional fatigue phase state
+  steadyState?: SteadyState // Optional steady phase state
 ): DelayPlan {
   // Use PRNG if state provided, otherwise fallback to Math.random()
   const randomFn = randomState
@@ -348,7 +540,10 @@ export function buildDelayPlan(
     testWPM,
     randomFn,
     temporalDrift,
-    wpmCorrectionFactor
+    wpmCorrectionFactor,
+    burstState,
+    fatigueState,
+    steadyState
   )
 
   // Enforce minimum delays
@@ -364,6 +559,9 @@ export function buildDelayPlan(
   return {
     charDelays: enforced.charDelays,
     batchPauseMs: enforced.batchPauseMs,
+    burstState: plan.burstState,
+    fatigueState: plan.fatigueState,
+    steadyState: plan.steadyState,
   }
 }
 

@@ -2,6 +2,14 @@ import { chooseBatchSize, createTypingBatch, MIN_INTERVAL_MS, TypingBatch } from
 import { logger } from "@/lib/logger"
 import { buildDelayPlan, computeBaseCharDelayMs } from "./typing-delays"
 import { validateEngineSignature } from "./typing-engine-validation"
+import { createPRNG, generateSeed, nextRandom } from "./prng"
+import {
+  createTemporalState,
+  createWPMState,
+  updateTemporalState,
+  updateWPMState,
+  type EngineState,
+} from "./typing-state"
 import type { TypingProfile } from "@/types"
 
 const VALID_PROFILES: TypingProfile[] = ["steady", "fatigue", "burst", "micropause", "typing-test"]
@@ -61,14 +69,36 @@ export interface BatchPlan {
   perCharDelays: number[]
   batchPauseMs: number
   mistakePlan: MistakePlan
+  engineState: EngineState
 }
 
 // Chance for a typo/backspace
 const MISTAKE_CHANCE = 0.05 // 5%
 
-export function planMistake(batchText: string): MistakePlan {
+export interface BuildBatchPlanOptions {
+  jobId?: string
+  engineState?: EngineState
+}
+
+function cloneEngineState(state?: EngineState): EngineState | undefined {
+  if (!state) return undefined
+  return {
+    randomState: { ...state.randomState },
+    temporalState: { ...state.temporalState },
+    wpmState: state.wpmState ? { ...state.wpmState } : undefined,
+    burstState: state.burstState ? { ...state.burstState } : undefined,
+    fatigueState: state.fatigueState ? { ...state.fatigueState } : undefined,
+    steadyState: state.steadyState ? { ...state.steadyState } : undefined,
+    lastBatchSize: state.lastBatchSize,
+  }
+}
+
+export function planMistake(
+  batchText: string,
+  randomFn: () => number = () => Math.random()
+): MistakePlan {
   if (batchText.length < 2) return { hasMistake: false, deleteCount: 0 }
-  if (Math.random() > MISTAKE_CHANCE) return { hasMistake: false, deleteCount: 0 }
+  if (randomFn() > MISTAKE_CHANCE) return { hasMistake: false, deleteCount: 0 }
   // delete 1 char near end
   return { hasMistake: true, deleteCount: 1 }
 }
@@ -82,7 +112,8 @@ export function buildBatchPlan(
   totalChars: number,
   durationMinutes: number,
   profile: TypingProfile,
-  testWPM?: number // WPM from typing test
+  testWPM?: number, // WPM from typing test
+  options?: BuildBatchPlanOptions
 ): BatchPlan {
   // Validate engine inputs
   const validation = validateEngineInputs(profile, testWPM)
@@ -90,26 +121,63 @@ export function buildBatchPlan(
     throw new Error(validation.error || "Invalid engine inputs")
   }
 
-  const batch = createTypingBatch(fullText, currentIndex, chooseBatchSize())
+  const existingState = cloneEngineState(options?.engineState)
+  const randomState = existingState?.randomState ?? createPRNG(generateSeed(options?.jobId ?? "typing-engine"))
+  const temporalState = existingState?.temporalState ?? createTemporalState()
+  const wpmState = profile === "typing-test" ? (existingState?.wpmState ?? createWPMState()) : undefined
+  const randomFn = () => nextRandom(randomState)
+
+  const batchSize = chooseBatchSize(existingState?.lastBatchSize)
+  const batch = createTypingBatch(fullText, currentIndex, batchSize)
   if (!batch) {
+    const emptyEngineState: EngineState = {
+      randomState,
+      temporalState,
+      lastBatchSize: existingState?.lastBatchSize,
+    }
+    if (wpmState) {
+      emptyEngineState.wpmState = wpmState
+    }
+    if (existingState?.burstState) {
+      emptyEngineState.burstState = existingState.burstState
+    }
+    if (existingState?.fatigueState) {
+      emptyEngineState.fatigueState = existingState.fatigueState
+    }
+    if (existingState?.steadyState) {
+      emptyEngineState.steadyState = existingState.steadyState
+    }
     return {
       batch: null,
       totalDelayMs: 0,
       perCharDelays: [],
       batchPauseMs: 0,
       mistakePlan: { hasMistake: false, deleteCount: 0 },
+      engineState: emptyEngineState,
     }
   }
 
   const baseCharDelay = computeBaseCharDelayMs(totalChars, durationMinutes)
   const progress = currentIndex / Math.max(1, totalChars)
 
-  const { charDelays, batchPauseMs } = buildDelayPlan(
+  const {
+    charDelays,
+    batchPauseMs,
+    burstState: nextBurstState,
+    fatigueState: nextFatigueState,
+    steadyState: nextSteadyState,
+  } = buildDelayPlan(
     batch.text,
     baseCharDelay,
     profile,
     progress,
-    testWPM
+    testWPM,
+    randomState,
+    temporalState,
+    wpmState,
+    existingState?.burstState,
+    existingState?.fatigueState,
+    existingState?.steadyState
   )
 
   // Runtime validation: verify engine signature matches profile
@@ -131,15 +199,39 @@ export function buildBatchPlan(
   // Total delay = sum per-char + batch pause, but enforce minimum interval
   // Note: buildDelayPlan already enforces minimums, but we recalculate total here
   const perCharSum = charDelays.reduce((a, b) => a + b, 0)
-  const totalDelayMs = Math.max(MIN_INTERVAL_MS, perCharSum + batchPauseMs)
+  const totalDelayMs = Math.round(Math.max(MIN_INTERVAL_MS, perCharSum + batchPauseMs))
 
-  const mistakePlan = planMistake(batch.text)
+  const mistakePlan = planMistake(batch.text, randomFn)
+  const averageDelay = charDelays.length > 0 ? perCharSum / charDelays.length : 0
+  const nextTemporalState = updateTemporalState(temporalState, averageDelay)
+  const nextWPMState = profile === "typing-test" && wpmState && testWPM !== undefined
+    ? updateWPMState(wpmState, totalDelayMs, batch.text.length, testWPM)
+    : undefined
+
+  const engineState: EngineState = {
+    randomState,
+    temporalState: nextTemporalState,
+    lastBatchSize: batch.text.length,
+  }
+  if (nextWPMState) {
+    engineState.wpmState = nextWPMState
+  }
+  if (nextBurstState) {
+    engineState.burstState = nextBurstState
+  }
+  if (nextFatigueState) {
+    engineState.fatigueState = nextFatigueState
+  }
+  if (nextSteadyState) {
+    engineState.steadyState = nextSteadyState
+  }
 
   return {
     batch,
-    totalDelayMs: Math.round(totalDelayMs),
+    totalDelayMs,
     perCharDelays: charDelays,
     batchPauseMs,
     mistakePlan,
+    engineState,
   }
 }
