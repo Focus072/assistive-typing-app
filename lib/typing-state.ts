@@ -51,6 +51,18 @@ export interface FatigueState {
 }
 
 /**
+ * Steady engine phase state.
+ * Creates subtle long-window pace drift without abrupt changes.
+ */
+export type SteadyPhase = "focus" | "relaxed"
+
+export interface SteadyState {
+  phase: SteadyPhase
+  charsUntilTransition: number
+  paceMultiplier: number // ~0.95..1.05 to keep rhythm subtle
+}
+
+/**
  * Combined engine state for a job.
  */
 export interface EngineState {
@@ -59,6 +71,7 @@ export interface EngineState {
   wpmState?: WPMState // Only for typing-test profile
   burstState?: BurstState // Only for burst profile
   fatigueState?: FatigueState // Only for fatigue profile
+  steadyState?: SteadyState // Only for steady profile
   lastBatchSize?: number // Previous batch size for momentum-aware batching
 }
 

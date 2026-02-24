@@ -11,13 +11,14 @@ import {
 } from "./typing-engine-core"
 import type { RandomState } from "./prng"
 import { nextRandom, randomInt as prngRandomInt } from "./prng"
-import type { BurstState, FatigueState, TemporalState, WPMState } from "./typing-state"
+import type { BurstState, FatigueState, SteadyState, TemporalState, WPMState } from "./typing-state"
 
 export interface DelayPlan {
   charDelays: number[] // per-character delays
   batchPauseMs: number // extra pause after batch (punctuation/micro-pause)
   burstState?: BurstState // next burst phase state (burst profile only)
   fatigueState?: FatigueState // next fatigue phase state (fatigue profile only)
+  steadyState?: SteadyState // next steady phase state (steady profile only)
 }
 
 export interface TypingTestConfig {
@@ -144,10 +145,17 @@ function buildSteadyDelays(
   range: { min: number; max: number },
   progress: number,
   randomFn: () => number,
-  temporalDrift: number = 0
+  temporalDrift: number = 0,
+  steadyState?: SteadyState
 ): DelayPlan {
   const charDelays: number[] = []
   let batchPauseMs = 0
+  const currentState: SteadyState = steadyState ?? {
+    phase: "focus",
+    charsUntilTransition: coreRandomInt(18, 36, randomFn),
+    paceMultiplier: 0.98 + randomFn() * 0.03,
+  }
+  const phaseMultiplier = Math.max(0.95, Math.min(1.05, currentState.paceMultiplier))
 
   for (let i = 0; i < textSlice.length; i++) {
     // Use range-based delay as primary, blend with duration target
@@ -155,14 +163,43 @@ function buildSteadyDelays(
     const blendRatio = 0.7
     const blended = rangeDelay * blendRatio + baseCharDelayMs * (1 - blendRatio)
 
-    const d = profileAdjustedDelay(blended, "steady", progress, randomFn, temporalDrift)
+    const d = profileAdjustedDelay(blended, "steady", progress, randomFn, temporalDrift) * phaseMultiplier
     charDelays.push(Math.max(50, Math.round(d)))
   }
 
   // Apply context pauses
   batchPauseMs = applyContextPauses(textSlice, batchPauseMs, randomFn)
 
-  return { charDelays, batchPauseMs }
+  // Steady rhythm windows: focus (slightly faster) and relaxed (slightly slower).
+  let nextPhase = currentState.phase
+  let charsUntilTransition = currentState.charsUntilTransition - textSlice.length
+  let nextPaceMultiplier = currentState.paceMultiplier
+
+  if (charsUntilTransition <= 0) {
+    if (currentState.phase === "focus") {
+      nextPhase = "relaxed"
+      charsUntilTransition = coreRandomInt(12, 26, randomFn)
+      nextPaceMultiplier = 1.01 + randomFn() * 0.04
+    } else {
+      nextPhase = "focus"
+      charsUntilTransition = coreRandomInt(18, 36, randomFn)
+      nextPaceMultiplier = 0.97 + randomFn() * 0.03
+    }
+  } else {
+    const target = currentState.phase === "focus" ? 0.985 : 1.025
+    const delta = (target - currentState.paceMultiplier) * 0.25
+    nextPaceMultiplier = Math.max(0.95, Math.min(1.05, currentState.paceMultiplier + delta))
+  }
+
+  return {
+    charDelays,
+    batchPauseMs,
+    steadyState: {
+      phase: nextPhase,
+      charsUntilTransition,
+      paceMultiplier: nextPaceMultiplier,
+    },
+  }
 }
 
 /**
@@ -402,7 +439,8 @@ function buildDelayPlanCore(
   temporalDrift: number = 0,
   wpmCorrectionFactor: number = 1.0,
   burstState?: BurstState,
-  fatigueState?: FatigueState
+  fatigueState?: FatigueState,
+  steadyState?: SteadyState
 ): DelayPlan {
   // Get speed range based on profile
   // For typing-test with extreme WPM, use clamped range
@@ -417,7 +455,7 @@ function buildDelayPlanCore(
   // Route to profile-specific builder
   switch (profile) {
     case "steady":
-      return buildSteadyDelays(textSlice, baseCharDelayMs, range, globalProgress, randomFn, temporalDrift)
+      return buildSteadyDelays(textSlice, baseCharDelayMs, range, globalProgress, randomFn, temporalDrift, steadyState)
     case "fatigue":
       return buildFatigueDelays(textSlice, baseCharDelayMs, range, globalProgress, randomFn, temporalDrift, fatigueState)
     case "burst":
@@ -449,7 +487,8 @@ export function buildDelayPlan(
   temporalState?: TemporalState, // Optional temporal state for drift
   wpmState?: WPMState, // Optional WPM state for typing-test corrections
   burstState?: BurstState, // Optional burst phase state
-  fatigueState?: FatigueState // Optional fatigue phase state
+  fatigueState?: FatigueState, // Optional fatigue phase state
+  steadyState?: SteadyState // Optional steady phase state
 ): DelayPlan {
   // Use PRNG if state provided, otherwise fallback to Math.random()
   const randomFn = randomState
@@ -475,7 +514,8 @@ export function buildDelayPlan(
     temporalDrift,
     wpmCorrectionFactor,
     burstState,
-    fatigueState
+    fatigueState,
+    steadyState
   )
 
   // Enforce minimum delays
@@ -493,6 +533,7 @@ export function buildDelayPlan(
     batchPauseMs: enforced.batchPauseMs,
     burstState: plan.burstState,
     fatigueState: plan.fatigueState,
+    steadyState: plan.steadyState,
   }
 }
 

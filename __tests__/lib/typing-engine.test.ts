@@ -292,6 +292,82 @@ describe('buildBatchPlan state wiring', () => {
 
     expect(buildAvg).toBeGreaterThan(recoveryAvg)
   })
+
+  it('transitions steady phase from focus to relaxed', () => {
+    const plan = buildBatchPlan(
+      text,
+      0,
+      text.length,
+      5,
+      'steady',
+      undefined,
+      {
+        jobId: 'job-steady-transition',
+        engineState: {
+          randomState: createPRNG(303),
+          temporalState: createTemporalState(),
+          steadyState: {
+            phase: 'focus',
+            charsUntilTransition: 1,
+            paceMultiplier: 0.99,
+          },
+        },
+      }
+    )
+
+    expect(plan.engineState.steadyState).toBeDefined()
+    expect(plan.engineState.steadyState?.phase).toBe('relaxed')
+    expect(plan.engineState.steadyState?.charsUntilTransition).toBeGreaterThan(0)
+  })
+
+  it('uses slower delays in steady relaxed phase than focus phase', () => {
+    const focusPlan = buildBatchPlan(
+      text,
+      0,
+      text.length,
+      5,
+      'steady',
+      undefined,
+      {
+        jobId: 'job-steady-focus',
+        engineState: {
+          randomState: createPRNG(404),
+          temporalState: createTemporalState(),
+          steadyState: {
+            phase: 'focus',
+            charsUntilTransition: 50,
+            paceMultiplier: 0.98,
+          },
+        },
+      }
+    )
+
+    const relaxedPlan = buildBatchPlan(
+      text,
+      0,
+      text.length,
+      5,
+      'steady',
+      undefined,
+      {
+        jobId: 'job-steady-relaxed',
+        engineState: {
+          randomState: createPRNG(404),
+          temporalState: createTemporalState(),
+          steadyState: {
+            phase: 'relaxed',
+            charsUntilTransition: 50,
+            paceMultiplier: 1.04,
+          },
+        },
+      }
+    )
+
+    const focusAvg = focusPlan.perCharDelays.reduce((a, b) => a + b, 0) / focusPlan.perCharDelays.length
+    const relaxedAvg = relaxedPlan.perCharDelays.reduce((a, b) => a + b, 0) / relaxedPlan.perCharDelays.length
+
+    expect(relaxedAvg).toBeGreaterThan(focusAvg)
+  })
 })
 
 describe('analyzeMicropauseContext', () => {
