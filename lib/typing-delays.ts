@@ -11,11 +11,12 @@ import {
 } from "./typing-engine-core"
 import type { RandomState } from "./prng"
 import { nextRandom, randomInt as prngRandomInt } from "./prng"
-import type { TemporalState, WPMState } from "./typing-state"
+import type { BurstState, TemporalState, WPMState } from "./typing-state"
 
 export interface DelayPlan {
   charDelays: number[] // per-character delays
   batchPauseMs: number // extra pause after batch (punctuation/micro-pause)
+  burstState?: BurstState // next burst phase state (burst profile only)
 }
 
 export interface TypingTestConfig {
@@ -162,10 +163,17 @@ function buildBurstDelays(
   range: { min: number; max: number },
   progress: number,
   randomFn: () => number,
-  temporalDrift: number = 0
+  temporalDrift: number = 0,
+  burstState?: BurstState
 ): DelayPlan {
   const charDelays: number[] = []
   let batchPauseMs = 0
+  const currentState: BurstState = burstState ?? {
+    phase: "burst",
+    charsUntilTransition: coreRandomInt(8, 20, randomFn),
+    pauseCooldownBatches: 0,
+  }
+  const phaseDelayMultiplier = currentState.phase === "settle" ? (1.15 + randomFn() * 0.1) : 1
 
   for (let i = 0; i < textSlice.length; i++) {
     // Use range-based delay as primary, blend with duration target
@@ -173,19 +181,48 @@ function buildBurstDelays(
     const blendRatio = 0.7
     const blended = rangeDelay * blendRatio + baseCharDelayMs * (1 - blendRatio)
 
-    const d = profileAdjustedDelay(blended, "burst", progress, randomFn, temporalDrift)
+    const d = profileAdjustedDelay(blended, "burst", progress, randomFn, temporalDrift) * phaseDelayMultiplier
     charDelays.push(Math.max(50, Math.round(d)))
   }
 
   // Apply context pauses
   batchPauseMs = applyContextPauses(textSlice, batchPauseMs, randomFn)
 
-  // Burst mode: occasional thinking pause
-  if (randomFn() < 0.25) {
-    batchPauseMs += coreRandomInt(600, 1200, randomFn)
+  // Burst state machine: fast runs ("burst") followed by short settle periods.
+  // Thinking pauses are tied to phase transitions and lightly rate-limited by cooldown.
+  let nextPhase = currentState.phase
+  let charsUntilTransition = currentState.charsUntilTransition - textSlice.length
+  let pauseCooldownBatches = Math.max(0, currentState.pauseCooldownBatches - 1)
+
+  if (charsUntilTransition <= 0) {
+    if (currentState.phase === "burst") {
+      nextPhase = "settle"
+      charsUntilTransition = coreRandomInt(4, 10, randomFn)
+      if (pauseCooldownBatches === 0) {
+        const hasBoundary = /[.!?,;:]/.test(textSlice)
+        const minPause = hasBoundary ? 500 : 350
+        const maxPause = hasBoundary ? 900 : 700
+        batchPauseMs += coreRandomInt(minPause, maxPause, randomFn)
+        pauseCooldownBatches = 2
+      }
+    } else {
+      nextPhase = "burst"
+      charsUntilTransition = coreRandomInt(8, 20, randomFn)
+    }
+  } else if (nextPhase === "burst" && pauseCooldownBatches === 0 && randomFn() < 0.08) {
+    batchPauseMs += coreRandomInt(450, 900, randomFn)
+    pauseCooldownBatches = 2
   }
 
-  return { charDelays, batchPauseMs }
+  return {
+    charDelays,
+    batchPauseMs,
+    burstState: {
+      phase: nextPhase,
+      charsUntilTransition,
+      pauseCooldownBatches,
+    },
+  }
 }
 
 /**
@@ -279,7 +316,8 @@ function buildDelayPlanCore(
   testWPM: number | undefined,
   randomFn: () => number,
   temporalDrift: number = 0,
-  wpmCorrectionFactor: number = 1.0
+  wpmCorrectionFactor: number = 1.0,
+  burstState?: BurstState
 ): DelayPlan {
   // Get speed range based on profile
   // For typing-test with extreme WPM, use clamped range
@@ -298,7 +336,7 @@ function buildDelayPlanCore(
     case "fatigue":
       return buildFatigueDelays(textSlice, baseCharDelayMs, range, globalProgress, randomFn, temporalDrift)
     case "burst":
-      return buildBurstDelays(textSlice, baseCharDelayMs, range, globalProgress, randomFn, temporalDrift)
+      return buildBurstDelays(textSlice, baseCharDelayMs, range, globalProgress, randomFn, temporalDrift, burstState)
     case "micropause":
       return buildMicropauseDelays(textSlice, baseCharDelayMs, range, globalProgress, randomFn, temporalDrift)
     case "typing-test":
@@ -324,7 +362,8 @@ export function buildDelayPlan(
   testWPM?: number, // WPM from typing test for "typing-test" profile
   randomState?: RandomState, // Optional PRNG state
   temporalState?: TemporalState, // Optional temporal state for drift
-  wpmState?: WPMState // Optional WPM state for typing-test corrections
+  wpmState?: WPMState, // Optional WPM state for typing-test corrections
+  burstState?: BurstState // Optional burst phase state
 ): DelayPlan {
   // Use PRNG if state provided, otherwise fallback to Math.random()
   const randomFn = randomState
@@ -348,7 +387,8 @@ export function buildDelayPlan(
     testWPM,
     randomFn,
     temporalDrift,
-    wpmCorrectionFactor
+    wpmCorrectionFactor,
+    burstState
   )
 
   // Enforce minimum delays
@@ -364,6 +404,7 @@ export function buildDelayPlan(
   return {
     charDelays: enforced.charDelays,
     batchPauseMs: enforced.batchPauseMs,
+    burstState: plan.burstState,
   }
 }
 

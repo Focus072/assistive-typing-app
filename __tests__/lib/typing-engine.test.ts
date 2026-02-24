@@ -139,4 +139,80 @@ describe('buildBatchPlan state wiring', () => {
     expect(plan.engineState.wpmState?.batchCount).toBe(1)
     expect(plan.engineState.wpmState?.cumulativeChars).toBeGreaterThan(0)
   })
+
+  it('transitions burst phase from burst to settle', () => {
+    const plan = buildBatchPlan(
+      text,
+      0,
+      text.length,
+      5,
+      'burst',
+      undefined,
+      {
+        jobId: 'job-burst-transition',
+        engineState: {
+          randomState: createPRNG(7),
+          temporalState: createTemporalState(),
+          burstState: {
+            phase: 'burst',
+            charsUntilTransition: 1,
+            pauseCooldownBatches: 0,
+          },
+        },
+      }
+    )
+
+    expect(plan.engineState.burstState).toBeDefined()
+    expect(plan.engineState.burstState?.phase).toBe('settle')
+    expect(plan.batchPauseMs).toBeGreaterThanOrEqual(350)
+  })
+
+  it('uses slower delays in burst settle phase', () => {
+    const burstPlan = buildBatchPlan(
+      text,
+      0,
+      text.length,
+      5,
+      'burst',
+      undefined,
+      {
+        jobId: 'job-burst-phase-burst',
+        engineState: {
+          randomState: createPRNG(123),
+          temporalState: createTemporalState(),
+          burstState: {
+            phase: 'burst',
+            charsUntilTransition: 50,
+            pauseCooldownBatches: 0,
+          },
+        },
+      }
+    )
+
+    const settlePlan = buildBatchPlan(
+      text,
+      0,
+      text.length,
+      5,
+      'burst',
+      undefined,
+      {
+        jobId: 'job-burst-phase-settle',
+        engineState: {
+          randomState: createPRNG(123),
+          temporalState: createTemporalState(),
+          burstState: {
+            phase: 'settle',
+            charsUntilTransition: 50,
+            pauseCooldownBatches: 0,
+          },
+        },
+      }
+    )
+
+    const burstAvg = burstPlan.perCharDelays.reduce((a, b) => a + b, 0) / burstPlan.perCharDelays.length
+    const settleAvg = settlePlan.perCharDelays.reduce((a, b) => a + b, 0) / settlePlan.perCharDelays.length
+
+    expect(settleAvg).toBeGreaterThan(burstAvg)
+  })
 })

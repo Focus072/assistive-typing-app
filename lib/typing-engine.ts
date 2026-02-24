@@ -86,6 +86,7 @@ function cloneEngineState(state?: EngineState): EngineState | undefined {
     randomState: { ...state.randomState },
     temporalState: { ...state.temporalState },
     wpmState: state.wpmState ? { ...state.wpmState } : undefined,
+    burstState: state.burstState ? { ...state.burstState } : undefined,
     lastBatchSize: state.lastBatchSize,
   }
 }
@@ -135,6 +136,9 @@ export function buildBatchPlan(
     if (wpmState) {
       emptyEngineState.wpmState = wpmState
     }
+    if (existingState?.burstState) {
+      emptyEngineState.burstState = existingState.burstState
+    }
     return {
       batch: null,
       totalDelayMs: 0,
@@ -148,7 +152,7 @@ export function buildBatchPlan(
   const baseCharDelay = computeBaseCharDelayMs(totalChars, durationMinutes)
   const progress = currentIndex / Math.max(1, totalChars)
 
-  const { charDelays, batchPauseMs } = buildDelayPlan(
+  const { charDelays, batchPauseMs, burstState: nextBurstState } = buildDelayPlan(
     batch.text,
     baseCharDelay,
     profile,
@@ -156,7 +160,8 @@ export function buildBatchPlan(
     testWPM,
     randomState,
     temporalState,
-    wpmState
+    wpmState,
+    existingState?.burstState
   )
 
   // Runtime validation: verify engine signature matches profile
@@ -194,6 +199,9 @@ export function buildBatchPlan(
   }
   if (nextWPMState) {
     engineState.wpmState = nextWPMState
+  }
+  if (nextBurstState) {
+    engineState.burstState = nextBurstState
   }
 
   return {

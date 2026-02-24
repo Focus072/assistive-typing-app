@@ -23,12 +23,25 @@ export interface WPMState {
 }
 
 /**
+ * Burst engine phase state.
+ * Enables runs of fast typing followed by short settle periods.
+ */
+export type BurstPhase = "burst" | "settle"
+
+export interface BurstState {
+  phase: BurstPhase
+  charsUntilTransition: number
+  pauseCooldownBatches: number
+}
+
+/**
  * Combined engine state for a job.
  */
 export interface EngineState {
   randomState: RandomState
   temporalState: TemporalState
   wpmState?: WPMState // Only for typing-test profile
+  burstState?: BurstState // Only for burst profile
   lastBatchSize?: number // Previous batch size for momentum-aware batching
 }
 
