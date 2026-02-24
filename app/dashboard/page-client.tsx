@@ -54,15 +54,47 @@ function calculateWPM(totalChars: number, durationMinutes: number, profile: Typi
 }
 
 function calculateCurrentWPM(
-  currentIndex: number, 
-  totalChars: number, 
-  elapsedMinutes: number, 
+  currentIndex: number,
+  totalChars: number,
+  elapsedMinutes: number,
   profile: TypingProfile,
   testWPM?: number
 ): number {
   if (currentIndex <= 0 || elapsedMinutes <= 0) return 0
   const actualWPM = (currentIndex / 5) / elapsedMinutes
   return Math.round(actualWPM)
+}
+
+// Pre-Flight Analysis scoring helpers
+function scoreWPM(wpm: number): { score: number; label: string; colorClass: "green" | "amber" | "red" } {
+  if (wpm < 20) return { score: 5, label: "Impossibly slow", colorClass: "red" }
+  if (wpm < 40) return { score: Math.round(10 + ((wpm - 20) / 20) * 30), label: "Suspiciously slow", colorClass: "amber" }
+  if (wpm <= 75) return { score: Math.round(75 + ((wpm - 40) / 35) * 25), label: "Human-like", colorClass: "green" }
+  if (wpm <= 100) return { score: Math.round(75 - ((wpm - 75) / 25) * 25), label: "Fast — plausible", colorClass: "amber" }
+  return { score: Math.max(5, Math.round(20 - ((wpm - 100) / 50) * 15)), label: "Suspiciously fast", colorClass: "red" }
+}
+
+function computeHumanScore(
+  wpm: number,
+  wordCount: number,
+  durationMinutes: number,
+  profile: TypingProfile,
+): number {
+  const wpmScore = scoreWPM(wpm).score
+
+  // Sanity ratio: too few or too many words for the time window
+  const wordsPerMinute = wordCount / Math.max(1, durationMinutes)
+  let ratioScore = 100
+  if (wordsPerMinute < 4) ratioScore = 30
+  else if (wordsPerMinute > 150) ratioScore = 10
+
+  // Profile appropriateness for the text length
+  let profileScore = 85
+  if (profile === "fatigue" && wordCount > 300) profileScore = 95
+  else if (profile === "micropause") profileScore = 80
+  else if (profile === "typing-test") profileScore = 70
+
+  return Math.min(100, Math.round(wpmScore * 0.6 + ratioScore * 0.2 + profileScore * 0.2))
 }
 
 export default function DashboardPageClient() {
@@ -1130,6 +1162,17 @@ function DashboardContent() {
             />
           </div>
 
+          {/* Pre-Flight Analysis */}
+          {wordCount > 0 && (
+            <PreFlightAnalysis
+              wpm={estimatedWPM}
+              wordCount={wordCount}
+              durationMinutes={durationMinutes}
+              profile={typingProfile}
+              isDark={isDark}
+            />
+          )}
+
           {/* Secondary: Advanced Options - Accordion */}
           <div className={`pt-4 border-t ${
             isDark ? "border-white/5" : "border-black/5"
@@ -1542,7 +1585,7 @@ interface StatCardProps {
 
 function StatCard({ label, value, subtext, icon, color }: StatCardProps) {
   const { isDark } = useDashboardTheme()
-  
+
   return (
     <div className="space-y-1">
       <div className="flex items-center gap-2">
@@ -1569,6 +1612,100 @@ function StatCard({ label, value, subtext, icon, color }: StatCardProps) {
           {subtext}
         </p>
       )}
+    </div>
+  )
+}
+
+// Pre-Flight Analysis card component
+interface PreFlightAnalysisProps {
+  wpm: number
+  wordCount: number
+  durationMinutes: number
+  profile: TypingProfile
+  isDark: boolean
+}
+
+function PreFlightAnalysis({ wpm, wordCount, durationMinutes, profile, isDark }: PreFlightAnalysisProps) {
+  const { score, label, colorClass } = scoreWPM(wpm)
+  const humanScore = computeHumanScore(wpm, wordCount, durationMinutes, profile)
+
+  // Recommended time range at 50–70 WPM
+  const minRecommendedMin = Math.max(1, Math.ceil(wordCount / 70))
+  const maxRecommendedMin = Math.max(1, Math.ceil(wordCount / 50))
+
+  const scoreColor =
+    humanScore >= 70
+      ? isDark ? "text-green-400" : "text-green-600"
+      : humanScore >= 45
+      ? isDark ? "text-amber-400" : "text-amber-600"
+      : isDark ? "text-red-400" : "text-red-500"
+
+  const scoreBorder =
+    humanScore >= 70
+      ? isDark ? "border-green-500/20" : "border-green-200"
+      : humanScore >= 45
+      ? isDark ? "border-amber-500/20" : "border-amber-200"
+      : isDark ? "border-red-500/20" : "border-red-200"
+
+  const scoreBg =
+    humanScore >= 70
+      ? isDark ? "bg-green-500/5" : "bg-green-50/60"
+      : humanScore >= 45
+      ? isDark ? "bg-amber-500/5" : "bg-amber-50/60"
+      : isDark ? "bg-red-500/5" : "bg-red-50/60"
+
+  const wpmBadgeColor =
+    colorClass === "green"
+      ? isDark ? "text-green-400 bg-green-500/10" : "text-green-700 bg-green-100"
+      : colorClass === "amber"
+      ? isDark ? "text-amber-400 bg-amber-500/10" : "text-amber-700 bg-amber-100"
+      : isDark ? "text-red-400 bg-red-500/10" : "text-red-700 bg-red-100"
+
+  const profileTips: Record<TypingProfile, string> = {
+    steady: "Steady rhythm — consistent pacing, great for any assignment.",
+    burst: "Burst mode — fast runs with settle pauses, best for shorter texts.",
+    fatigue: wordCount > 300
+      ? "Fatigue pattern — most human-like for long essays."
+      : "Fatigue works best on longer texts (300+ words).",
+    micropause: "Micropause — subtle hesitations that mimic careful, thoughtful writing.",
+    "typing-test": "Typing test mode — fixed WPM target, less natural variation.",
+  }
+
+  return (
+    <div className={`rounded-xl border p-4 space-y-3 ${scoreBg} ${scoreBorder}`}>
+      <p className={`text-xs font-semibold uppercase tracking-widest ${isDark ? "text-white/40" : "text-black/40"}`}>
+        Pre-Flight Analysis
+      </p>
+
+      {/* Score row */}
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <span className={`text-3xl font-bold tabular-nums leading-none ${scoreColor}`}>{humanScore}%</span>
+          <p className={`text-xs mt-1 ${isDark ? "text-white/50" : "text-black/50"}`}>Human-Like Score</p>
+        </div>
+        <span className={`text-xs font-medium px-2.5 py-1 rounded-full shrink-0 ${wpmBadgeColor}`}>
+          ~{wpm} WPM · {label}
+        </span>
+      </div>
+
+      {/* Recommendation */}
+      <p className={`text-xs ${isDark ? "text-white/60" : "text-black/60"}`}>
+        For {wordCount.toLocaleString()} words, we recommend{" "}
+        <span className={`font-medium ${isDark ? "text-white/80" : "text-black/80"}`}>
+          {minRecommendedMin}–{maxRecommendedMin} min
+        </span>{" "}
+        for a natural 50–70 WPM pace.
+      </p>
+
+      {/* Profile tip */}
+      <p className={`text-xs ${isDark ? "text-white/50" : "text-black/50"}`}>
+        {profileTips[profile]}
+      </p>
+
+      {/* Static callout */}
+      <p className={`text-xs pt-2 border-t ${isDark ? "border-white/10 text-white/30" : "border-black/10 text-black/35"}`}>
+        AI-detection tools analyze text content, not typing patterns. TypeFlow only affects how your typing appears — not what&apos;s written.
+      </p>
     </div>
   )
 }

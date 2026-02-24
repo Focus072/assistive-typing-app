@@ -71,6 +71,57 @@ export function analyzeMicropauseContext(textSlice: string): MicropauseContextPr
 }
 
 /**
+ * Find the length of the word containing the character at charOffset in text.
+ * Treats spaces and newlines as word boundaries — no library needed.
+ */
+function getWordLengthAt(text: string, charOffset: number): number {
+  const clampedOffset = Math.max(0, Math.min(charOffset, text.length - 1))
+  let start = clampedOffset
+  while (start > 0 && text[start - 1] !== ' ' && text[start - 1] !== '\n') {
+    start--
+  }
+  let end = clampedOffset
+  while (end < text.length && text[end] !== ' ' && text[end] !== '\n') {
+    end++
+  }
+  return end - start
+}
+
+/**
+ * Apply word-length-aware velocity to a per-character delay array.
+ *
+ * Long words (7+ chars): ~60% chance of a randomized slowdown (1.15–1.45×).
+ * The other 40% sail through at full speed — "flow state" on a familiar word.
+ *
+ * Short words (≤4 chars): ~70% chance of a randomized speed bonus (0.85–0.95×).
+ * Mimics natural acceleration on common short words ("the", "and", "is").
+ *
+ * Two layers of randomness (gate + magnitude) prevent the metronome effect
+ * where every long word predictably slows down by the same amount.
+ */
+function applyWordLengthVelocity(
+  charDelays: number[],
+  fullText: string,
+  sliceStart: number,
+  randomFn: () => number
+): number[] {
+  return charDelays.map((delay, i) => {
+    const wordLen = getWordLengthAt(fullText, sliceStart + i)
+    if (wordLen >= 7 && randomFn() < 0.60) {
+      // Long word gate fired: randomized slowdown
+      const multiplier = 1.15 + randomFn() * 0.30 // 1.15–1.45×
+      return Math.max(50, Math.round(delay * multiplier))
+    }
+    if (wordLen <= 4 && randomFn() < 0.70) {
+      // Short word gate fired: randomized speed bonus
+      const multiplier = 0.85 + randomFn() * 0.10 // 0.85–0.95×
+      return Math.max(50, Math.round(delay * multiplier))
+    }
+    return delay
+  })
+}
+
+/**
  * Generate skewed/clustered noise for delay jitter.
  * Uses log-normal distribution to cluster delays around typical values with occasional outliers.
  * This creates human-like distribution (not uniform).
@@ -516,7 +567,9 @@ export function buildDelayPlan(
   wpmState?: WPMState, // Optional WPM state for typing-test corrections
   burstState?: BurstState, // Optional burst phase state
   fatigueState?: FatigueState, // Optional fatigue phase state
-  steadyState?: SteadyState // Optional steady phase state
+  steadyState?: SteadyState, // Optional steady phase state
+  fullText?: string, // Full source text for word-length velocity
+  sliceStart?: number // Character offset of textSlice within fullText
 ): DelayPlan {
   // Use PRNG if state provided, otherwise fallback to Math.random()
   const randomFn = randomState
@@ -546,8 +599,15 @@ export function buildDelayPlan(
     steadyState
   )
 
+  // Apply word-length velocity layer when full-text context is available.
+  // This is a universal post-process step applied on top of all profiles.
+  let adjustedCharDelays = plan.charDelays
+  if (fullText && sliceStart !== undefined) {
+    adjustedCharDelays = applyWordLengthVelocity(plan.charDelays, fullText, sliceStart, randomFn)
+  }
+
   // Enforce minimum delays
-  const enforced = enforceMinimumDelays(plan.charDelays, plan.batchPauseMs)
+  const enforced = enforceMinimumDelays(adjustedCharDelays, plan.batchPauseMs)
 
   // Validate plan
   const validation = validateDelayPlan({ charDelays: enforced.charDelays, batchPauseMs: enforced.batchPauseMs })

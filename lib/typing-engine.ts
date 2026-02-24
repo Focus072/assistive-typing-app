@@ -177,7 +177,9 @@ export function buildBatchPlan(
     wpmState,
     existingState?.burstState,
     existingState?.fatigueState,
-    existingState?.steadyState
+    existingState?.steadyState,
+    fullText,   // pass full text for word-length velocity
+    currentIndex // character offset of this batch within fullText
   )
 
   // Runtime validation: verify engine signature matches profile
