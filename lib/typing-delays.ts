@@ -24,8 +24,50 @@ export interface TypingTestConfig {
   wpm: number // Words per minute from typing test
 }
 
+export interface MicropauseContextProfile {
+  triggerChance: number
+  pauseRange: { min: number; max: number }
+  difficultyScore: number
+}
+
 // Re-export for backward compatibility
 export { computeBaseCharDelayMs }
+
+/**
+ * Analyze text slice complexity to drive micropause behavior.
+ * Higher complexity increases both hesitation probability and pause length.
+ */
+export function analyzeMicropauseContext(textSlice: string): MicropauseContextProfile {
+  const punctuationCount = (textSlice.match(/[,:;!?]/g) ?? []).length
+  const sentenceBoundaryCount = (textSlice.match(/[.!?]/g) ?? []).length
+  const longWordCount = textSlice.split(/\s+/).filter((word) => word.length > 8).length
+  const caseTransitionCount = (textSlice.match(/[a-z][A-Z]/g) ?? []).length
+  const numericTokenCount = (textSlice.match(/\d+/g) ?? []).length
+
+  const difficultyScore =
+    punctuationCount * 0.55 +
+    sentenceBoundaryCount * 0.8 +
+    longWordCount * 0.6 +
+    caseTransitionCount * 0.5 +
+    numericTokenCount * 0.35
+
+  const normalizedDifficulty = Math.min(1, difficultyScore / 3.5)
+  const triggerChance = Math.min(0.65, 0.15 + normalizedDifficulty * 0.45)
+
+  let pauseRange: { min: number; max: number } = { min: 90, max: 210 }
+  if (difficultyScore > 1.4) {
+    pauseRange = { min: 130, max: 280 }
+  }
+  if (difficultyScore > 2.4) {
+    pauseRange = { min: 180, max: 380 }
+  }
+
+  return {
+    triggerChance,
+    pauseRange,
+    difficultyScore,
+  }
+}
 
 /**
  * Generate skewed/clustered noise for delay jitter.
@@ -279,6 +321,7 @@ function buildMicropauseDelays(
 ): DelayPlan {
   const charDelays: number[] = []
   let batchPauseMs = 0
+  const contextProfile = analyzeMicropauseContext(textSlice)
 
   for (let i = 0; i < textSlice.length; i++) {
     // Use range-based delay as primary, blend with duration target
@@ -286,16 +329,20 @@ function buildMicropauseDelays(
     const blendRatio = 0.7
     const blended = rangeDelay * blendRatio + baseCharDelayMs * (1 - blendRatio)
 
-    const d = profileAdjustedDelay(blended, "micropause", progress, randomFn, temporalDrift)
+    const ch = textSlice[i]
+    const charHesitation =
+      (/[,:;!?]/.test(ch) ? coreRandomInt(8, 28, randomFn) : 0) +
+      (/[A-Z]/.test(ch) ? coreRandomInt(3, 12, randomFn) : 0)
+    const d = profileAdjustedDelay(blended, "micropause", progress, randomFn, temporalDrift) + charHesitation
     charDelays.push(Math.max(50, Math.round(d)))
   }
 
   // Apply context pauses
   batchPauseMs = applyContextPauses(textSlice, batchPauseMs, randomFn)
 
-  // Micropause mode: frequent small hesitations
-  if (randomFn() < 0.4) {
-    batchPauseMs += coreRandomInt(100, 350, randomFn)
+  // Micropause mode: context-weighted hesitation probability and pause size.
+  if (randomFn() < contextProfile.triggerChance) {
+    batchPauseMs += coreRandomInt(contextProfile.pauseRange.min, contextProfile.pauseRange.max, randomFn)
   }
 
   return { charDelays, batchPauseMs }

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { buildBatchPlan, validateEngineInputs } from '@/lib/typing-engine'
+import { analyzeMicropauseContext } from '@/lib/typing-delays'
 import { createPRNG } from '@/lib/prng'
 import { createTemporalState, createWPMState } from '@/lib/typing-state'
 
@@ -290,5 +291,24 @@ describe('buildBatchPlan state wiring', () => {
     const recoveryAvg = recoveryPlan.perCharDelays.reduce((a, b) => a + b, 0) / recoveryPlan.perCharDelays.length
 
     expect(buildAvg).toBeGreaterThan(recoveryAvg)
+  })
+})
+
+describe('analyzeMicropauseContext', () => {
+  it('assigns higher difficulty and trigger chance to complex text', () => {
+    const simple = analyzeMicropauseContext('this is easy text')
+    const complex = analyzeMicropauseContext('ComplexToken123, however, NeedsPause!')
+
+    expect(complex.difficultyScore).toBeGreaterThan(simple.difficultyScore)
+    expect(complex.triggerChance).toBeGreaterThan(simple.triggerChance)
+    expect(complex.pauseRange.max).toBeGreaterThanOrEqual(simple.pauseRange.max)
+  })
+
+  it('keeps trigger chance in safe bounded range', () => {
+    const empty = analyzeMicropauseContext('')
+    const intense = analyzeMicropauseContext('A1B2C3! LongComplexWord, AnotherLongComplexWord?!')
+
+    expect(empty.triggerChance).toBeGreaterThanOrEqual(0.15)
+    expect(intense.triggerChance).toBeLessThanOrEqual(0.65)
   })
 })
