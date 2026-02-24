@@ -155,7 +155,7 @@ export function TypingProfileSelector({
           type="button"
           onClick={() => setShowInfo((v) => !v)}
           aria-label={showInfo ? "Hide style descriptions" : "Show style descriptions"}
-          className={`w-5 h-5 rounded-full border flex items-center justify-center text-[10px] font-bold transition-colors ${
+          className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full border flex items-center justify-center text-[9px] sm:text-[10px] font-bold transition-colors ${
             showInfo
               ? isDark
                 ? "bg-white text-black border-white"
