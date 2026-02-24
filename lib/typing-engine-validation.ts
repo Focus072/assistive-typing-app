@@ -17,7 +17,7 @@ export function validateEngineSignature(
     return { valid: false, errors, warnings }
   }
 
-  const avgDelay = plan.charDelays.reduce((a, b) => a + b, 0) / plan.charDelays.length
+  const avgDelay = plan.charDelays.reduce((a, b) => b, 0) / plan.charDelays.length
   const variance = calculateVariance(plan.charDelays, avgDelay)
   const varianceCoefficient = variance / avgDelay
 

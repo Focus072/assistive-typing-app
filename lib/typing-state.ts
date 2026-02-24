@@ -163,10 +163,16 @@ export function updateWPMState(
   // Apply bounded, smooth correction after persistent drift.
   // Positive drift => typing too fast => increase delays (correctionFactor > 1).
   // Negative drift => typing too slow => decrease delays (correctionFactor < 1).
+  // Wait for ~8 batches (~40 chars) to build a stable EMA before correcting.
+  // Early batches have high variance that would cause overcorrection.
   const MIN_BATCHES_FOR_CORRECTION = 8
+  // Ignore drift < 2%: falls within normal human rhythm variance (noise floor).
   const DRIFT_DEADBAND = 0.02
+  // Start correcting at 4% drift: meaningful but not yet disruptive.
   const DRIFT_ACTIVATION = 0.04
+  // Max ±6% speed adjustment: enough to converge without perceptible lurching.
   const MAX_CORRECTION_OFFSET = 0.06
+  // Move at most 0.4% per batch toward the target: gradual enough to be imperceptible.
   const MAX_CORRECTION_STEP = 0.004
 
   let correctionFactor = state.correctionFactor

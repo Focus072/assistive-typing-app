@@ -18,10 +18,7 @@ export interface TypingBatch {
  * Choose a batch size with weighted distribution (prefer 2-4 chars, less 1 or 5).
  * Uses weighted random selection, allowing natural repetition but reducing probability.
  */
-export function chooseBatchSize(
-  lastBatchSize?: number,
-  randomFn: () => number = () => Math.random()
-): number {
+export function chooseBatchSize(lastBatchSize?: number): number {
   // Weighted distribution: [1: 0.1, 2: 0.3, 3: 0.4, 4: 0.15, 5: 0.05]
   const weights = [0.1, 0.3, 0.4, 0.15, 0.05]
   
@@ -44,7 +41,7 @@ export function chooseBatchSize(
   }
   
   // Weighted random selection
-  const r = randomFn()
+  const r = Math.random()
   let cumulative = 0
   for (let i = 0; i < adjustedWeights.length; i++) {
     cumulative += adjustedWeights[i]

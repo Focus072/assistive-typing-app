@@ -112,23 +112,28 @@ function profileAdjustedDelay(
   // Apply profile-specific multiplier
   switch (profile) {
     case "steady":
-      return jitteredDelay * (0.97 + randomFn() * 0.06) // tighter low variance
+      // 0.97-1.03: reflects a consistent typist with minimal rhythm drift
+      return jitteredDelay * (0.97 + randomFn() * 0.06)
     case "fatigue": {
       // Non-linear progress curve (not linear)
       const fatigueProgress = Math.pow(progress, 1.1)
-      const fatigue = 1 + fatigueProgress * (0.18 * (1 + randomFn() * 0.35)) // stronger slowdown growth
+      // 0.18 base: reaches ~18% slowdown at full fatigue; 0.35 jitter keeps it organic
+      const fatigue = 1 + fatigueProgress * (0.18 * (1 + randomFn() * 0.35))
       return jitteredDelay * fatigue * (0.96 + randomFn() * 0.1)
     }
     case "burst": {
-      // bursts: faster chars but occasional long pause handled elsewhere
+      // 0.62-0.80: bursts are noticeably faster (~20-38% below base)
+      // Occasional long pauses handled by the burst state machine, not here
       return jitteredDelay * (0.62 + randomFn() * 0.18)
     }
     case "micropause":
+      // 0.95-1.22: wide range creates the uneven hesitation pattern
       return jitteredDelay * (0.95 + randomFn() * 0.27)
     case "typing-test":
       // For typing test, use the test WPM with natural variance
       // Add some human-like variation: occasional faster bursts and slower moments
-      const variation = 0.9 + randomFn() * 0.2 // tighter variance for convergence
+      // 0.90-1.10: tighter than other profiles so WPM correction stays effective
+      const variation = 0.9 + randomFn() * 0.2
       return jitteredDelay * variation
     default:
       return jitteredDelay
@@ -152,7 +157,9 @@ function buildSteadyDelays(
   let batchPauseMs = 0
   const currentState: SteadyState = steadyState ?? {
     phase: "focus",
+    // 18-36 chars: ~4-8 small batches at the typical 3-8 char batch size
     charsUntilTransition: coreRandomInt(18, 36, randomFn),
+    // Start in the faster half of the focus range (0.98-1.01)
     paceMultiplier: 0.98 + randomFn() * 0.03,
   }
   const phaseMultiplier = Math.max(0.95, Math.min(1.05, currentState.paceMultiplier))
@@ -178,11 +185,15 @@ function buildSteadyDelays(
   if (charsUntilTransition <= 0) {
     if (currentState.phase === "focus") {
       nextPhase = "relaxed"
+      // 12-26 chars: relaxed windows are shorter so focus dominates the rhythm
       charsUntilTransition = coreRandomInt(12, 26, randomFn)
+      // 1.01-1.05: relaxed is 1-5% slower than baseline
       nextPaceMultiplier = 1.01 + randomFn() * 0.04
     } else {
       nextPhase = "focus"
+      // 18-36 chars: longer focus windows match how humans sustain productive typing
       charsUntilTransition = coreRandomInt(18, 36, randomFn)
+      // 0.97-1.00: focus is at or slightly below baseline pace
       nextPaceMultiplier = 0.97 + randomFn() * 0.03
     }
   } else {
@@ -219,7 +230,9 @@ function buildFatigueDelays(
   let batchPauseMs = 0
   const currentState: FatigueState = fatigueState ?? {
     phase: "build",
+    // 14-30 chars: ~3-6 small batches before the first recovery check
     charsUntilTransition: coreRandomInt(14, 30, randomFn),
+    // Start mid-range (0.2-0.4) so the opening doesn't feel artificially fresh
     fatigueLevel: 0.2 + randomFn() * 0.2,
   }
   const phaseMultiplier = currentState.phase === "build"
@@ -244,19 +257,29 @@ function buildFatigueDelays(
   let charsUntilTransition = currentState.charsUntilTransition - textSlice.length
   let nextFatigueLevel = currentState.fatigueLevel
 
+  // Normalize accumulation by chars processed so a 3-char and a 15-char batch
+  // accumulate fatigue proportionally. Reference is a nominal 5-char batch
+  // (midpoint of the typical 3-8 char batch range). Capped at 3x to prevent
+  // runaway on unusually large batches.
+  const NOMINAL_BATCH_CHARS = 5
+  const charScale = Math.min(3, textSlice.length / NOMINAL_BATCH_CHARS)
+
   if (currentState.phase === "build") {
-    nextFatigueLevel = Math.min(1, nextFatigueLevel + (0.08 + randomFn() * 0.08))
+    nextFatigueLevel = Math.min(1, nextFatigueLevel + (0.08 + randomFn() * 0.08) * charScale)
   } else {
-    nextFatigueLevel = Math.max(0.1, nextFatigueLevel - (0.1 + randomFn() * 0.08))
+    nextFatigueLevel = Math.max(0.1, nextFatigueLevel - (0.1 + randomFn() * 0.08) * charScale)
   }
 
   if (charsUntilTransition <= 0) {
     if (currentState.phase === "build") {
       nextPhase = "recovery"
+      // 6-14 chars: brief recovery window (~1-2 small batches)
       charsUntilTransition = coreRandomInt(6, 14, randomFn)
+      // 180-380ms: a short mental-reset pause, noticeable but not jarring
       batchPauseMs += coreRandomInt(180, 380, randomFn)
     } else {
       nextPhase = "build"
+      // Return to the same build window range as initialization
       charsUntilTransition = coreRandomInt(14, 30, randomFn)
     }
   }
@@ -289,6 +312,7 @@ function buildBurstDelays(
   let batchPauseMs = 0
   const currentState: BurstState = burstState ?? {
     phase: "burst",
+    // 8-20 chars: short enough to feel like bursts, long enough to be distinct
     charsUntilTransition: coreRandomInt(8, 20, randomFn),
     pauseCooldownBatches: 0,
   }
@@ -316,12 +340,16 @@ function buildBurstDelays(
   if (charsUntilTransition <= 0) {
     if (currentState.phase === "burst") {
       nextPhase = "settle"
+      // 4-10 chars: settle periods are short so bursts dominate the pattern
       charsUntilTransition = coreRandomInt(4, 10, randomFn)
       if (pauseCooldownBatches === 0) {
+        // Longer pause at punctuation (thinking about next sentence) vs mid-sentence
+        // 500-900ms at boundaries, 350-700ms mid-text: both feel like a human regrouping
         const hasBoundary = /[.!?,;:]/.test(textSlice)
         const minPause = hasBoundary ? 500 : 350
         const maxPause = hasBoundary ? 900 : 700
         batchPauseMs += coreRandomInt(minPause, maxPause, randomFn)
+        // cooldown=2: prevents two pauses within consecutive batches
         pauseCooldownBatches = 2
       }
     } else {
