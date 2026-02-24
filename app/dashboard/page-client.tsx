@@ -1679,12 +1679,26 @@ function PreFlightAnalysis({ wpm, wordCount, durationMinutes, profile, isDark }:
 
       {/* Score row */}
       <div className="flex items-start justify-between gap-3">
-        <div>
+        <div className="flex-1 min-w-0">
           <span className={`text-3xl font-bold tabular-nums leading-none ${scoreColor}`}>{humanScore}%</span>
-          <p className={`text-xs mt-1 ${isDark ? "text-white/50" : "text-black/50"}`}>Human-Like Score</p>
+          <p className={`text-xs mt-1 mb-2 ${isDark ? "text-white/50" : "text-black/50"}`}>Human-Like Score</p>
+          {/* Progress bar */}
+          <div className={`h-1.5 rounded-full overflow-hidden ${isDark ? "bg-white/10" : "bg-black/10"}`}>
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${
+                humanScore >= 70
+                  ? isDark ? "bg-green-400" : "bg-green-500"
+                  : humanScore >= 45
+                  ? isDark ? "bg-amber-400" : "bg-amber-500"
+                  : isDark ? "bg-red-400" : "bg-red-500"
+              }`}
+              style={{ width: `${humanScore}%` }}
+            />
+          </div>
         </div>
-        <span className={`text-xs font-medium px-2.5 py-1 rounded-full shrink-0 ${wpmBadgeColor}`}>
-          ~{wpm} WPM · {label}
+        <span className={`text-xs font-medium px-2.5 py-1 rounded-full shrink-0 flex items-center gap-1 ${wpmBadgeColor}`}>
+          {colorClass === "green" ? "✓" : colorClass === "amber" ? "⚠" : "✕"}
+          {" "}~{wpm} WPM · {label}
         </span>
       </div>
 
