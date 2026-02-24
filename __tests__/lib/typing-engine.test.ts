@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { buildBatchPlan, validateEngineInputs } from '@/lib/typing-engine'
 import { analyzeMicropauseContext } from '@/lib/typing-delays'
 import { createPRNG } from '@/lib/prng'
-import { createTemporalState, createWPMState } from '@/lib/typing-state'
+import { createTemporalState, createWPMState, updateWPMState } from '@/lib/typing-state'
 
 describe('validateEngineInputs', () => {
   it('returns valid for a standard profile without testWPM', () => {
@@ -310,5 +310,63 @@ describe('analyzeMicropauseContext', () => {
 
     expect(empty.triggerChance).toBeGreaterThanOrEqual(0.15)
     expect(intense.triggerChance).toBeLessThanOrEqual(0.65)
+  })
+})
+
+describe('updateWPMState convergence behavior', () => {
+  it('increases correction factor when typing is persistently too fast', () => {
+    const state = {
+      cumulativeDelayMs: 60000,
+      cumulativeChars: 500,
+      wpmDriftEMA: 0.2,
+      correctionFactor: 1.0,
+      batchCount: 12,
+    }
+
+    const updated = updateWPMState(state, 5000, 50, 60)
+    expect(updated.correctionFactor).toBeGreaterThan(1.0)
+    expect(updated.correctionFactor).toBeLessThanOrEqual(1.004)
+  })
+
+  it('decreases correction factor when typing is persistently too slow', () => {
+    const state = {
+      cumulativeDelayMs: 90000,
+      cumulativeChars: 300,
+      wpmDriftEMA: -0.2,
+      correctionFactor: 1.0,
+      batchCount: 12,
+    }
+
+    const updated = updateWPMState(state, 15000, 50, 60)
+    expect(updated.correctionFactor).toBeLessThan(1.0)
+    expect(updated.correctionFactor).toBeGreaterThanOrEqual(0.996)
+  })
+
+  it('decays correction toward neutral when drift is inside deadband', () => {
+    const state = {
+      cumulativeDelayMs: 60000,
+      cumulativeChars: 300,
+      wpmDriftEMA: 0,
+      correctionFactor: 1.02,
+      batchCount: 12,
+    }
+
+    const updated = updateWPMState(state, 10000, 50, 60)
+    expect(updated.correctionFactor).toBeLessThan(1.02)
+    expect(updated.correctionFactor).toBeGreaterThan(1.0)
+  })
+
+  it('keeps correction factor within bounded limits', () => {
+    const state = {
+      cumulativeDelayMs: 50000,
+      cumulativeChars: 600,
+      wpmDriftEMA: 0.6,
+      correctionFactor: 1.059,
+      batchCount: 20,
+    }
+
+    const updated = updateWPMState(state, 1000, 60, 60)
+    expect(updated.correctionFactor).toBeLessThanOrEqual(1.06)
+    expect(updated.correctionFactor).toBeGreaterThanOrEqual(0.94)
   })
 })

@@ -363,17 +363,14 @@ function buildTypingTestDelays(
 ): DelayPlan {
   const charDelays: number[] = []
   let batchPauseMs = 0
+  const correctionMagnitude = Math.min(0.06, Math.abs(wpmCorrectionFactor - 1))
+  const blendRatio = Math.min(0.88, 0.8 + correctionMagnitude * 1.2)
 
   for (let i = 0; i < textSlice.length; i++) {
     // Use range-based delay as primary, blend with duration target
-    // For typing-test profile, use more of the WPM-based range (80%) vs duration target (20%)
-    // Apply gentle WPM correction factor
+    // For typing-test profile, prioritize WPM range and slightly increase
+    // that priority when correction is active.
     const rangeDelay = coreRandomInt(range.min, range.max, randomFn)
-    let blendRatio = 0.8
-    
-    // Gentle adaptive blending: only adjust after persistent drift (handled in state)
-    // For now, use base 80% blend ratio
-    
     const blended = (rangeDelay * blendRatio + baseCharDelayMs * (1 - blendRatio)) * wpmCorrectionFactor
 
     const d = profileAdjustedDelay(blended, "typing-test", progress, randomFn, temporalDrift)

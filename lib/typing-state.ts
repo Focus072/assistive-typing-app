@@ -22,6 +22,10 @@ export interface WPMState {
   batchCount: number // Number of batches processed
 }
 
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value))
+}
+
 /**
  * Burst engine phase state.
  * Enables runs of fast typing followed by short settle periods.
@@ -143,13 +147,29 @@ export function updateWPMState(
     ? wpmDrift
     : alpha * wpmDrift + (1 - alpha) * state.wpmDriftEMA
 
-  // Apply gentle correction only after persistent drift (>5% for multiple batches)
+  // Apply bounded, smooth correction after persistent drift.
+  // Positive drift => typing too fast => increase delays (correctionFactor > 1).
+  // Negative drift => typing too slow => decrease delays (correctionFactor < 1).
+  const MIN_BATCHES_FOR_CORRECTION = 8
+  const DRIFT_DEADBAND = 0.02
+  const DRIFT_ACTIVATION = 0.04
+  const MAX_CORRECTION_OFFSET = 0.06
+  const MAX_CORRECTION_STEP = 0.004
+
   let correctionFactor = state.correctionFactor
-  if (state.batchCount > 10 && Math.abs(newWPMDriftEMA) > 0.05) {
-    // Gentle correction: ±1-2% adjustment
-    const correction = Math.max(-0.02, Math.min(0.02, -newWPMDriftEMA * 0.3))
-    correctionFactor = 1.0 + correction
+  if (state.batchCount >= MIN_BATCHES_FOR_CORRECTION) {
+    if (Math.abs(newWPMDriftEMA) <= DRIFT_DEADBAND) {
+      // Near target: slowly decay correction back toward neutral.
+      const deltaToNeutral = 1.0 - correctionFactor
+      correctionFactor += clamp(deltaToNeutral, -MAX_CORRECTION_STEP, MAX_CORRECTION_STEP)
+    } else if (Math.abs(newWPMDriftEMA) >= DRIFT_ACTIVATION) {
+      const desiredCorrectionOffset = clamp(newWPMDriftEMA * 0.35, -MAX_CORRECTION_OFFSET, MAX_CORRECTION_OFFSET)
+      const desiredFactor = 1.0 + desiredCorrectionOffset
+      const delta = desiredFactor - correctionFactor
+      correctionFactor += clamp(delta, -MAX_CORRECTION_STEP, MAX_CORRECTION_STEP)
+    }
   }
+  correctionFactor = clamp(correctionFactor, 1 - MAX_CORRECTION_OFFSET, 1 + MAX_CORRECTION_OFFSET)
 
   return {
     cumulativeDelayMs: newCumulativeDelayMs,
