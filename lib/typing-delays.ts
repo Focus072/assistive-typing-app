@@ -53,14 +53,14 @@ export function analyzeMicropauseContext(textSlice: string): MicropauseContextPr
     numericTokenCount * 0.35
 
   const normalizedDifficulty = Math.min(1, difficultyScore / 3.5)
-  const triggerChance = Math.min(0.65, 0.15 + normalizedDifficulty * 0.45)
+  const triggerChance = Math.min(0.72, 0.2 + normalizedDifficulty * 0.46)
 
-  let pauseRange: { min: number; max: number } = { min: 90, max: 210 }
+  let pauseRange: { min: number; max: number } = { min: 120, max: 240 }
   if (difficultyScore > 1.4) {
-    pauseRange = { min: 130, max: 280 }
+    pauseRange = { min: 170, max: 320 }
   }
   if (difficultyScore > 2.4) {
-    pauseRange = { min: 180, max: 380 }
+    pauseRange = { min: 220, max: 430 }
   }
 
   return {
@@ -112,23 +112,23 @@ function profileAdjustedDelay(
   // Apply profile-specific multiplier
   switch (profile) {
     case "steady":
-      return jitteredDelay * (0.95 + randomFn() * 0.1) // low variance
+      return jitteredDelay * (0.97 + randomFn() * 0.06) // tighter low variance
     case "fatigue": {
       // Non-linear progress curve (not linear)
       const fatigueProgress = Math.pow(progress, 1.1)
-      const fatigue = 1 + fatigueProgress * (0.15 * (1 + randomFn() * 0.3)) // 5–15%+ as progress grows
-      return jitteredDelay * fatigue * (0.95 + randomFn() * 0.1)
+      const fatigue = 1 + fatigueProgress * (0.18 * (1 + randomFn() * 0.35)) // stronger slowdown growth
+      return jitteredDelay * fatigue * (0.96 + randomFn() * 0.1)
     }
     case "burst": {
       // bursts: faster chars but occasional long pause handled elsewhere
-      return jitteredDelay * (0.7 + randomFn() * 0.2)
+      return jitteredDelay * (0.62 + randomFn() * 0.18)
     }
     case "micropause":
-      return jitteredDelay * (0.85 + randomFn() * 0.3)
+      return jitteredDelay * (0.95 + randomFn() * 0.27)
     case "typing-test":
       // For typing test, use the test WPM with natural variance
       // Add some human-like variation: occasional faster bursts and slower moments
-      const variation = 0.85 + randomFn() * 0.3 // 85% to 115% of base
+      const variation = 0.9 + randomFn() * 0.2 // tighter variance for convergence
       return jitteredDelay * variation
     default:
       return jitteredDelay
@@ -223,8 +223,8 @@ function buildFatigueDelays(
     fatigueLevel: 0.2 + randomFn() * 0.2,
   }
   const phaseMultiplier = currentState.phase === "build"
-    ? 1 + currentState.fatigueLevel * (0.12 + randomFn() * 0.08)
-    : 1 + currentState.fatigueLevel * (0.04 + randomFn() * 0.06)
+    ? 1 + currentState.fatigueLevel * (0.16 + randomFn() * 0.1)
+    : 1 + currentState.fatigueLevel * (0.03 + randomFn() * 0.05)
 
   for (let i = 0; i < textSlice.length; i++) {
     // Use range-based delay as primary, blend with duration target
@@ -292,7 +292,7 @@ function buildBurstDelays(
     charsUntilTransition: coreRandomInt(8, 20, randomFn),
     pauseCooldownBatches: 0,
   }
-  const phaseDelayMultiplier = currentState.phase === "settle" ? (1.15 + randomFn() * 0.1) : 1
+  const phaseDelayMultiplier = currentState.phase === "settle" ? (1.18 + randomFn() * 0.12) : 1
 
   for (let i = 0; i < textSlice.length; i++) {
     // Use range-based delay as primary, blend with duration target
@@ -401,7 +401,7 @@ function buildTypingTestDelays(
   const charDelays: number[] = []
   let batchPauseMs = 0
   const correctionMagnitude = Math.min(0.06, Math.abs(wpmCorrectionFactor - 1))
-  const blendRatio = Math.min(0.88, 0.8 + correctionMagnitude * 1.2)
+  const blendRatio = Math.min(0.9, 0.82 + correctionMagnitude * 1.3)
 
   for (let i = 0; i < textSlice.length; i++) {
     // Use range-based delay as primary, blend with duration target

@@ -368,6 +368,78 @@ describe('buildBatchPlan state wiring', () => {
 
     expect(relaxedAvg).toBeGreaterThan(focusAvg)
   })
+
+  it('keeps tuned profile speed ordering distinct (burst < steady < fatigue)', () => {
+    const burstPlan = buildBatchPlan(
+      text,
+      0,
+      text.length,
+      5,
+      'burst',
+      undefined,
+      {
+        jobId: 'job-order-burst',
+        engineState: {
+          randomState: createPRNG(505),
+          temporalState: createTemporalState(),
+          burstState: {
+            phase: 'burst',
+            charsUntilTransition: 50,
+            pauseCooldownBatches: 0,
+          },
+        },
+      }
+    )
+
+    const steadyPlan = buildBatchPlan(
+      text,
+      0,
+      text.length,
+      5,
+      'steady',
+      undefined,
+      {
+        jobId: 'job-order-steady',
+        engineState: {
+          randomState: createPRNG(505),
+          temporalState: createTemporalState(),
+          steadyState: {
+            phase: 'focus',
+            charsUntilTransition: 50,
+            paceMultiplier: 0.99,
+          },
+        },
+      }
+    )
+
+    const fatiguePlan = buildBatchPlan(
+      text,
+      0,
+      text.length,
+      5,
+      'fatigue',
+      undefined,
+      {
+        jobId: 'job-order-fatigue',
+        engineState: {
+          randomState: createPRNG(505),
+          temporalState: createTemporalState(),
+          fatigueState: {
+            phase: 'build',
+            charsUntilTransition: 50,
+            fatigueLevel: 0.85,
+          },
+        },
+      }
+    )
+
+    const burstAvg = burstPlan.perCharDelays.reduce((a, b) => a + b, 0) / burstPlan.perCharDelays.length
+    const steadyAvg = steadyPlan.perCharDelays.reduce((a, b) => a + b, 0) / steadyPlan.perCharDelays.length
+    const fatigueAvg = fatiguePlan.perCharDelays.reduce((a, b) => a + b, 0) / fatiguePlan.perCharDelays.length
+
+    expect(burstAvg).toBeLessThan(steadyAvg)
+    expect(steadyAvg).toBeLessThan(fatigueAvg)
+  })
 })
 
 describe('analyzeMicropauseContext', () => {
@@ -384,8 +456,8 @@ describe('analyzeMicropauseContext', () => {
     const empty = analyzeMicropauseContext('')
     const intense = analyzeMicropauseContext('A1B2C3! LongComplexWord, AnotherLongComplexWord?!')
 
-    expect(empty.triggerChance).toBeGreaterThanOrEqual(0.15)
-    expect(intense.triggerChance).toBeLessThanOrEqual(0.65)
+    expect(empty.triggerChance).toBeGreaterThanOrEqual(0.2)
+    expect(intense.triggerChance).toBeLessThanOrEqual(0.72)
   })
 })
 
