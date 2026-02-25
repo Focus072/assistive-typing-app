@@ -17,12 +17,19 @@ export function hashString(str: string): string {
 }
 
 export function formatDuration(minutes: number): string {
-  if (minutes < 60) {
-    return `${minutes} min`
+  const totalSeconds = Math.round(minutes * 60)
+  if (totalSeconds <= 0) return "0 sec"
+
+  const hours = Math.floor(totalSeconds / 3600)
+  const mins = Math.floor((totalSeconds % 3600) / 60)
+  const secs = totalSeconds % 60
+
+  if (hours > 0) {
+    return mins > 0 ? `${hours}h ${mins}min` : `${hours}h`
   }
-  const hours = Math.floor(minutes / 60)
-  const mins = minutes % 60
-  return mins > 0 ? `${hours}h ${mins}min` : `${hours}h`
+  if (mins === 0) return `${secs} sec`
+  if (secs === 0) return `${mins} min`
+  return `${mins} min ${secs} sec`
 }
 
 export function calculateTimeRemaining(

@@ -7,6 +7,7 @@ import { prisma } from "./prisma"
 import { hashString } from "./utils"
 import type { BatchInsertResult, TypingBatch } from "@/types"
 import type { FormatMetadata } from "@/components/FormatMetadataModal"
+import { MIN_INTERVAL_MS } from "./batching"
 
 /** Shape of errors thrown by googleapis and Google OAuth client */
 interface GoogleApiError {
@@ -15,7 +16,6 @@ interface GoogleApiError {
 }
 
 const BATCH_SIZE = 20
-const MIN_INTERVAL_MS = 500
 
 export async function getDocsClient(userId: string) {
   const auth = await getGoogleAuthClient(userId)
@@ -220,11 +220,12 @@ export function createBatch(
 export async function insertBatch(
   userId: string,
   documentId: string,
-  batch: TypingBatch
-): Promise<BatchInsertResult> {
+  batch: TypingBatch,
+  knownDocIndex?: number // Pass cached end-index to skip the getDocumentEndIndex round-trip
+): Promise<BatchInsertResult & { nextDocIndex: number }> {
   try {
-    // Get current document end index (always append at end)
-    const insertIndex = await getDocumentEndIndex(userId, documentId)
+    // Use the supplied index when available; fall back to a live fetch only on first batch.
+    const insertIndex = knownDocIndex ?? await getDocumentEndIndex(userId, documentId)
     
     const docs = await getDocsClient(userId)
     
@@ -246,37 +247,25 @@ export async function insertBatch(
 
     const response = await docs.documents.batchUpdate(request)
     
-    // Get revision ID if available (not always returned by Google)
     const revisionId = (response.data as { revisionId?: string }).revisionId
 
     return {
       success: true,
       revisionId: revisionId || "success",
       insertedChars: batch.text.length,
+      nextDocIndex: insertIndex + batch.text.length,
     }
   } catch (error: unknown) {
     const googleError = error as GoogleApiError
     if (googleError.code === 401 || googleError.code === 403) {
-      return {
-        success: false,
-        error: "GOOGLE_AUTH_REVOKED",
-        insertedChars: 0,
-      }
+      return { success: false, error: "GOOGLE_AUTH_REVOKED", insertedChars: 0, nextDocIndex: knownDocIndex ?? 0 }
     }
 
     if (googleError.code === 429) {
-      return {
-        success: false,
-        error: "RATE_LIMIT",
-        insertedChars: 0,
-      }
+      return { success: false, error: "RATE_LIMIT", insertedChars: 0, nextDocIndex: knownDocIndex ?? 0 }
     }
 
-    return {
-      success: false,
-      error: googleError.message || "Unknown error",
-      insertedChars: 0,
-    }
+    return { success: false, error: googleError.message || "Unknown error", insertedChars: 0, nextDocIndex: knownDocIndex ?? 0 }
   }
 }
 
@@ -286,11 +275,12 @@ export async function insertBatch(
 export async function deleteText(
   userId: string,
   documentId: string,
-  deleteCount: number
+  deleteCount: number,
+  knownDocEndIndex?: number // Pass cached end-index to skip the getDocumentEndIndex round-trip
 ): Promise<void> {
   if (deleteCount <= 0) return
   const docs = await getDocsClient(userId)
-  const endIndex = await getDocumentEndIndex(userId, documentId)
+  const endIndex = knownDocEndIndex ?? await getDocumentEndIndex(userId, documentId)
   const startIndex = Math.max(1, endIndex - deleteCount)
 
   await docs.documents.batchUpdate({

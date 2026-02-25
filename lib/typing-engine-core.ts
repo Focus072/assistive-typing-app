@@ -3,13 +3,14 @@ import { MIN_INTERVAL_MS } from "./batching"
 import type { DelayPlan } from "./typing-delays"
 
 // Micro-pause ranges (ms) - natural thinking pauses
+// Values are kept small so they fit within the WPM budget rather than blowing past it.
+// wordBoundary is intentionally omitted: spaces are normal keystroke rhythm, not pauses.
 export const MICRO_PAUSES = {
-  sentence: { min: 500, max: 1200 },    // . ! ? → end of thought
-  comma: { min: 150, max: 400 },         // , → brief pause
-  longWord: { min: 100, max: 300 },      // typing longer words slowly
-  paragraph: { min: 1000, max: 2500 },   // \n\n → significant pause
-  burstPause: { min: 600, max: 1200 },   // burst mode thinking pause
-  wordBoundary: { min: 50, max: 150 },   // space between words
+  sentence: { min: 150, max: 400 },    // . ! ? → end of thought
+  comma: { min: 30, max: 100 },         // , → brief pause
+  longWord: { min: 30, max: 80 },       // typing longer words slowly
+  paragraph: { min: 400, max: 900 },    // \n\n → significant pause
+  burstPause: { min: 300, max: 700 },   // burst mode thinking pause
 }
 
 // Base character delay ranges (ms) - tuned for human-like typing
@@ -88,9 +89,6 @@ export function applyContextPauses(
       pauseMs += randomInt(MICRO_PAUSES.sentence.min, MICRO_PAUSES.sentence.max, randomFn)
     } else if (ch === ",") {
       pauseMs += randomInt(MICRO_PAUSES.comma.min, MICRO_PAUSES.comma.max, randomFn)
-    } else if (ch === " ") {
-      // Small pause between words
-      pauseMs += randomInt(MICRO_PAUSES.wordBoundary.min, MICRO_PAUSES.wordBoundary.max, randomFn)
     } else if (ch === "\n") {
       // Newline = thinking pause
       pauseMs += randomInt(300, 600, randomFn)

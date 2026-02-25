@@ -19,12 +19,14 @@ const profiles: {
   value: TypingProfile;
   label: string;
   description: string;
+  detail: string;
   icon: React.ReactNode;
 }[] = [
   {
     value: "steady",
     label: "Steady",
     description: "Uniform pace",
+    detail: "Types at a consistent, even pace from start to finish. The safest, most natural-looking choice for any assignment.",
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path
@@ -40,6 +42,7 @@ const profiles: {
     value: "fatigue",
     label: "Fatigue",
     description: "Slows over time",
+    detail: "Starts fast, then gradually slows — like a real student losing focus over a long essay. Best for 300+ word texts.",
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path
@@ -55,6 +58,7 @@ const profiles: {
     value: "burst",
     label: "Burst",
     description: "Fast with pauses",
+    detail: "Types in fast sprints followed by short thinking pauses — like someone composing sentences in their head before typing them out.",
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path
@@ -70,6 +74,7 @@ const profiles: {
     value: "micropause",
     label: "Micro-pause",
     description: "Frequent breaks",
+    detail: "Adds small hesitations throughout — mimics a careful typist who slows down at punctuation, capital letters, and complex words.",
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path
@@ -85,6 +90,7 @@ const profiles: {
     value: "typing-test",
     label: "Typing Test",
     description: "Match your speed",
+    detail: "Takes a quick typing test to lock in your exact WPM. Most precise — TypeFlow will match your real typing speed.",
     icon: (
       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path
@@ -106,6 +112,7 @@ export function TypingProfileSelector({
 }: TypingProfileSelectorProps) {
   const { isDark } = useDashboardTheme();
   const [showTypingTest, setShowTypingTest] = useState(false);
+  const [showInfo, setShowInfo] = useState(false);
   const [upgradeModal, setUpgradeModal] = useState<{ isOpen: boolean; requiredTier: PlanTier; feature: string }>({
     isOpen: false,
     requiredTier: "PRO",
@@ -123,26 +130,44 @@ export function TypingProfileSelector({
 
   return (
     <div className="space-y-2">
-      <label
-        className={`text-sm font-medium flex items-center gap-2 ${
-          isDark ? "text-white" : "text-black"
-        }`}
-      >
-        <svg
-          className={`w-3.5 h-3.5 ${isDark ? "text-white" : "text-black"}`}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
+      <div className="flex items-center justify-between">
+        <label
+          className={`text-sm font-medium flex items-center gap-2 ${
+            isDark ? "text-white" : "text-black"
+          }`}
         >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
-          />
-        </svg>
-        Typing style
-      </label>
+          <svg
+            className={`w-3.5 h-3.5 ${isDark ? "text-white" : "text-black"}`}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+            />
+          </svg>
+          Typing style
+        </label>
+        <button
+          type="button"
+          onClick={() => setShowInfo((v) => !v)}
+          aria-label={showInfo ? "Hide style descriptions" : "Show style descriptions"}
+          className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full border flex items-center justify-center text-[9px] sm:text-[10px] font-bold transition-colors ${
+            showInfo
+              ? isDark
+                ? "bg-white text-black border-white"
+                : "bg-black text-white border-black"
+              : isDark
+              ? "border-white/30 text-white/50 hover:border-white/60 hover:text-white/80"
+              : "border-black/25 text-black/45 hover:border-black/50 hover:text-black/70"
+          }`}
+        >
+          ?
+        </button>
+      </div>
 
       {/* Mobile: 2-col grid (viewport-safe); Desktop: 5-col grid */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-1.5 w-full max-w-full">
@@ -252,6 +277,38 @@ export function TypingProfileSelector({
         );
         })}
       </div>
+
+      {/* Style descriptions panel */}
+      <motion.div
+        initial={false}
+        animate={showInfo ? { height: "auto", opacity: 1 } : { height: 0, opacity: 0 }}
+        transition={{ duration: 0.22, ease: "easeInOut" }}
+        className="overflow-hidden"
+      >
+        <div className={`rounded-lg border divide-y text-xs mt-1 ${
+          isDark ? "border-white/10 divide-white/10" : "border-black/10 divide-black/10"
+        }`}>
+          {profiles.map((p) => (
+            <div key={p.value} className="flex items-start gap-3 px-3 py-2.5">
+              <div className={`w-5 h-5 rounded flex-shrink-0 flex items-center justify-center mt-0.5 ${
+                isDark ? "bg-white/10 text-white/70" : "bg-black/5 text-black/60"
+              }`}>
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  {p.value === "steady" && <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14" />}
+                  {p.value === "fatigue" && <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />}
+                  {p.value === "burst" && <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />}
+                  {p.value === "micropause" && <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />}
+                  {p.value === "typing-test" && <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />}
+                </svg>
+              </div>
+              <div className="min-w-0">
+                <p className={`font-semibold leading-none mb-1 ${isDark ? "text-white" : "text-black"}`}>{p.label}</p>
+                <p className={`leading-snug ${isDark ? "text-white/55" : "text-black/55"}`}>{p.detail}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </motion.div>
 
       <UpgradeModal
         isOpen={upgradeModal.isOpen}

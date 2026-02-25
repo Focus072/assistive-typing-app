@@ -57,6 +57,7 @@ export function StatusDisplay({
     failed: "Failed",
     stopped: "Stopped",
     expired: "Expired",
+    scheduled: "Scheduled",
   }
 
   return (

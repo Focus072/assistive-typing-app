@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
 import type { PlanTier } from "@/lib/constants/tiers"
@@ -44,6 +44,7 @@ const STATUS_DOT: Record<string, string> = {
   failed: "bg-red-400",
   stopped: "bg-gray-400",
   expired: "bg-orange-400",
+  scheduled: "bg-blue-400",
 }
 
 export function DashboardSidebar({ isDark }: DashboardSidebarProps) {
@@ -52,6 +53,7 @@ export function DashboardSidebar({ isDark }: DashboardSidebarProps) {
   const [recentJobs, setRecentJobs] = useState<Job[]>([])
   const [allJobs, setAllJobs] = useState<Job[]>([])
   const [stats, setStats] = useState<{ totalChars: number; totalJobs: number } | null>(null)
+  const [actingOn, setActingOn] = useState<string | null>(null)
 
   useEffect(() => {
     const saved = localStorage.getItem("sidebar-collapsed")
@@ -64,7 +66,7 @@ export function DashboardSidebar({ isDark }: DashboardSidebarProps) {
     localStorage.setItem("sidebar-collapsed", String(next))
   }
 
-  useEffect(() => {
+  const refreshJobs = useCallback(() => {
     fetch("/api/jobs")
       .then((r) => r.json())
       .then((data) => {
@@ -73,6 +75,59 @@ export function DashboardSidebar({ isDark }: DashboardSidebarProps) {
         setRecentJobs(list.slice(0, 4))
       })
       .catch(() => {})
+  }, [])
+
+  const handlePause = useCallback(async (e: React.MouseEvent, jobId: string) => {
+    e.preventDefault()
+    e.stopPropagation()
+    // Optimistic update: immediately flip status in local state
+    setRecentJobs(prev => prev.map(j => j.id === jobId ? { ...j, status: "paused" } : j))
+    setAllJobs(prev => prev.map(j => j.id === jobId ? { ...j, status: "paused" } : j))
+    setActingOn(jobId)
+    try {
+      await fetch("/api/jobs/pause", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId }),
+      })
+      refreshJobs()
+    } catch {
+      refreshJobs() // refresh to get real state on error
+    } finally {
+      setActingOn(null)
+    }
+  }, [refreshJobs])
+
+  const handleStop = useCallback(async (e: React.MouseEvent, jobId: string) => {
+    e.preventDefault()
+    e.stopPropagation()
+    // Optimistic update: immediately flip status in local state
+    setRecentJobs(prev => prev.map(j => j.id === jobId ? { ...j, status: "stopped" } : j))
+    setAllJobs(prev => prev.map(j => j.id === jobId ? { ...j, status: "stopped" } : j))
+    setActingOn(jobId)
+    try {
+      await fetch("/api/jobs/stop", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId }),
+      })
+      refreshJobs()
+    } catch {
+      refreshJobs()
+    } finally {
+      setActingOn(null)
+    }
+  }, [refreshJobs])
+
+  useEffect(() => {
+    // Immediately refresh when the main dashboard triggers a job action
+    window.addEventListener("typeflow:job-status-changed", refreshJobs)
+    return () => window.removeEventListener("typeflow:job-status-changed", refreshJobs)
+  }, [refreshJobs])
+
+  useEffect(() => {
+    refreshJobs()
+    const interval = setInterval(refreshJobs, 10000)
 
     fetch("/api/jobs/stats?range=7d")
       .then((r) => r.json())
@@ -80,7 +135,9 @@ export function DashboardSidebar({ isDark }: DashboardSidebarProps) {
         setStats({ totalChars: data.totalChars ?? 0, totalJobs: data.totalJobs ?? 0 })
       })
       .catch(() => {})
-  }, [])
+
+    return () => clearInterval(interval)
+  }, [refreshJobs])
 
   const wordsThisWeek = stats ? Math.round(stats.totalChars / 5).toLocaleString() : null
 
@@ -97,6 +154,14 @@ export function DashboardSidebar({ isDark }: DashboardSidebarProps) {
   const bodyText = isDark ? "text-white/65" : "text-black/65"
   const hover = isDark ? "hover:bg-white/[0.06]" : "hover:bg-black/[0.04]"
   const statBg = isDark ? "bg-white/[0.04]" : "bg-black/[0.03]"
+
+  const isUnlimitedOrAdmin = planTier === 'UNLIMITED' || planTier === 'ADMIN'
+  const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000)
+  const activeJobCount = allJobs.filter(j =>
+    ['running', 'paused', 'scheduled'].includes(j.status) &&
+    !(j.status === 'running' && new Date(j.createdAt) < sixHoursAgo)
+  ).length
+  const canAddJob = activeJobCount < 2
 
   return (
     <aside
@@ -194,6 +259,45 @@ export function DashboardSidebar({ isDark }: DashboardSidebarProps) {
           )
         )}
 
+        {/* New Job button — UNLIMITED/ADMIN only */}
+        {isUnlimitedOrAdmin && (
+          collapsed ? (
+            <div className="flex justify-center px-1.5">
+              <Link
+                href="/dashboard"
+                title={canAddJob ? "New Job" : "Max 2 concurrent jobs reached"}
+                className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors text-lg font-light ${
+                  canAddJob
+                    ? `${hover} ${mutedText}`
+                    : "opacity-30 cursor-not-allowed pointer-events-none"
+                }`}
+              >
+                +
+              </Link>
+            </div>
+          ) : (
+            <div className="px-2.5">
+              <Link
+                href="/dashboard"
+                title={!canAddJob ? "Max 2 concurrent jobs reached" : undefined}
+                className={`flex items-center gap-1.5 w-full px-2 py-1.5 rounded-lg text-xs transition-colors ${
+                  canAddJob
+                    ? `${hover} ${mutedText}`
+                    : "opacity-30 cursor-not-allowed pointer-events-none"
+                }`}
+              >
+                <span className="text-base font-light leading-none">+</span>
+                <span>New Job</span>
+                {activeJobCount > 0 && (
+                  <span className={`ml-auto text-[10px] ${mutedText}`}>
+                    {activeJobCount}/2
+                  </span>
+                )}
+              </Link>
+            </div>
+          )
+        )}
+
         {/* Recent sessions */}
         {recentJobs.length > 0 && (
           <div>
@@ -210,12 +314,14 @@ export function DashboardSidebar({ isDark }: DashboardSidebarProps) {
                     ? Math.round((job.currentIndex / job.totalChars) * 100)
                     : 0
                 const time = getRelativeTime(new Date(job.createdAt))
+                const isActive = ['running', 'paused', 'scheduled'].includes(job.status)
+                const href = isActive ? `/dashboard?jobId=${job.id}` : '/dashboard/history'
 
                 if (collapsed) {
                   return (
                     <Link
                       key={job.id}
-                      href="/dashboard/history"
+                      href={href}
                       className={`flex items-center justify-center py-2.5 rounded-lg transition-colors ${hover}`}
                       title={`${job.status} · ${progress}% · ${time}`}
                     >
@@ -225,20 +331,44 @@ export function DashboardSidebar({ isDark }: DashboardSidebarProps) {
                 }
 
                 return (
-                  <Link
-                    key={job.id}
-                    href="/dashboard/history"
-                    className={`flex items-start gap-2.5 px-2 py-2 rounded-lg transition-colors ${hover}`}
-                  >
-                    <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5 ${dotColor}`} />
-                    <div className="min-w-0 flex-1">
-                      <p className={`text-xs font-medium capitalize truncate ${bodyText}`}>
-                        {job.status}
-                        {job.totalChars > 0 && ` · ${progress}%`}
-                      </p>
-                      <p className={`text-xs ${mutedText}`}>{time}</p>
-                    </div>
-                  </Link>
+                  <div key={job.id} className={`flex items-center gap-1.5 px-2 py-2 rounded-lg transition-colors ${hover}`}>
+                    {/* Clickable area navigates to the job */}
+                    <Link href={href} className="flex items-start gap-2 min-w-0 flex-1">
+                      <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5 ${dotColor}`} />
+                      <div className="min-w-0">
+                        <p className={`text-xs font-medium capitalize truncate ${bodyText}`}>
+                          {job.status}
+                          {job.totalChars > 0 && ` · ${progress}%`}
+                        </p>
+                        <p className={`text-xs ${mutedText}`}>{time}</p>
+                      </div>
+                    </Link>
+                    {/* Pause + End buttons — only for running jobs */}
+                    {job.status === "running" && (
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <button
+                          onClick={(e) => handlePause(e, job.id)}
+                          disabled={actingOn === job.id}
+                          title="Pause"
+                          className="w-5 h-5 rounded flex items-center justify-center bg-yellow-400/20 hover:bg-yellow-400/40 text-yellow-600 disabled:opacity-40 transition-colors"
+                        >
+                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={(e) => handleStop(e, job.id)}
+                          disabled={actingOn === job.id}
+                          title="End"
+                          className="w-5 h-5 rounded flex items-center justify-center bg-red-400/20 hover:bg-red-400/40 text-red-600 disabled:opacity-40 transition-colors"
+                        >
+                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M6 6h12v12H6z" />
+                          </svg>
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 )
               })}
             </div>

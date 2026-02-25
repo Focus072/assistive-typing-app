@@ -71,6 +71,57 @@ export function analyzeMicropauseContext(textSlice: string): MicropauseContextPr
 }
 
 /**
+ * Find the length of the word containing the character at charOffset in text.
+ * Treats spaces and newlines as word boundaries — no library needed.
+ */
+function getWordLengthAt(text: string, charOffset: number): number {
+  const clampedOffset = Math.max(0, Math.min(charOffset, text.length - 1))
+  let start = clampedOffset
+  while (start > 0 && text[start - 1] !== ' ' && text[start - 1] !== '\n') {
+    start--
+  }
+  let end = clampedOffset
+  while (end < text.length && text[end] !== ' ' && text[end] !== '\n') {
+    end++
+  }
+  return end - start
+}
+
+/**
+ * Apply word-length-aware velocity to a per-character delay array.
+ *
+ * Long words (7+ chars): ~60% chance of a randomized slowdown (1.15–1.45×).
+ * The other 40% sail through at full speed — "flow state" on a familiar word.
+ *
+ * Short words (≤4 chars): ~70% chance of a randomized speed bonus (0.85–0.95×).
+ * Mimics natural acceleration on common short words ("the", "and", "is").
+ *
+ * Two layers of randomness (gate + magnitude) prevent the metronome effect
+ * where every long word predictably slows down by the same amount.
+ */
+function applyWordLengthVelocity(
+  charDelays: number[],
+  fullText: string,
+  sliceStart: number,
+  randomFn: () => number
+): number[] {
+  return charDelays.map((delay, i) => {
+    const wordLen = getWordLengthAt(fullText, sliceStart + i)
+    if (wordLen >= 7 && randomFn() < 0.60) {
+      // Long word gate fired: randomized slowdown
+      const multiplier = 1.15 + randomFn() * 0.30 // 1.15–1.45×
+      return Math.max(50, Math.round(delay * multiplier))
+    }
+    if (wordLen <= 4 && randomFn() < 0.70) {
+      // Short word gate fired: randomized speed bonus
+      const multiplier = 0.85 + randomFn() * 0.10 // 0.85–0.95×
+      return Math.max(50, Math.round(delay * multiplier))
+    }
+    return delay
+  })
+}
+
+/**
  * Generate skewed/clustered noise for delay jitter.
  * Uses log-normal distribution to cluster delays around typical values with occasional outliers.
  * This creates human-like distribution (not uniform).
@@ -165,9 +216,10 @@ function buildSteadyDelays(
   const phaseMultiplier = Math.max(0.95, Math.min(1.05, currentState.paceMultiplier))
 
   for (let i = 0; i < textSlice.length; i++) {
-    // Use range-based delay as primary, blend with duration target
+    // Weight toward the target-derived delay so the engine actually hits the WPM goal.
+    // 30% range (human variance), 70% baseCharDelayMs (WPM target).
     const rangeDelay = coreRandomInt(range.min, range.max, randomFn)
-    const blendRatio = 0.7
+    const blendRatio = 0.35
     const blended = rangeDelay * blendRatio + baseCharDelayMs * (1 - blendRatio)
 
     const d = profileAdjustedDelay(blended, "steady", progress, randomFn, temporalDrift) * phaseMultiplier
@@ -240,9 +292,8 @@ function buildFatigueDelays(
     : 1 + currentState.fatigueLevel * (0.03 + randomFn() * 0.05)
 
   for (let i = 0; i < textSlice.length; i++) {
-    // Use range-based delay as primary, blend with duration target
     const rangeDelay = coreRandomInt(range.min, range.max, randomFn)
-    const blendRatio = 0.7
+    const blendRatio = 0.35
     const blended = rangeDelay * blendRatio + baseCharDelayMs * (1 - blendRatio)
 
     const d = profileAdjustedDelay(blended, "fatigue", progress, randomFn, temporalDrift) * phaseMultiplier
@@ -319,9 +370,8 @@ function buildBurstDelays(
   const phaseDelayMultiplier = currentState.phase === "settle" ? (1.18 + randomFn() * 0.12) : 1
 
   for (let i = 0; i < textSlice.length; i++) {
-    // Use range-based delay as primary, blend with duration target
     const rangeDelay = coreRandomInt(range.min, range.max, randomFn)
-    const blendRatio = 0.7
+    const blendRatio = 0.35
     const blended = rangeDelay * blendRatio + baseCharDelayMs * (1 - blendRatio)
 
     const d = profileAdjustedDelay(blended, "burst", progress, randomFn, temporalDrift) * phaseDelayMultiplier
@@ -389,9 +439,8 @@ function buildMicropauseDelays(
   const contextProfile = analyzeMicropauseContext(textSlice)
 
   for (let i = 0; i < textSlice.length; i++) {
-    // Use range-based delay as primary, blend with duration target
     const rangeDelay = coreRandomInt(range.min, range.max, randomFn)
-    const blendRatio = 0.7
+    const blendRatio = 0.35
     const blended = rangeDelay * blendRatio + baseCharDelayMs * (1 - blendRatio)
 
     const ch = textSlice[i]
@@ -429,12 +478,10 @@ function buildTypingTestDelays(
   const charDelays: number[] = []
   let batchPauseMs = 0
   const correctionMagnitude = Math.min(0.06, Math.abs(wpmCorrectionFactor - 1))
-  const blendRatio = Math.min(0.9, 0.82 + correctionMagnitude * 1.3)
+  // Base blend: 35% range, 65% target. Shift toward range (higher blendRatio) when correction is active.
+  const blendRatio = Math.min(0.6, 0.35 + correctionMagnitude * 1.3)
 
   for (let i = 0; i < textSlice.length; i++) {
-    // Use range-based delay as primary, blend with duration target
-    // For typing-test profile, prioritize WPM range and slightly increase
-    // that priority when correction is active.
     const rangeDelay = coreRandomInt(range.min, range.max, randomFn)
     const blended = (rangeDelay * blendRatio + baseCharDelayMs * (1 - blendRatio)) * wpmCorrectionFactor
 
@@ -516,7 +563,9 @@ export function buildDelayPlan(
   wpmState?: WPMState, // Optional WPM state for typing-test corrections
   burstState?: BurstState, // Optional burst phase state
   fatigueState?: FatigueState, // Optional fatigue phase state
-  steadyState?: SteadyState // Optional steady phase state
+  steadyState?: SteadyState, // Optional steady phase state
+  fullText?: string, // Full source text for word-length velocity
+  sliceStart?: number // Character offset of textSlice within fullText
 ): DelayPlan {
   // Use PRNG if state provided, otherwise fallback to Math.random()
   const randomFn = randomState
@@ -546,8 +595,23 @@ export function buildDelayPlan(
     steadyState
   )
 
+  // Apply word-length velocity layer when full-text context is available.
+  // This is a universal post-process step applied on top of all profiles.
+  let adjustedCharDelays = plan.charDelays
+  if (fullText && sliceStart !== undefined) {
+    adjustedCharDelays = applyWordLengthVelocity(plan.charDelays, fullText, sliceStart, randomFn)
+  }
+
+  // Warm-up ramp: first 8% of text is slightly slower as the typist finds their rhythm.
+  // Peaks ~8% slower at progress=0, smoothly normalises by 8%.
+  // Kept subtle so it doesn't distort the WPM display during the opening batches.
+  if (globalProgress < 0.08) {
+    const ramp = 1 + (0.08 - globalProgress) * 1.0 // 1.08 at 0%, 1.0 at 8%
+    adjustedCharDelays = adjustedCharDelays.map(d => Math.round(d * ramp))
+  }
+
   // Enforce minimum delays
-  const enforced = enforceMinimumDelays(plan.charDelays, plan.batchPauseMs)
+  const enforced = enforceMinimumDelays(adjustedCharDelays, plan.batchPauseMs)
 
   // Validate plan
   const validation = validateDelayPlan({ charDelays: enforced.charDelays, batchPauseMs: enforced.batchPauseMs })

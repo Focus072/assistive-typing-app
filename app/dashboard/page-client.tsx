@@ -23,40 +23,30 @@ import { CustomFormatModal } from "@/components/CustomFormatModal"
 import { useToast } from "@/components/ui/toast"
 import { AcademicIntegrityGate } from "@/components/AcademicIntegrityGate"
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts"
-import { formatDuration, calculateTimeRemaining } from "@/lib/utils"
+import { formatDuration } from "@/lib/utils"
+import { scoreWPM, computeHumanScore } from "@/lib/scoring"
+import { JobReportModal } from "@/components/JobReportModal"
 import { useDashboardTheme } from "./theme-context"
 import type { TypingProfile, JobStatus, DocumentFormat } from "@/types"
 import type { FormatMetadata } from "@/components/FormatMetadataModal"
 
-// WPM calculation based on typing profile
+// WPM calculation — returns the actual WPM the engine is configured to target.
+// All profiles use the same durationMinutes target; the profile only changes the
+// rhythm/style (burst cadence, fatigue curve, etc.), not the average speed.
 function calculateWPM(totalChars: number, durationMinutes: number, profile: TypingProfile, testWPM?: number): number {
   if (totalChars <= 0 || durationMinutes <= 0) return 0
-  
-  // For typing-test profile, use the test WPM directly
+
   if (profile === "typing-test" && testWPM) {
     return testWPM
   }
-  
-  const baseWPM = (totalChars / 5) / durationMinutes
-  
-  const profileModifiers: Record<TypingProfile, { min: number; max: number }> = {
-    steady: { min: 0.95, max: 1.05 },
-    fatigue: { min: 0.6, max: 1.0 },
-    burst: { min: 0.8, max: 1.2 },
-    micropause: { min: 0.7, max: 0.9 },
-    "typing-test": { min: 0.9, max: 1.1 }, // Fallback if no testWPM
-  }
-  
-  const modifier = profileModifiers[profile]
-  const avgModifier = (modifier.min + modifier.max) / 2
-  
-  return Math.round(baseWPM * avgModifier)
+
+  return Math.round((totalChars / 5) / durationMinutes)
 }
 
 function calculateCurrentWPM(
-  currentIndex: number, 
-  totalChars: number, 
-  elapsedMinutes: number, 
+  currentIndex: number,
+  totalChars: number,
+  elapsedMinutes: number,
   profile: TypingProfile,
   testWPM?: number
 ): number {
@@ -64,6 +54,7 @@ function calculateCurrentWPM(
   const actualWPM = (currentIndex / 5) / elapsedMinutes
   return Math.round(actualWPM)
 }
+
 
 export default function DashboardPageClient() {
   return (
@@ -158,6 +149,9 @@ function DashboardContent() {
   const [showPreviewModal, setShowPreviewModal] = useState(false)
   const [showMetadataModal, setShowMetadataModal] = useState(false)
   const [showCustomFormatModal, setShowCustomFormatModal] = useState(false)
+  const [showReport, setShowReport] = useState(false)
+  const [scheduledAt, setScheduledAt] = useState("")
+  const [showSchedulePicker, setShowSchedulePicker] = useState(false)
 
   // Redirect to home page if not authenticated
   useEffect(() => {
@@ -420,6 +414,7 @@ function DashboardContent() {
   // Job state
   const [currentJobId, setCurrentJobId] = useState<string | null>(jobIdParam)
   const currentJobIdRef = useRef<string | null>(jobIdParam)
+  const prevJobIdRef = useRef<string | null | undefined>(undefined) // undefined = not yet initialized
   const progressStreamRef = useRef<EventSource | null>(null)
   const reconnectAttemptsRef = useRef<number>(0)
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -427,10 +422,11 @@ function DashboardContent() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [totalChars, setTotalChars] = useState(0)
   const [jobDurationMinutes, setJobDurationMinutes] = useState(30)
-  const [timeRemaining, setTimeRemaining] = useState(30)
+  // timeRemaining is derived — no useState needed (computed below from SSE state)
   const [jobTypingProfile, setJobTypingProfile] = useState<TypingProfile>("steady")
   const [jobTestWPM, setJobTestWPM] = useState<number | undefined>(undefined)
   const [jobStartTime, setJobStartTime] = useState<Date | null>(null)
+  const [indexAtLoad, setIndexAtLoad] = useState(0)
   const [prevStatus, setPrevStatus] = useState<JobStatus>("pending")
 
   // Keep ref in sync with state
@@ -443,19 +439,28 @@ function DashboardContent() {
     if (prevStatus !== "completed" && jobStatus === "completed") {
       setShowConfetti(true)
       toast.addToast("Job completed successfully! 🎉", "success")
+      setShowReport(true)
+      // Browser notification
+      if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+        new Notification("TypeFlow — Typing complete!", {
+          body: `${totalChars.toLocaleString()} characters typed into your document.`,
+          icon: "/icon-192.png",
+        })
+      }
     }
     setPrevStatus(jobStatus)
-  }, [jobStatus, prevStatus, toast])
+  }, [jobStatus, prevStatus, toast, totalChars])
 
-  // Calculate time remaining
-  useEffect(() => {
-    if (jobStatus === "running" && totalChars > 0) {
-      const remaining = calculateTimeRemaining(totalChars, currentIndex, jobDurationMinutes)
-      setTimeRemaining(remaining)
-    } else if (jobStatus === "completed") {
-      setTimeRemaining(0)
-    }
-  }, [jobStatus, currentIndex, totalChars, jobDurationMinutes])
+  // Time remaining = proportion of text not yet typed × configured duration.
+  // This ensures the timer always reflects how much text is left rather than
+  // wall-clock elapsed time — so it never hits 0 while typing is still going,
+  // regardless of whether the engine is faster or slower than the target WPM.
+  const timeRemaining =
+    jobStatus === "completed"
+      ? 0
+      : totalChars > 0 && currentJobId
+      ? (Math.max(0, totalChars - currentIndex) / totalChars) * jobDurationMinutes
+      : jobDurationMinutes
 
   // Keyboard shortcuts
   useKeyboardShortcuts([
@@ -502,7 +507,21 @@ function DashboardContent() {
         setDocumentId(job.documentId)
         setJobTypingProfile(job.typingProfile as TypingProfile)
         setJobTestWPM(job.testWPM ? Number(job.testWPM) : undefined)
-        setJobStartTime(new Date(job.createdAt))
+        // Restore the text so the content box is never blank when returning to a job
+        if (job.textContent) setTextContent(job.textContent)
+        // For running jobs, baseline from page-load time so elapsed WPM isn't diluted
+        // by time the job spent running before this page was opened.
+        if (job.status === 'running') {
+          setJobStartTime(new Date())
+          setIndexAtLoad(job.currentIndex)
+        } else {
+          setJobStartTime(new Date(job.createdAt))
+          setIndexAtLoad(0)
+        }
+        // Sync UI form state to the loaded job so resume sends the correct values
+        setDurationMinutes(job.durationMinutes)
+        setTypingProfile(job.typingProfile as TypingProfile)
+        setTestWPM(job.testWPM ? Number(job.testWPM) : undefined)
       }
     } catch (error) {
       toast.addToast("Failed to load job", "error")
@@ -570,11 +589,40 @@ function DashboardContent() {
     }
   }, [toast])
 
-  // Load job from URL param
+  // Load job from URL param, or reset to create form when param is absent
   useEffect(() => {
     if (jobIdParam) {
       loadJob(jobIdParam)
+    } else {
+      setCurrentJobId(null)
+      setJobStatus("pending")
+      setCurrentIndex(0)
+      setTotalChars(0)
+      setJobStartTime(null)
+      setIndexAtLoad(0)
+
+      // When navigating away from a job to a fresh dashboard, wipe all form fields
+      // so the user gets a clean slate (like clicking "New Chat" in ChatGPT).
+      // Only reset when prevJobIdRef held an actual job ID string — skip on:
+      //   • initial mount (undefined) — avoids clobbering AI-text from sessionStorage
+      //   • effect re-fires caused by loadJob reference changes (null) — avoids
+      //     clearing text when toast.addToast triggers a loadJob recreation while
+      //     the user is still on the fresh form (e.g. after creating a Google Doc).
+      if (typeof prevJobIdRef.current === "string") {
+        setTextContent("")
+        setDocumentId("")
+        setDurationMinutes(30)
+        setTypingProfile("steady")
+        setTestWPM(undefined)
+        setDocumentFormat("mla")
+        setFormatMetadata(undefined)
+        setCustomFormatConfig(undefined)
+        setError(null)
+        setScheduledAt("")
+        setShowSchedulePicker(false)
+      }
     }
+    prevJobIdRef.current = jobIdParam
   }, [jobIdParam, loadJob])
 
   // Manage EventSource lifecycle explicitly
@@ -684,6 +732,12 @@ function DashboardContent() {
     setError(null)
 
     try {
+      // Request notification permission before starting
+      if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "default") {
+        Notification.requestPermission()
+      }
+
+      const isScheduledStart = scheduledAt && new Date(scheduledAt) > new Date()
       const response = await fetch("/api/jobs/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -693,6 +747,7 @@ function DashboardContent() {
           typingProfile,
           documentId,
           testWPM: typingProfile === "typing-test" ? testWPM : undefined,
+          scheduledAt: isScheduledStart ? scheduledAt : undefined,
         }),
       })
 
@@ -717,15 +772,24 @@ function DashboardContent() {
 
       const data = await response.json()
       setCurrentJobId(data.jobId)
-      setJobStatus("running")
+      setJobStatus(isScheduledStart ? "scheduled" : "running")
       setTotalChars(textContent.length)
       setJobDurationMinutes(durationMinutes)
       setJobTypingProfile(typingProfile)
       setJobTestWPM(testWPM)
       setJobStartTime(new Date())
-      startProgressStream(data.jobId)
-      
-      toast.addToast("Job started successfully!", "success")
+      setIndexAtLoad(0)
+      if (!isScheduledStart) startProgressStream(data.jobId)
+      window.dispatchEvent(new CustomEvent("typeflow:job-status-changed"))
+      setScheduledAt("")
+      setShowSchedulePicker(false)
+
+      if (isScheduledStart) {
+        const formatted = new Date(scheduledAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })
+        toast.addToast(`Job scheduled for ${formatted}`, "success")
+      } else {
+        toast.addToast("Job started successfully!", "success")
+      }
       router.push(`/dashboard?jobId=${data.jobId}`)
     } catch (error) {
       const errorMsg = "Failed to start job"
@@ -739,76 +803,92 @@ function DashboardContent() {
   const handlePause = async () => {
     if (!currentJobId) return
 
-    setLoading(true)
+    // Optimistic update — change status immediately so the UI responds instantly
+    setJobStatus("paused")
     try {
       const response = await fetch("/api/jobs/pause", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ jobId: currentJobId }),
       })
-
       if (response.ok) {
-        setJobStatus("paused")
+        window.dispatchEvent(new CustomEvent("typeflow:job-status-changed"))
         toast.addToast("Job paused", "info")
       } else {
+        setJobStatus("running") // revert on failure
         toast.addToast("Failed to pause job", "error")
       }
-    } catch (error) {
+    } catch {
+      setJobStatus("running")
       toast.addToast("Failed to pause job", "error")
-    } finally {
-      setLoading(false)
     }
   }
 
   const handleResume = async () => {
     if (!currentJobId) return
 
-    setLoading(true)
+    // Optimistic update
+    setJobDurationMinutes(durationMinutes)
+    setJobStatus("running")
+    startProgressStream(currentJobId)
     try {
       const response = await fetch("/api/jobs/resume", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jobId: currentJobId }),
+        body: JSON.stringify({ jobId: currentJobId, durationMinutes }),
       })
-
       if (response.ok) {
-        setJobStatus("running")
-        startProgressStream(currentJobId)
+        window.dispatchEvent(new CustomEvent("typeflow:job-status-changed"))
         toast.addToast("Job resumed", "success")
       } else {
+        setJobStatus("paused") // revert on failure
         toast.addToast("Failed to resume job", "error")
       }
-    } catch (error) {
+    } catch {
+      setJobStatus("paused")
       toast.addToast("Failed to resume job", "error")
-    } finally {
-      setLoading(false)
     }
   }
 
   const handleStop = async () => {
     if (!currentJobId) return
 
-    setLoading(true)
+    // Optimistic update — change status immediately so the UI responds instantly
+    const prevStatus = jobStatus
+    const prevJobId = currentJobId
+    setJobStatus("stopped")
+    setCurrentJobId(null)
     try {
       const response = await fetch("/api/jobs/stop", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jobId: currentJobId }),
+        body: JSON.stringify({ jobId: prevJobId }),
       })
-
       if (response.ok) {
-        setJobStatus("stopped")
-        setCurrentJobId(null)
+        window.dispatchEvent(new CustomEvent("typeflow:job-status-changed"))
         toast.addToast("Job stopped", "info")
       } else {
+        setJobStatus(prevStatus) // revert on failure
+        setCurrentJobId(prevJobId)
         toast.addToast("Failed to stop job", "error")
       }
-    } catch (error) {
+    } catch {
+      setJobStatus(prevStatus)
+      setCurrentJobId(prevJobId)
       toast.addToast("Failed to stop job", "error")
-    } finally {
-      setLoading(false)
     }
   }
+
+  const resetJobState = () => {
+    setCurrentJobId(null)
+    setJobStatus("pending")
+    setCurrentIndex(0)
+    setTotalChars(0)
+    setJobStartTime(null)
+    setIndexAtLoad(0)
+  }
+
+  const isJobActive = !!currentJobId && jobStatus === "running"
 
   const progress = totalChars > 0 ? (currentIndex / totalChars) * 100 : 0
   
@@ -816,8 +896,9 @@ function DashboardContent() {
     ? (Date.now() - jobStartTime.getTime()) / (1000 * 60) 
     : 0
   
-  const displayWPM = jobStatus === "running" && elapsedMinutes > 0.1
-    ? calculateCurrentWPM(currentIndex, totalChars, elapsedMinutes, jobTypingProfile, jobTestWPM)
+  const charsThisSession = Math.max(0, currentIndex - indexAtLoad)
+  const displayWPM = jobStatus === "running" && elapsedMinutes > 0.1 && charsThisSession > 0
+    ? calculateCurrentWPM(charsThisSession, totalChars, elapsedMinutes, jobTypingProfile, jobTestWPM)
     : calculateWPM(totalChars, jobDurationMinutes, jobTypingProfile, jobTestWPM)
 
   const estimatedWPM = calculateWPM(textContent.length || 1000, durationMinutes, typingProfile, testWPM)
@@ -836,13 +917,22 @@ function DashboardContent() {
     failed: { color: "text-red-900", bg: "bg-red-50", label: "Failed" },
     stopped: { color: "text-gray-900", bg: "bg-gray-100", label: "Stopped" },
     expired: { color: "text-orange-900", bg: "bg-orange-50", label: "Expired" },
+    scheduled: { color: "text-blue-900", bg: "bg-blue-50", label: "Scheduled" },
   }
 
 
   return (
     <>
       {showConfetti && <Confetti onComplete={() => setShowConfetti(false)} />}
-      
+
+      <JobReportModal
+        isOpen={showReport}
+        onClose={() => { setShowReport(false); resetJobState() }}
+        jobId={currentJobId}
+        totalChars={totalChars}
+        isDark={isDark}
+      />
+
       {/* Payment Processing Overlay */}
       {isProcessingPayment && (
         <PaymentProcessingModal
@@ -900,8 +990,16 @@ function DashboardContent() {
       
           <div className="space-y-6 md:space-y-8 pb-6 w-full max-w-full overflow-x-hidden min-w-0">
 
+          <AnimatePresence>
           {currentJobId && (
-            <div className="flex flex-wrap items-center gap-3">
+            <motion.div
+              key="job-status-badge"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
+              className="flex flex-wrap items-center gap-3"
+            >
               <div className={`flex items-center gap-2 px-3 py-2 rounded-full border ${
                 isDark
                   ? "bg-white/5 border-white/10"
@@ -925,12 +1023,20 @@ function DashboardContent() {
                   ? "Completed"
                   : "Pending"}
               </div>
-            </div>
+            </motion.div>
           )}
+          </AnimatePresence>
 
         {/* Error Alert - Mobile Optimized */}
+        <AnimatePresence>
         {error && (
-          <div className={`rounded-lg border p-4 flex items-start gap-3 ${
+          <motion.div
+            key="error-alert"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className={`rounded-lg border p-4 flex items-start gap-3 ${
             isDark
               ? "bg-red-900/20 border-red-500/70"
               : "bg-red-50 border-red-300"
@@ -954,12 +1060,21 @@ function DashboardContent() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
-          </div>
+          </motion.div>
         )}
+        </AnimatePresence>
 
         {/* Stats Cards - Simplified */}
+        <AnimatePresence>
         {currentJobId && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+          <motion.div
+            key="job-stats-cards"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.25, ease: "easeOut", delay: 0.05 }}
+            className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3"
+          >
             <StatCard
               label="Progress"
               value={`${progress.toFixed(1)}%`}
@@ -982,7 +1097,7 @@ function DashboardContent() {
             />
             <StatCard
               label="Time Left"
-              value={formatDuration(Math.ceil(timeRemaining))}
+              value={formatDuration(timeRemaining)}
               icon={
                 <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -1003,12 +1118,19 @@ function DashboardContent() {
               }
               color="black"
             />
-          </div>
+          </motion.div>
         )}
+        </AnimatePresence>
 
         {/* Progress Bar - Simplified */}
+        <AnimatePresence>
         {currentJobId && (
-          <div
+          <motion.div
+            key="job-progress-bar"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.25, ease: "easeOut", delay: 0.1 }}
             className="space-y-3"
             role="region"
             aria-label="Job progress"
@@ -1052,8 +1174,9 @@ function DashboardContent() {
                 Typing at ~{displayWPM} WPM{jobTypingProfile === "typing-test" && jobTestWPM ? ` (test: ${jobTestWPM} WPM)` : ""}
               </p>
             )}
-          </div>
+          </motion.div>
         )}
+        </AnimatePresence>
 
         {/* Main Layout - Two Column on Desktop */}
         <div className="w-full max-w-full min-w-0 lg:grid lg:grid-cols-2 lg:gap-8 lg:items-stretch">
@@ -1067,11 +1190,13 @@ function DashboardContent() {
                 {wordCount.toLocaleString()} {wordCount === 1 ? "word" : "words"}
               </span>
             </div>
-            <TextInput
-              value={textContent}
-              onChange={setTextContent}
-              maxChars={50000}
-            />
+            <div className={isJobActive ? "pointer-events-none opacity-50" : ""}>
+              <TextInput
+                value={textContent}
+                onChange={setTextContent}
+                maxChars={50000}
+              />
+            </div>
             {textContent && (
               <div className="flex justify-end">
                 <button
@@ -1094,6 +1219,9 @@ function DashboardContent() {
             )}
           </div>
 
+          {/* Sections 2, 3, Advanced — locked while job is active */}
+          <div className={isJobActive ? "pointer-events-none opacity-50 select-none" : ""}>
+
           {/* Section 2: Destination */}
           <div className={`pt-4 border-t ${
             isDark ? "border-white/10" : "border-black/10"
@@ -1110,7 +1238,19 @@ function DashboardContent() {
           <div className={`pt-4 border-t ${
             isDark ? "border-white/10" : "border-black/10"
           } space-y-4`}>
-            <p className={`text-xs font-semibold uppercase tracking-widest ${isDark ? "text-white/40" : "text-black/40"}`}>Settings</p>
+            <div className="flex items-center justify-between">
+              <p className={`text-xs font-semibold uppercase tracking-widest ${isDark ? "text-white/40" : "text-black/40"}`}>Settings</p>
+              {isJobActive && (
+                <span className={`flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded ${
+                  isDark ? "text-white/35 bg-white/5" : "text-black/35 bg-black/5"
+                }`}>
+                  <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                  Locked
+                </span>
+              )}
+            </div>
             <TimeSelector
               value={durationMinutes}
               onChange={setDurationMinutes}
@@ -1129,6 +1269,17 @@ function DashboardContent() {
               userTier={session?.user?.planTier || "FREE"}
             />
           </div>
+
+          {/* Pre-Flight Analysis */}
+          {wordCount > 0 && (
+            <PreFlightAnalysis
+              wpm={estimatedWPM}
+              wordCount={wordCount}
+              durationMinutes={durationMinutes}
+              profile={typingProfile}
+              isDark={isDark}
+            />
+          )}
 
           {/* Secondary: Advanced Options - Accordion */}
           <div className={`pt-4 border-t ${
@@ -1281,6 +1432,8 @@ function DashboardContent() {
             </AnimatePresence>
           </div>
 
+          </div>{/* end lock wrapper */}
+
           {/* Mobile: Open document link (hidden on desktop — right col handles it) */}
           {documentId && (
             <div className="lg:hidden pt-2">
@@ -1308,9 +1461,17 @@ function DashboardContent() {
           <div className="hidden lg:block min-w-0">
             <div className="sticky top-24" style={{ height: "calc(100vh - 6rem)" }}>
 
+              <AnimatePresence mode="wait">
               {textContent.trim() && documentId ? (
                 /* READY STATE */
-                <div className="h-full overflow-y-auto flex flex-col gap-5 pr-1">
+                <motion.div
+                  key="ready-state"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  className="h-full overflow-y-auto flex flex-col gap-5 pr-1"
+                >
                   {/* Ready to start card */}
                   <div className={`rounded-xl border p-5 space-y-4 ${
                     isDark ? "bg-white/5 border-white/10" : "bg-black/[0.03] border-black/10"
@@ -1329,6 +1490,48 @@ function DashboardContent() {
                         </>
                       )}
                     </div>
+                    {/* Schedule for later toggle */}
+                    <div>
+                      <button
+                        type="button"
+                        onClick={() => setShowSchedulePicker(v => !v)}
+                        className={`flex items-center gap-1.5 text-xs transition-colors ${isDark ? "text-white/50 hover:text-white/80" : "text-black/40 hover:text-black/70"}`}
+                      >
+                        <svg
+                          className={`w-3 h-3 transition-transform ${showSchedulePicker ? "rotate-90" : ""}`}
+                          fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                        Schedule for later
+                      </button>
+                      {showSchedulePicker && (
+                        <div className="mt-2">
+                          <input
+                            type="datetime-local"
+                            value={scheduledAt}
+                            min={new Date(Date.now() + 60000).toISOString().slice(0, 16)}
+                            max={new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString().slice(0, 16)}
+                            onChange={e => setScheduledAt(e.target.value)}
+                            className={`text-xs rounded-lg px-2.5 py-1.5 border outline-none transition-colors ${
+                              isDark
+                                ? "bg-gray-800 border-gray-600 text-gray-200 focus:border-blue-400"
+                                : "bg-white border-gray-300 text-gray-800 focus:border-blue-500"
+                            }`}
+                          />
+                          {scheduledAt && (
+                            <button
+                              type="button"
+                              onClick={() => setScheduledAt("")}
+                              className={`ml-2 text-xs ${isDark ? "text-white/40 hover:text-white/70" : "text-black/40 hover:text-black/70"}`}
+                            >
+                              Clear
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
                     <div className="flex items-center gap-3 flex-wrap">
                       <PlaybackControls
                         status={jobStatus}
@@ -1415,10 +1618,16 @@ function DashboardContent() {
                   </div>
                 </div>
                   )}
-                </div>
+                </motion.div>
               ) : (
                 /* PLACEHOLDER STATE: guaranteed vertical center */
-                <div className={`h-full rounded-xl border border-dashed flex flex-col items-center justify-center gap-10 text-center ${
+                <motion.div
+                  key="placeholder-state"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  className={`h-full rounded-xl border border-dashed flex flex-col items-center justify-center gap-10 text-center ${
                   isDark ? "border-white/20" : "border-black/15"
                 }`}>
                   {/* Icon */}
@@ -1460,8 +1669,9 @@ function DashboardContent() {
                   <p className={`text-xs tracking-wide ${isDark ? "text-white/20" : "text-black/20"}`}>
                     Preview appears here once ready
                   </p>
-                </div>
+                </motion.div>
               )}
+              </AnimatePresence>
 
             </div>
           </div>
@@ -1542,7 +1752,7 @@ interface StatCardProps {
 
 function StatCard({ label, value, subtext, icon, color }: StatCardProps) {
   const { isDark } = useDashboardTheme()
-  
+
   return (
     <div className="space-y-1">
       <div className="flex items-center gap-2">
@@ -1569,6 +1779,114 @@ function StatCard({ label, value, subtext, icon, color }: StatCardProps) {
           {subtext}
         </p>
       )}
+    </div>
+  )
+}
+
+// Pre-Flight Analysis card component
+interface PreFlightAnalysisProps {
+  wpm: number
+  wordCount: number
+  durationMinutes: number
+  profile: TypingProfile
+  isDark: boolean
+}
+
+function PreFlightAnalysis({ wpm, wordCount, durationMinutes, profile, isDark }: PreFlightAnalysisProps) {
+  const { score, label, colorClass } = scoreWPM(wpm)
+  const humanScore = computeHumanScore(wpm, wordCount, durationMinutes, profile)
+
+  // Recommended time range at 50–70 WPM
+  const minRecommendedMin = Math.max(1, Math.ceil(wordCount / 70))
+  const maxRecommendedMin = Math.max(1, Math.ceil(wordCount / 50))
+
+  const scoreColor =
+    humanScore >= 70
+      ? isDark ? "text-green-400" : "text-green-600"
+      : humanScore >= 45
+      ? isDark ? "text-amber-400" : "text-amber-600"
+      : isDark ? "text-red-400" : "text-red-500"
+
+  const scoreBorder =
+    humanScore >= 70
+      ? isDark ? "border-green-500/20" : "border-green-200"
+      : humanScore >= 45
+      ? isDark ? "border-amber-500/20" : "border-amber-200"
+      : isDark ? "border-red-500/20" : "border-red-200"
+
+  const scoreBg =
+    humanScore >= 70
+      ? isDark ? "bg-green-500/5" : "bg-green-50/60"
+      : humanScore >= 45
+      ? isDark ? "bg-amber-500/5" : "bg-amber-50/60"
+      : isDark ? "bg-red-500/5" : "bg-red-50/60"
+
+  const wpmBadgeColor =
+    colorClass === "green"
+      ? isDark ? "text-green-400 bg-green-500/10" : "text-green-700 bg-green-100"
+      : colorClass === "amber"
+      ? isDark ? "text-amber-400 bg-amber-500/10" : "text-amber-700 bg-amber-100"
+      : isDark ? "text-red-400 bg-red-500/10" : "text-red-700 bg-red-100"
+
+  const profileTips: Record<TypingProfile, string> = {
+    steady: "Steady rhythm — consistent pacing, great for any assignment.",
+    burst: "Burst mode — fast runs with settle pauses, best for shorter texts.",
+    fatigue: wordCount > 300
+      ? "Fatigue pattern — most human-like for long essays."
+      : "Fatigue works best on longer texts (300+ words).",
+    micropause: "Micropause — subtle hesitations that mimic careful, thoughtful writing.",
+    "typing-test": "Typing test mode — fixed WPM target, less natural variation.",
+  }
+
+  return (
+    <div className={`rounded-xl border p-4 space-y-3 ${scoreBg} ${scoreBorder}`}>
+      <p className={`text-xs font-semibold uppercase tracking-widest ${isDark ? "text-white/40" : "text-black/40"}`}>
+        Pre-Flight Analysis
+      </p>
+
+      {/* Score row */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <span className={`text-3xl font-bold tabular-nums leading-none ${scoreColor}`}>{humanScore}%</span>
+          <p className={`text-xs mt-1 mb-2 ${isDark ? "text-white/50" : "text-black/50"}`}>Human-Like Score</p>
+          {/* Progress bar */}
+          <div className={`h-1.5 rounded-full overflow-hidden ${isDark ? "bg-white/10" : "bg-black/10"}`}>
+            <div
+              className={`h-full rounded-full transition-all duration-500 ${
+                humanScore >= 70
+                  ? isDark ? "bg-green-400" : "bg-green-500"
+                  : humanScore >= 45
+                  ? isDark ? "bg-amber-400" : "bg-amber-500"
+                  : isDark ? "bg-red-400" : "bg-red-500"
+              }`}
+              style={{ width: `${humanScore}%` }}
+            />
+          </div>
+        </div>
+        <span className={`text-xs font-medium px-2.5 py-1 rounded-full shrink-0 flex items-center gap-1 ${wpmBadgeColor}`}>
+          {colorClass === "green" ? "✓" : colorClass === "amber" ? "⚠" : "✕"}
+          {" "}~{wpm} WPM · {label}
+        </span>
+      </div>
+
+      {/* Recommendation */}
+      <p className={`text-xs ${isDark ? "text-white/60" : "text-black/60"}`}>
+        For {wordCount.toLocaleString()} words, we recommend{" "}
+        <span className={`font-medium ${isDark ? "text-white/80" : "text-black/80"}`}>
+          {minRecommendedMin}–{maxRecommendedMin} min
+        </span>{" "}
+        for a natural 50–70 WPM pace.
+      </p>
+
+      {/* Profile tip */}
+      <p className={`text-xs ${isDark ? "text-white/50" : "text-black/50"}`}>
+        {profileTips[profile]}
+      </p>
+
+      {/* Static callout */}
+      <p className={`text-xs pt-2 border-t ${isDark ? "border-white/10 text-white/30" : "border-black/10 text-black/35"}`}>
+        AI-detection tools analyze text content, not typing patterns. TypeFlow only affects how your typing appears — not what&apos;s written.
+      </p>
     </div>
   )
 }

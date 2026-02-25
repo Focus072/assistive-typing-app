@@ -14,7 +14,7 @@ interface TimeSelectorProps {
 export function TimeSelector({
   value,
   onChange,
-  min = 10,
+  min = 3,
   max = 360,
 }: TimeSelectorProps) {
   const { isDark } = useDashboardTheme();
@@ -80,7 +80,7 @@ export function TimeSelector({
           onChange={handleValueChange}
           min={min}
           max={max}
-          step={5}
+          step={1}
           className="relative w-full h-3 appearance-none bg-transparent cursor-pointer z-10 touch-manipulation
             [&::-webkit-slider-thumb]:appearance-none
             [&::-webkit-slider-thumb]:w-8
