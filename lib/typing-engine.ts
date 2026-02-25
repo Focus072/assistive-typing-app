@@ -71,7 +71,8 @@ export function validateEngineInputs(
 export interface MistakePlan {
   hasMistake: boolean
   deleteCount: number
-  wrongChar?: string // adjacent-key char to type then backspace
+  wrongChars?: string // adjacent-key chars to type then backspace (1-3 chars)
+  pauseAfterMs: number // hesitation after catching the mistake
 }
 
 export interface BatchPlan {
@@ -83,8 +84,10 @@ export interface BatchPlan {
   engineState: EngineState
 }
 
-// Chance for a typo/backspace
-const MISTAKE_CHANCE = 0.05 // 5%
+// ~3% chance per word in the batch. For a typical 3-char batch (~0.6 words)
+// this fires roughly every 50 batches — enough to be realistic without being
+// distracting. Scaled by word count so longer batches get proportionally more.
+const MISTAKE_CHANCE_PER_WORD = 0.03
 
 export interface BuildBatchPlanOptions {
   jobId?: string
@@ -101,6 +104,7 @@ function cloneEngineState(state?: EngineState): EngineState | undefined {
     fatigueState: state.fatigueState ? { ...state.fatigueState } : undefined,
     steadyState: state.steadyState ? { ...state.steadyState } : undefined,
     lastBatchSize: state.lastBatchSize,
+    pendingPauseMs: state.pendingPauseMs,
   }
 }
 
@@ -108,19 +112,45 @@ export function planMistake(
   batchText: string,
   randomFn: () => number = () => Math.random()
 ): MistakePlan {
-  if (batchText.length < 2) return { hasMistake: false, deleteCount: 0 }
-  if (randomFn() > MISTAKE_CHANCE) return { hasMistake: false, deleteCount: 0 }
+  if (batchText.length < 2) return { hasMistake: false, deleteCount: 0, pauseAfterMs: 0 }
 
-  // Pick last alphabetic char and find an adjacent key for a realistic typo
-  const lastChar = batchText[batchText.length - 1].toLowerCase()
-  const neighbors = KEYBOARD_ADJACENCY[lastChar]
-  if (neighbors) {
-    const wrongChar = neighbors[Math.floor(randomFn() * neighbors.length)]
-    return { hasMistake: true, deleteCount: 1, wrongChar }
+  // Scale mistake probability by approximate word count in the batch
+  const wordCount = Math.max(1, batchText.split(/\s+/).filter(Boolean).length)
+  const mistakeChance = 1 - Math.pow(1 - MISTAKE_CHANCE_PER_WORD, wordCount)
+  if (randomFn() > mistakeChance) return { hasMistake: false, deleteCount: 0, pauseAfterMs: 0 }
+
+  // Determine how many wrong characters to type before noticing (1-3).
+  // Most mistakes are caught after 1 char; occasionally 2-3 slip through.
+  const multiRoll = randomFn()
+  const wrongCharCount = multiRoll < 0.65 ? 1 : multiRoll < 0.90 ? 2 : 3
+
+  // Build the wrong character string from QWERTY adjacency
+  let wrongChars = ""
+  // Start from the last alphabetic char in the batch
+  const lastAlpha = batchText.split("").reverse().find((c) => /[a-zA-Z]/.test(c))
+  if (lastAlpha) {
+    const lc = lastAlpha.toLowerCase()
+    const neighbors = KEYBOARD_ADJACENCY[lc]
+    if (neighbors) {
+      for (let i = 0; i < wrongCharCount; i++) {
+        // Each subsequent wrong char uses a neighbor of the previous wrong char
+        // (simulating fingers continuing on the wrong key area)
+        const source = i === 0 ? lc : wrongChars[i - 1].toLowerCase()
+        const adj = KEYBOARD_ADJACENCY[source] ?? neighbors
+        wrongChars += adj[Math.floor(randomFn() * adj.length)]
+      }
+    }
   }
 
-  // Fallback: simple backspace delete for non-alpha chars (spaces, punctuation)
-  return { hasMistake: true, deleteCount: 1 }
+  // Hesitation after catching the mistake: 100-400ms (the "oh crap" moment)
+  const pauseAfterMs = 100 + Math.floor(randomFn() * 300)
+
+  if (wrongChars.length > 0) {
+    return { hasMistake: true, deleteCount: wrongChars.length, wrongChars, pauseAfterMs }
+  }
+
+  // Fallback: simple backspace for non-alpha chars
+  return { hasMistake: true, deleteCount: 1, pauseAfterMs }
 }
 
 /**
@@ -172,7 +202,7 @@ export function buildBatchPlan(
       totalDelayMs: 0,
       perCharDelays: [],
       batchPauseMs: 0,
-      mistakePlan: { hasMistake: false, deleteCount: 0 },
+      mistakePlan: { hasMistake: false, deleteCount: 0, pauseAfterMs: 0 },
       engineState: emptyEngineState,
     }
   }
@@ -218,10 +248,30 @@ export function buildBatchPlan(
     }
   }
 
+  // Consume any pending pause from the previous batch's sentence/paragraph ending.
+  // This makes the pause appear *before* typing the new sentence, not after the period.
+  let adjustedBatchPauseMs = batchPauseMs + (existingState?.pendingPauseMs ?? 0)
+
+  // Compute a forward-carry pause if this batch ends at a sentence or paragraph boundary.
+  // The pause will be consumed at the *start* of the next batch, simulating the natural
+  // thinking gap before composing a new sentence.
+  let nextPendingPauseMs = 0
+  const lastChar = batch.text[batch.text.length - 1]
+  const endsWithSentence = lastChar === "." || lastChar === "!" || lastChar === "?"
+  const endsWithParagraph = batch.text.endsWith("\n\n") || batch.text.endsWith("\n")
+
+  if (endsWithParagraph) {
+    // Paragraph break: 400-900ms thinking pause before next paragraph
+    nextPendingPauseMs = 400 + Math.floor(randomFn() * 500)
+  } else if (endsWithSentence) {
+    // Sentence break: 150-400ms composing pause before next sentence
+    nextPendingPauseMs = 150 + Math.floor(randomFn() * 250)
+  }
+
   // Total delay = sum per-char + batch pause, but enforce minimum interval
   // Note: buildDelayPlan already enforces minimums, but we recalculate total here
   const perCharSum = charDelays.reduce((a, b) => a + b, 0)
-  const totalDelayMs = Math.round(Math.max(MIN_INTERVAL_MS, perCharSum + batchPauseMs))
+  const totalDelayMs = Math.round(Math.max(MIN_INTERVAL_MS, perCharSum + adjustedBatchPauseMs))
 
   const mistakePlan = planMistake(batch.text, randomFn)
   const averageDelay = charDelays.length > 0 ? perCharSum / charDelays.length : 0
@@ -234,6 +284,7 @@ export function buildBatchPlan(
     randomState,
     temporalState: nextTemporalState,
     lastBatchSize: batch.text.length,
+    pendingPauseMs: nextPendingPauseMs > 0 ? nextPendingPauseMs : undefined,
   }
   if (nextWPMState) {
     engineState.wpmState = nextWPMState
@@ -252,7 +303,7 @@ export function buildBatchPlan(
     batch,
     totalDelayMs,
     perCharDelays: charDelays,
-    batchPauseMs,
+    batchPauseMs: adjustedBatchPauseMs,
     mistakePlan,
     engineState,
   }
