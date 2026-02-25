@@ -16,6 +16,16 @@ const VALID_PROFILES: TypingProfile[] = ["steady", "fatigue", "burst", "micropau
 const MIN_WPM = 1
 const MAX_WPM = 300
 
+// QWERTY adjacent keys for realistic typo simulation
+const KEYBOARD_ADJACENCY: Record<string, string> = {
+  a: "sqwz",   b: "vghn",   c: "xdfv",   d: "sfxce",  e: "wsdr",
+  f: "dgvrt",  g: "fhbyt",  h: "gjnuy",  i: "ujko",   j: "hknui",
+  k: "jlmio",  l: "kop",    m: "njk",    n: "bmhj",   o: "ikpl",
+  p: "ol",     q: "wa",     r: "etdf",   s: "awdxze", t: "ryfg",
+  u: "yhji",   v: "cfgb",   w: "qase",   x: "zsdc",   y: "tghu",
+  z: "asx",
+}
+
 /**
  * Validate engine inputs before building batch plan.
  * Throws descriptive errors for invalid combinations.
@@ -61,6 +71,7 @@ export function validateEngineInputs(
 export interface MistakePlan {
   hasMistake: boolean
   deleteCount: number
+  wrongChar?: string // adjacent-key char to type then backspace
 }
 
 export interface BatchPlan {
@@ -99,7 +110,16 @@ export function planMistake(
 ): MistakePlan {
   if (batchText.length < 2) return { hasMistake: false, deleteCount: 0 }
   if (randomFn() > MISTAKE_CHANCE) return { hasMistake: false, deleteCount: 0 }
-  // delete 1 char near end
+
+  // Pick last alphabetic char and find an adjacent key for a realistic typo
+  const lastChar = batchText[batchText.length - 1].toLowerCase()
+  const neighbors = KEYBOARD_ADJACENCY[lastChar]
+  if (neighbors) {
+    const wrongChar = neighbors[Math.floor(randomFn() * neighbors.length)]
+    return { hasMistake: true, deleteCount: 1, wrongChar }
+  }
+
+  // Fallback: simple backspace delete for non-alpha chars (spaces, punctuation)
   return { hasMistake: true, deleteCount: 1 }
 }
 
@@ -127,7 +147,7 @@ export function buildBatchPlan(
   const wpmState = profile === "typing-test" ? (existingState?.wpmState ?? createWPMState()) : undefined
   const randomFn = () => nextRandom(randomState)
 
-  const batchSize = chooseBatchSize(existingState?.lastBatchSize)
+  const batchSize = chooseBatchSize(existingState?.lastBatchSize, randomFn)
   const batch = createTypingBatch(fullText, currentIndex, batchSize)
   if (!batch) {
     const emptyEngineState: EngineState = {

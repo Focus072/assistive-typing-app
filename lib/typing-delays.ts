@@ -216,9 +216,10 @@ function buildSteadyDelays(
   const phaseMultiplier = Math.max(0.95, Math.min(1.05, currentState.paceMultiplier))
 
   for (let i = 0; i < textSlice.length; i++) {
-    // Use range-based delay as primary, blend with duration target
+    // Weight toward the target-derived delay so the engine actually hits the WPM goal.
+    // 30% range (human variance), 70% baseCharDelayMs (WPM target).
     const rangeDelay = coreRandomInt(range.min, range.max, randomFn)
-    const blendRatio = 0.7
+    const blendRatio = 0.35
     const blended = rangeDelay * blendRatio + baseCharDelayMs * (1 - blendRatio)
 
     const d = profileAdjustedDelay(blended, "steady", progress, randomFn, temporalDrift) * phaseMultiplier
@@ -291,9 +292,8 @@ function buildFatigueDelays(
     : 1 + currentState.fatigueLevel * (0.03 + randomFn() * 0.05)
 
   for (let i = 0; i < textSlice.length; i++) {
-    // Use range-based delay as primary, blend with duration target
     const rangeDelay = coreRandomInt(range.min, range.max, randomFn)
-    const blendRatio = 0.7
+    const blendRatio = 0.35
     const blended = rangeDelay * blendRatio + baseCharDelayMs * (1 - blendRatio)
 
     const d = profileAdjustedDelay(blended, "fatigue", progress, randomFn, temporalDrift) * phaseMultiplier
@@ -370,9 +370,8 @@ function buildBurstDelays(
   const phaseDelayMultiplier = currentState.phase === "settle" ? (1.18 + randomFn() * 0.12) : 1
 
   for (let i = 0; i < textSlice.length; i++) {
-    // Use range-based delay as primary, blend with duration target
     const rangeDelay = coreRandomInt(range.min, range.max, randomFn)
-    const blendRatio = 0.7
+    const blendRatio = 0.35
     const blended = rangeDelay * blendRatio + baseCharDelayMs * (1 - blendRatio)
 
     const d = profileAdjustedDelay(blended, "burst", progress, randomFn, temporalDrift) * phaseDelayMultiplier
@@ -440,9 +439,8 @@ function buildMicropauseDelays(
   const contextProfile = analyzeMicropauseContext(textSlice)
 
   for (let i = 0; i < textSlice.length; i++) {
-    // Use range-based delay as primary, blend with duration target
     const rangeDelay = coreRandomInt(range.min, range.max, randomFn)
-    const blendRatio = 0.7
+    const blendRatio = 0.35
     const blended = rangeDelay * blendRatio + baseCharDelayMs * (1 - blendRatio)
 
     const ch = textSlice[i]
@@ -480,12 +478,10 @@ function buildTypingTestDelays(
   const charDelays: number[] = []
   let batchPauseMs = 0
   const correctionMagnitude = Math.min(0.06, Math.abs(wpmCorrectionFactor - 1))
-  const blendRatio = Math.min(0.9, 0.82 + correctionMagnitude * 1.3)
+  // Base blend: 35% range, 65% target. Shift toward range (higher blendRatio) when correction is active.
+  const blendRatio = Math.min(0.6, 0.35 + correctionMagnitude * 1.3)
 
   for (let i = 0; i < textSlice.length; i++) {
-    // Use range-based delay as primary, blend with duration target
-    // For typing-test profile, prioritize WPM range and slightly increase
-    // that priority when correction is active.
     const rangeDelay = coreRandomInt(range.min, range.max, randomFn)
     const blended = (rangeDelay * blendRatio + baseCharDelayMs * (1 - blendRatio)) * wpmCorrectionFactor
 
@@ -604,6 +600,14 @@ export function buildDelayPlan(
   let adjustedCharDelays = plan.charDelays
   if (fullText && sliceStart !== undefined) {
     adjustedCharDelays = applyWordLengthVelocity(plan.charDelays, fullText, sliceStart, randomFn)
+  }
+
+  // Warm-up ramp: first 8% of text is slightly slower as the typist finds their rhythm.
+  // Peaks ~8% slower at progress=0, smoothly normalises by 8%.
+  // Kept subtle so it doesn't distort the WPM display during the opening batches.
+  if (globalProgress < 0.08) {
+    const ramp = 1 + (0.08 - globalProgress) * 1.0 // 1.08 at 0%, 1.0 at 8%
+    adjustedCharDelays = adjustedCharDelays.map(d => Math.round(d * ramp))
   }
 
   // Enforce minimum delays
