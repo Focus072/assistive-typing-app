@@ -98,7 +98,10 @@ model Job {
   inngestEventId       String?
   lastBatchHash        String? // Hash of last inserted batch for idempotency
   throttleDelayMs      Int        @default(500) // Adaptive throttling delay
+  docInsertIndex       Int?       // Cached Google Docs end-of-document index; eliminates per-batch documents.get calls
   errorCode            String? // Specific error codes (GOOGLE_AUTH_REVOKED, etc.)
+  scheduledAt          DateTime? // When the job is scheduled to start (null = immediate)
+  engineState          String?    @db.Text // JSON-serialized EngineState (PRNG + profile phase state) persisted between batches
   user                 User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   events               JobEvent[]
   documentAsCurrentJob Document?  @relation("DocumentCurrentJob")
