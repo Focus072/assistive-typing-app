@@ -56,7 +56,7 @@ export function useJobPolling({ onCompleted, toast }: UseJobPollingOptions) {
       reconnectTimeoutRef.current = null
     }
 
-    const eventSource = new EventSource(`/api/progress/stream?jobId=${id}`)
+    const eventSource = new EventSource(`/api/progress/stream?jobId=${id}&interval=2000`)
     progressStreamRef.current = eventSource
     const maxReconnectAttempts = 10
     const reconnectDelay = 2000

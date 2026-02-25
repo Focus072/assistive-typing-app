@@ -122,6 +122,73 @@ function applyWordLengthVelocity(
 }
 
 /**
+ * Character-frequency multipliers: common letters (high muscle memory) are
+ * typed slightly faster; rare letters require more deliberate key-finding.
+ * Only alphabetic chars are adjusted — digits, punctuation, and whitespace
+ * keep their base delay.  The effect is subtle (±5-10%) but adds another
+ * layer of realistic variance.
+ */
+const CHAR_FREQ_MULTIPLIER: Record<string, number> = {
+  // Most common English letters → slightly faster
+  e: 0.93, t: 0.94, a: 0.94, o: 0.95, i: 0.95, n: 0.95, s: 0.96,
+  h: 0.96, r: 0.96,
+  // Uncommon letters → slightly slower
+  z: 1.08, q: 1.09, x: 1.07, j: 1.06, k: 1.04, v: 1.03,
+}
+
+function applyCharFrequencyVariation(
+  charDelays: number[],
+  textSlice: string,
+  randomFn: () => number
+): number[] {
+  return charDelays.map((delay, i) => {
+    const ch = textSlice[i]?.toLowerCase()
+    const multiplier = ch ? CHAR_FREQ_MULTIPLIER[ch] : undefined
+    if (multiplier !== undefined) {
+      // Add a small random spread (±2%) so it's not perfectly deterministic
+      const jitter = 1 + (randomFn() - 0.5) * 0.04
+      return Math.max(50, Math.round(delay * multiplier * jitter))
+    }
+    return delay
+  })
+}
+
+/**
+ * QWERTY hand assignment: left hand covers keys on the left half of the
+ * keyboard, right hand the rest.  When consecutive characters switch hands
+ * there's a small coordination penalty (~5-15ms).  Same-hand rolls are
+ * slightly faster (−3-8ms bonus).
+ */
+const LEFT_HAND = new Set("qwertasdfgzxcvb12345`~!@#$%")
+const RIGHT_HAND = new Set("yuiophjklnm67890-=[]\\;',./^&*()_+{}|:\"<>?")
+
+function getHand(ch: string): "left" | "right" | null {
+  const lc = ch.toLowerCase()
+  if (LEFT_HAND.has(lc)) return "left"
+  if (RIGHT_HAND.has(lc)) return "right"
+  return null // space, newline, etc.
+}
+
+function applyHandSwitchDelays(
+  charDelays: number[],
+  textSlice: string,
+  randomFn: () => number
+): number[] {
+  return charDelays.map((delay, i) => {
+    if (i === 0) return delay
+    const prevHand = getHand(textSlice[i - 1])
+    const currHand = getHand(textSlice[i])
+    if (!prevHand || !currHand) return delay
+    if (prevHand !== currHand) {
+      // Hand switch: small penalty
+      return delay + 5 + Math.floor(randomFn() * 10)
+    }
+    // Same-hand roll: small speed bonus
+    return Math.max(50, delay - 3 - Math.floor(randomFn() * 5))
+  })
+}
+
+/**
  * Generate skewed/clustered noise for delay jitter.
  * Uses log-normal distribution to cluster delays around typical values with occasional outliers.
  * This creates human-like distribution (not uniform).
@@ -604,6 +671,12 @@ export function buildDelayPlan(
 
   // Note: session warm-up/cooldown is now handled in buildBatchPlan (typing-engine.ts)
   // which has access to durationMinutes for time-aware pacing.
+
+  // Apply character-frequency variation: common letters slightly faster, rare ones slower.
+  adjustedCharDelays = applyCharFrequencyVariation(adjustedCharDelays, textSlice, randomFn)
+
+  // Apply hand-switching delays: small penalty when alternating left/right hand.
+  adjustedCharDelays = applyHandSwitchDelays(adjustedCharDelays, textSlice, randomFn)
 
   // Enforce minimum delays
   const enforced = enforceMinimumDelays(adjustedCharDelays, plan.batchPauseMs)
