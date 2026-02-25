@@ -303,25 +303,36 @@ export const typingBatch = inngest.createFunction(
         // Optional mistake simulation using the known doc index — no extra documents.get
         let finalDocIndex = afterInsertDocIndex
         if (plan.mistakePlan.hasMistake) {
-          if (plan.mistakePlan.wrongChar) {
+          if (plan.mistakePlan.wrongChars) {
+            // Type the wrong characters (1-3 chars), then delete them all
             await insertBatch(fresh.userId, fresh.documentId, {
-              text: plan.mistakePlan.wrongChar,
+              text: plan.mistakePlan.wrongChars,
               startIndex: plan.batch.endIndex,
-              endIndex: plan.batch.endIndex + 1,
+              endIndex: plan.batch.endIndex + plan.mistakePlan.wrongChars.length,
               hash: plan.batch.hash + "_typo",
             }, afterInsertDocIndex)
-            await deleteText(fresh.userId, fresh.documentId, 1, afterInsertDocIndex + 1)
-            // wrongChar insert + delete = net 0 → finalDocIndex unchanged
+            const typoEndIndex = afterInsertDocIndex + plan.mistakePlan.wrongChars.length
+            await deleteText(fresh.userId, fresh.documentId, plan.mistakePlan.wrongChars.length, typoEndIndex)
+            // wrongChars insert + delete = net 0 → finalDocIndex unchanged
           } else {
+            // Simple backspace delete (no wrong char available, e.g. non-alpha)
             await deleteText(fresh.userId, fresh.documentId, plan.mistakePlan.deleteCount, afterInsertDocIndex)
             finalDocIndex = afterInsertDocIndex - plan.mistakePlan.deleteCount
           }
+
+          // Post-mistake hesitation: the brief pause after catching a typo
+          if (plan.mistakePlan.pauseAfterMs > 0) {
+            const mistakeRemaining = STEP_BUDGET_MS - (Date.now() - loopStart)
+            if (plan.mistakePlan.pauseAfterMs < mistakeRemaining) {
+              await new Promise<void>(r => setTimeout(r, plan.mistakePlan.pauseAfterMs))
+            }
+          }
         }
 
-        // currentIndex: wrongChar typos net zero chars, plain deletes subtract
+        // currentIndex: wrongChars typos net zero chars, plain deletes subtract
         const nextIndex =
           plan.batch.endIndex -
-          (plan.mistakePlan.hasMistake && !plan.mistakePlan.wrongChar ? plan.mistakePlan.deleteCount : 0)
+          (plan.mistakePlan.hasMistake && !plan.mistakePlan.wrongChars ? plan.mistakePlan.deleteCount : 0)
 
         await prisma.job.update({
           where: { id: jobId },
@@ -348,7 +359,27 @@ export const typingBatch = inngest.createFunction(
 
         // Inline inter-batch sleep: target delay minus time already spent on this batch
         const batchMs = Date.now() - batchStart
-        const sleepMs = Math.max(0, plan.totalDelayMs - batchMs)
+        let sleepMs = Math.max(0, plan.totalDelayMs - batchMs)
+
+        // Human break: ~1.5% chance per batch of a longer pause simulating
+        // re-reading, thinking, or checking phone. Frequency scales so a
+        // typical 500-word essay (~150 batches) gets 1-3 breaks.
+        // Uses a simple hash of batchStart for lightweight determinism.
+        const breakRoll = ((batchStart * 2654435761) >>> 0) / 4294967296
+        if (breakRoll < 0.015) {
+          // 5-25 second pause — long enough to feel human, short enough
+          // not to blow the entire WPM budget
+          const breakMs = 5000 + Math.floor(breakRoll / 0.015 * 20000)
+          sleepMs += breakMs
+          await prisma.jobEvent.create({
+            data: {
+              jobId,
+              type: "human_break",
+              details: JSON.stringify({ breakMs }),
+            },
+          })
+        }
+
         const remaining = STEP_BUDGET_MS - (Date.now() - loopStart)
 
         if (sleepMs >= remaining) {

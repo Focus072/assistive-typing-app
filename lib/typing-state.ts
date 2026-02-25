@@ -73,6 +73,7 @@ export interface EngineState {
   fatigueState?: FatigueState // Only for fatigue profile
   steadyState?: SteadyState // Only for steady profile
   lastBatchSize?: number // Previous batch size for momentum-aware batching
+  pendingPauseMs?: number // Thinking pause carried forward from a sentence/paragraph ending
 }
 
 /**
