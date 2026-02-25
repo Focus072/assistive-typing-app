@@ -13,6 +13,8 @@ interface TypingProfileSelectorProps {
   onChange: (value: TypingProfile, testWPM?: number) => void;
   testWPM?: number;
   userTier?: PlanTier;
+  /** Admin-controlled list of profile values visible for this user's tier */
+  visibleProfiles?: string[];
 }
 
 const profiles: {
@@ -109,6 +111,7 @@ export function TypingProfileSelector({
   onChange,
   testWPM,
   userTier = "FREE",
+  visibleProfiles,
 }: TypingProfileSelectorProps) {
   const { isDark } = useDashboardTheme();
   const [showTypingTest, setShowTypingTest] = useState(false);
@@ -118,6 +121,13 @@ export function TypingProfileSelector({
     requiredTier: "PRO",
     feature: "",
   });
+
+  // Filter to only profiles the admin has enabled for this tier.
+  // Falls back to steady-only when visibleProfiles is not provided.
+  const shownProfiles =
+    visibleProfiles && visibleProfiles.length > 0
+      ? profiles.filter((p) => visibleProfiles.includes(p.value))
+      : profiles.filter((p) => p.value === "steady")
 
   const selectedDark =
     "bg-white border-white border-2 text-black";
@@ -169,9 +179,15 @@ export function TypingProfileSelector({
         </button>
       </div>
 
-      {/* Mobile: 2-col grid (viewport-safe); Desktop: 5-col grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-1.5 w-full max-w-full">
-        {profiles.map((profile) => {
+      {/* Mobile: 2-col grid (viewport-safe); Desktop: auto-fit visible profiles */}
+      <div className={`grid gap-2 sm:gap-1.5 w-full max-w-full ${
+        shownProfiles.length === 1 ? "grid-cols-1 sm:grid-cols-1 max-w-[160px]" :
+        shownProfiles.length === 2 ? "grid-cols-2 sm:grid-cols-2" :
+        shownProfiles.length === 3 ? "grid-cols-3 sm:grid-cols-3" :
+        shownProfiles.length === 4 ? "grid-cols-2 sm:grid-cols-4" :
+        "grid-cols-2 sm:grid-cols-5"
+      }`}>
+        {shownProfiles.map((profile) => {
           const isLocked = !isProfileAllowed(userTier, profile.value);
           const requiredTier: PlanTier = profile.value === "burst" || profile.value === "micropause" || profile.value === "typing-test" 
             ? "PRO" 
@@ -288,7 +304,7 @@ export function TypingProfileSelector({
         <div className={`rounded-lg border divide-y text-xs mt-1 ${
           isDark ? "border-white/10 divide-white/10" : "border-black/10 divide-black/10"
         }`}>
-          {profiles.map((p) => (
+          {shownProfiles.map((p) => (
             <div key={p.value} className="flex items-start gap-3 px-3 py-2.5">
               <div className={`w-5 h-5 rounded flex-shrink-0 flex items-center justify-center mt-0.5 ${
                 isDark ? "bg-white/10 text-white/70" : "bg-black/5 text-black/60"

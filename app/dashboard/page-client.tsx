@@ -342,6 +342,8 @@ function DashboardContent() {
   const [durationMinutes, setDurationMinutes] = useState(30)
   const [typingProfile, setTypingProfile] = useState<TypingProfile>("steady")
   const [testWPM, setTestWPM] = useState<number | undefined>(undefined)
+  // Admin-controlled list of visible typing profiles for this user's tier
+  const [visibleProfiles, setVisibleProfiles] = useState<string[]>(["steady"])
   const [documentFormat, setDocumentFormat] = useState<DocumentFormat>("mla")
   const [formatMetadata, setFormatMetadata] = useState<FormatMetadata | undefined>(undefined)
   const [customFormatConfig, setCustomFormatConfig] = useState<CustomFormatConfig | undefined>(undefined)
@@ -360,6 +362,26 @@ function DashboardContent() {
       setShowTextInput(true)
     }
   }, [textContent, showTextInput])
+
+  // Fetch admin-configured visible profiles for this user's tier
+  useEffect(() => {
+    if (status !== "authenticated") return
+    fetch("/api/profiles/enabled")
+      .then((r) => r.json())
+      .then((data: unknown) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setVisibleProfiles(data as string[])
+          // If the selected profile is no longer visible, reset to steady
+          setTypingProfile((prev) =>
+            (data as string[]).includes(prev) ? prev : "steady"
+          )
+          if (!(data as string[]).includes("typing-test")) {
+            setTestWPM(undefined)
+          }
+        }
+      })
+      .catch(() => {})
+  }, [status])
 
   // Fetch document URL when documentId changes (defer sync setState to avoid update-before-mount in Next.js 16)
   useEffect(() => {
@@ -1267,6 +1289,7 @@ function DashboardContent() {
               }}
               testWPM={testWPM}
               userTier={session?.user?.planTier || "FREE"}
+              visibleProfiles={visibleProfiles}
             />
           </div>
 

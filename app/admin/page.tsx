@@ -65,6 +65,7 @@ interface AdminSettings {
   maintenance_mode: string | null
   FREE_MAX_JOBS_PER_DAY: string | null
   FREE_MAX_JOB_HISTORY: string | null
+  enabled_profiles: string | null
 }
 
 export default function AdminDashboard() {
@@ -130,9 +131,9 @@ export default function AdminDashboard() {
     try {
       const res = await fetch("/api/admin/settings", { cache: "no-store" })
       if (res.ok) setSettings(await res.json())
-      else setSettings({ maintenance_mode: null, FREE_MAX_JOBS_PER_DAY: null, FREE_MAX_JOB_HISTORY: null })
+      else setSettings({ maintenance_mode: null, FREE_MAX_JOBS_PER_DAY: null, FREE_MAX_JOB_HISTORY: null, enabled_profiles: null })
     } catch {
-      setSettings({ maintenance_mode: null, FREE_MAX_JOBS_PER_DAY: null, FREE_MAX_JOB_HISTORY: null })
+      setSettings({ maintenance_mode: null, FREE_MAX_JOBS_PER_DAY: null, FREE_MAX_JOB_HISTORY: null, enabled_profiles: null })
     }
   }
 
