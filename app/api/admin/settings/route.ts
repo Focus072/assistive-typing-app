@@ -7,7 +7,7 @@ import { logger } from "@/lib/logger"
 
 export const dynamic = "force-dynamic"
 
-const KEYS = ["maintenance_mode", "FREE_MAX_JOBS_PER_DAY", "FREE_MAX_JOB_HISTORY"] as const
+const KEYS = ["maintenance_mode", "FREE_MAX_JOBS_PER_DAY", "FREE_MAX_JOB_HISTORY", "enabled_profiles"] as const
 
 export async function GET() {
   try {
