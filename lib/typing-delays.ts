@@ -602,13 +602,8 @@ export function buildDelayPlan(
     adjustedCharDelays = applyWordLengthVelocity(plan.charDelays, fullText, sliceStart, randomFn)
   }
 
-  // Warm-up ramp: first 8% of text is slightly slower as the typist finds their rhythm.
-  // Peaks ~8% slower at progress=0, smoothly normalises by 8%.
-  // Kept subtle so it doesn't distort the WPM display during the opening batches.
-  if (globalProgress < 0.08) {
-    const ramp = 1 + (0.08 - globalProgress) * 1.0 // 1.08 at 0%, 1.0 at 8%
-    adjustedCharDelays = adjustedCharDelays.map(d => Math.round(d * ramp))
-  }
+  // Note: session warm-up/cooldown is now handled in buildBatchPlan (typing-engine.ts)
+  // which has access to durationMinutes for time-aware pacing.
 
   // Enforce minimum delays
   const enforced = enforceMinimumDelays(adjustedCharDelays, plan.batchPauseMs)

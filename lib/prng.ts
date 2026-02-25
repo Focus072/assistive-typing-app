@@ -24,6 +24,11 @@ export function createPRNG(seed: number): RandomState {
 /**
  * Generate next random number in [0, 1) range.
  * Uses LCG algorithm: (a * state + c) mod m
+ *
+ * Math.imul performs a true 32-bit integer multiply, avoiding the precision
+ * loss that occurs when a * state exceeds Number.MAX_SAFE_INTEGER (2^53).
+ * The >>> 0 coerces the result to an unsigned 32-bit integer so the modulo
+ * always yields a positive value.
  */
 export function nextRandom(state: RandomState): number {
   // LCG parameters (same as used in many standard libraries)
@@ -31,7 +36,7 @@ export function nextRandom(state: RandomState): number {
   const c = 1013904223
   const m = 2147483647 // 2^31 - 1
 
-  state.state = (a * state.state + c) % m
+  state.state = ((Math.imul(a, state.state) + c) >>> 0) % m
   return state.state / m
 }
 

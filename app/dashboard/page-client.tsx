@@ -1,13 +1,12 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef, Suspense } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useSearchParams } from "next/navigation"
-import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
-import { signIn } from "next-auth/react"
-import { logger } from "@/lib/logger"
-import Link from "next/link"
+import { useJobPolling } from "@/hooks/useJobPolling"
+import { usePaymentFlow } from "@/hooks/usePaymentFlow"
+import { useDocumentManager } from "@/hooks/useDocumentManager"
 import { TextInput } from "@/components/TextInput"
 import { TimeSelector } from "@/components/TimeSelector"
 import { TypingProfileSelector } from "@/components/TypingProfileSelector"
@@ -138,11 +137,6 @@ function PaymentProcessingModal({
 
 function DashboardContent() {
   const router = useRouter()
-  const { data: session, status, update: updateSession } = useSession()
-  const searchParams = useSearchParams()
-  // Extract value immediately to avoid Next.js 16 enumeration issues
-  const jobIdParam = searchParams.get("jobId")
-  const checkoutParam = searchParams.get("checkout")
   const toast = useToast()
   const { isDark } = useDashboardTheme()
   const [showConfetti, setShowConfetti] = useState(false)
@@ -153,6 +147,18 @@ function DashboardContent() {
   const [scheduledAt, setScheduledAt] = useState("")
   const [showSchedulePicker, setShowSchedulePicker] = useState(false)
 
+  // Payment flow hook
+  const {
+    session,
+    status,
+    isProcessingPayment,
+    remainingSeconds,
+    handleContinue: handlePaymentContinue,
+  } = usePaymentFlow({
+    toast,
+    onSuccess: () => setShowConfetti(true),
+  })
+
   // Redirect to home page if not authenticated
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -160,173 +166,30 @@ function DashboardContent() {
     }
   }, [status, router])
 
-  // Grace period state for webhook processing
-  const [isProcessingPayment, setIsProcessingPayment] = useState(false)
-  const [gracePeriodStart, setGracePeriodStart] = useState<number | null>(null)
-  const [remainingSeconds, setRemainingSeconds] = useState<number>(30)
-  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
-  const timerUpdateRef = useRef<NodeJS.Timeout | null>(null)
-  const gracePeriodTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const userContinuedRef = useRef(false)
-  const hasShownPaymentSuccessToastRef = useRef(false)
-  const GRACE_PERIOD_MS = 30 * 1000 // 30 seconds
-  const POLLING_INTERVAL_MS = 3 * 1000 // Poll every 3 seconds
-
-  // Update remaining seconds display
-  useEffect(() => {
-    if (isProcessingPayment && gracePeriodStart) {
-      const updateTimer = () => {
-        const elapsed = Date.now() - gracePeriodStart
-        const remaining = Math.max(0, Math.ceil((GRACE_PERIOD_MS - elapsed) / 1000))
-        setRemainingSeconds(remaining)
-        
-        if (remaining > 0) {
-          timerUpdateRef.current = setTimeout(updateTimer, 1000)
-        }
-      }
-      
-      updateTimer()
-      
-      return () => {
-        if (timerUpdateRef.current) {
-          clearTimeout(timerUpdateRef.current)
-          timerUpdateRef.current = null
-        }
-      }
-    } else {
-      setRemainingSeconds(30)
-    }
-  }, [isProcessingPayment, gracePeriodStart])
-
-  // Handle checkout success with grace period and polling (defer setState to avoid update-before-mount)
-  useEffect(() => {
-    if (checkoutParam === "success" && status === "authenticated") {
-      const u = session?.user
-      const hasAccess = u?.subscriptionStatus === "active" || u?.planTier === "ADMIN" || u?.role === "ADMIN"
-      if (hasAccess) {
-        updateSession().then(() => {
-          if (!hasShownPaymentSuccessToastRef.current) {
-            hasShownPaymentSuccessToastRef.current = true
-            toast.addToast("Payment Successful! Your plan has been upgraded. Enjoy your new features!", "success")
-          }
-          setShowConfetti(true)
-          router.replace("/dashboard", { scroll: false })
-        })
-        return
-      }
-      
-      // Start grace period (defer so component is committed before state update)
-      let deferredId: ReturnType<typeof setTimeout> | null = setTimeout(() => {
-        setIsProcessingPayment(true)
-        setGracePeriodStart(Date.now())
-      }, 0)
-      
-      // Initial session refresh
-      updateSession().catch((error) => {
-        logger.error("Failed to refresh session:", error)
-      })
-      
-      // Start polling for subscription status
-      pollingIntervalRef.current = setInterval(async () => {
-        try {
-          // Trigger session refresh
-          await updateSession()
-          // Check session state (will be updated by the hook)
-          // We'll check it in the next effect that watches session changes
-        } catch (error) {
-          logger.error("Failed to refresh session during polling:", error)
-        }
-      }, POLLING_INTERVAL_MS)
-      
-      // Cleanup: Stop polling after grace period expires
-      gracePeriodTimeoutRef.current = setTimeout(() => {
-        if (userContinuedRef.current) return
-        if (pollingIntervalRef.current) {
-          clearInterval(pollingIntervalRef.current)
-          pollingIntervalRef.current = null
-        }
-        
-        // Check one final time
-        updateSession().then(() => {
-          if (userContinuedRef.current) return
-          // Give a moment for session to update, then check
-          setTimeout(() => {
-            if (userContinuedRef.current) return
-            const u = session?.user
-            const hasAccess = u?.subscriptionStatus === "active" || u?.planTier === "ADMIN" || u?.role === "ADMIN"
-            if (hasAccess) {
-              setIsProcessingPayment(false)
-              setGracePeriodStart(null)
-              if (!hasShownPaymentSuccessToastRef.current) {
-                hasShownPaymentSuccessToastRef.current = true
-                toast.addToast("Payment Successful! Your plan has been upgraded. Enjoy your new features!", "success")
-              }
-              setShowConfetti(true)
-              router.replace("/dashboard", { scroll: false })
-            } else {
-              setIsProcessingPayment(false)
-              setGracePeriodStart(null)
-              toast.addToast("Payment is being processed. Please wait a moment and refresh the page.", "info")
-              router.push("/#pricing")
-            }
-          }, 500)
-        }).catch((error) => {
-          if (userContinuedRef.current) return
-          logger.error("Failed to check final status:", error)
-          setIsProcessingPayment(false)
-          setGracePeriodStart(null)
-          router.push("/#pricing")
-        })
-      }, GRACE_PERIOD_MS)
-      
-      return () => {
-        if (deferredId != null) clearTimeout(deferredId)
-        if (pollingIntervalRef.current) {
-          clearInterval(pollingIntervalRef.current)
-          pollingIntervalRef.current = null
-        }
-        if (timerUpdateRef.current) {
-          clearTimeout(timerUpdateRef.current)
-          timerUpdateRef.current = null
-        }
-        if (gracePeriodTimeoutRef.current) {
-          clearTimeout(gracePeriodTimeoutRef.current)
-          gracePeriodTimeoutRef.current = null
-        }
-      }
-    }
-  }, [checkoutParam, status, updateSession, router, toast])
-
-  // Watch for session updates during grace period
-  useEffect(() => {
-    if (isProcessingPayment && session) {
-      const u = session.user
-      const hasAccess = u?.subscriptionStatus === "active" || u?.planTier === "ADMIN" || u?.role === "ADMIN"
-      if (hasAccess) {
-        // Success! Stop polling and timers, then show success message
-        if (pollingIntervalRef.current) {
-          clearInterval(pollingIntervalRef.current)
-          pollingIntervalRef.current = null
-        }
-        if (gracePeriodTimeoutRef.current) {
-          clearTimeout(gracePeriodTimeoutRef.current)
-          gracePeriodTimeoutRef.current = null
-        }
-        if (timerUpdateRef.current) {
-          clearTimeout(timerUpdateRef.current)
-          timerUpdateRef.current = null
-        }
-        setIsProcessingPayment(false)
-        setGracePeriodStart(null)
-        if (!hasShownPaymentSuccessToastRef.current) {
-          hasShownPaymentSuccessToastRef.current = true
-          toast.addToast("Payment Successful! Your plan has been upgraded. Enjoy your new features!", "success")
-        }
-        setShowConfetti(true)
-        router.replace("/dashboard", { scroll: false })
-      }
-    }
-  }, [session, isProcessingPayment, router, toast])
+  // Job polling hook
+  const {
+    currentJobId,
+    jobStatus,
+    currentIndex,
+    totalChars,
+    jobDurationMinutes,
+    jobTypingProfile,
+    jobTestWPM,
+    jobStartTime,
+    indexAtLoad,
+    jobIdParam,
+    prevJobIdRef,
+    setCurrentJobId,
+    setJobStatus,
+    setTotalChars,
+    setJobDurationMinutes,
+    setJobTypingProfile,
+    setJobTestWPM,
+    setJobStartTime,
+    setIndexAtLoad,
+    startProgressStream,
+    resetJobState,
+  } = useJobPolling({ toast })
 
   const [textContent, setTextContent] = useState("")
 
@@ -348,9 +211,7 @@ function DashboardContent() {
   const [formatMetadata, setFormatMetadata] = useState<FormatMetadata | undefined>(undefined)
   const [customFormatConfig, setCustomFormatConfig] = useState<CustomFormatConfig | undefined>(undefined)
   const [documentId, setDocumentId] = useState("")
-  const [documentUrl, setDocumentUrl] = useState<string | null>(null)
-  const [loadingDocumentUrl, setLoadingDocumentUrl] = useState(false)
-  const [iframeError, setIframeError] = useState(false)
+  const { documentUrl, loadingDocumentUrl, iframeError, setIframeError } = useDocumentManager(documentId)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showAdvanced, setShowAdvanced] = useState(false)
@@ -383,78 +244,7 @@ function DashboardContent() {
       .catch(() => {})
   }, [status])
 
-  // Fetch document URL when documentId changes (defer sync setState to avoid update-before-mount in Next.js 16)
-  useEffect(() => {
-    if (!documentId) {
-      const id = setTimeout(() => {
-        setDocumentUrl(null)
-        setIframeError(false)
-      }, 0)
-      return () => clearTimeout(id)
-    }
-
-    let cancelled = false
-    const syncId = setTimeout(() => {
-      if (!cancelled) {
-        setLoadingDocumentUrl(true)
-        setIframeError(false)
-      }
-    }, 0)
-
-    const fetchDocumentUrl = async () => {
-      try {
-        const response = await fetch(`/api/google-docs/${documentId}/url`)
-        if (!response.ok) {
-          throw new Error("Failed to fetch document URL")
-        }
-        const data = await response.json()
-        if (!cancelled) {
-          setDocumentUrl(data.url)
-        }
-      } catch (error) {
-        if (!cancelled) {
-          logger.error("Error fetching document URL:", error)
-          // Fallback to constructed URL if API fails
-          setDocumentUrl(`https://docs.google.com/document/d/${documentId}/edit`)
-        }
-      } finally {
-        if (!cancelled) {
-          setLoadingDocumentUrl(false)
-        }
-      }
-    }
-
-    void fetchDocumentUrl()
-
-    return () => {
-      cancelled = true
-      clearTimeout(syncId)
-    }
-  }, [documentId])
-
-
-  // Job state
-  const [currentJobId, setCurrentJobId] = useState<string | null>(jobIdParam)
-  const currentJobIdRef = useRef<string | null>(jobIdParam)
-  const prevJobIdRef = useRef<string | null | undefined>(undefined) // undefined = not yet initialized
-  const progressStreamRef = useRef<EventSource | null>(null)
-  const reconnectAttemptsRef = useRef<number>(0)
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const [jobStatus, setJobStatus] = useState<JobStatus>("pending")
-  const [currentIndex, setCurrentIndex] = useState(0)
-  const [totalChars, setTotalChars] = useState(0)
-  const [jobDurationMinutes, setJobDurationMinutes] = useState(30)
-  // timeRemaining is derived — no useState needed (computed below from SSE state)
-  const [jobTypingProfile, setJobTypingProfile] = useState<TypingProfile>("steady")
-  const [jobTestWPM, setJobTestWPM] = useState<number | undefined>(undefined)
-  const [jobStartTime, setJobStartTime] = useState<Date | null>(null)
-  const [indexAtLoad, setIndexAtLoad] = useState(0)
   const [prevStatus, setPrevStatus] = useState<JobStatus>("pending")
-
-  // Keep ref in sync with state
-  useEffect(() => {
-    currentJobIdRef.current = currentJobId
-  }, [currentJobId])
 
   // Success celebration
   useEffect(() => {
@@ -515,121 +305,10 @@ function DashboardContent() {
     },
   ])
 
-  const loadJob = useCallback(async (id: string) => {
-    try {
-      const response = await fetch(`/api/jobs/${id}`)
-      if (response.ok) {
-        const data = await response.json()
-        const job = data.job
-        setCurrentJobId(job.id)
-        setJobStatus(job.status as JobStatus)
-        setCurrentIndex(job.currentIndex)
-        setTotalChars(job.totalChars)
-        setJobDurationMinutes(job.durationMinutes)
-        setDocumentId(job.documentId)
-        setJobTypingProfile(job.typingProfile as TypingProfile)
-        setJobTestWPM(job.testWPM ? Number(job.testWPM) : undefined)
-        // Restore the text so the content box is never blank when returning to a job
-        if (job.textContent) setTextContent(job.textContent)
-        // For running jobs, baseline from page-load time so elapsed WPM isn't diluted
-        // by time the job spent running before this page was opened.
-        if (job.status === 'running') {
-          setJobStartTime(new Date())
-          setIndexAtLoad(job.currentIndex)
-        } else {
-          setJobStartTime(new Date(job.createdAt))
-          setIndexAtLoad(0)
-        }
-        // Sync UI form state to the loaded job so resume sends the correct values
-        setDurationMinutes(job.durationMinutes)
-        setTypingProfile(job.typingProfile as TypingProfile)
-        setTestWPM(job.testWPM ? Number(job.testWPM) : undefined)
-      }
-    } catch (error) {
-      toast.addToast("Failed to load job", "error")
-    }
-  }, [toast])
-
-  const startProgressStream = useCallback((id: string) => {
-    // Close any existing stream first
-    if (progressStreamRef.current) {
-      progressStreamRef.current.close()
-      progressStreamRef.current = null
-    }
-
-    // Clear any pending reconnection timeout
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current)
-      reconnectTimeoutRef.current = null
-    }
-
-    const eventSource = new EventSource(`/api/progress/stream?jobId=${id}`)
-    progressStreamRef.current = eventSource
-    const maxReconnectAttempts = 10
-    const reconnectDelay = 2000
-
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data)
-        setJobStatus(data.status as JobStatus)
-        setCurrentIndex(data.currentIndex)
-        setTotalChars(data.totalChars)
-        setJobDurationMinutes(data.durationMinutes)
-
-        // Reset reconnect attempts on successful message
-        reconnectAttemptsRef.current = 0
-
-        // Close stream if job is finished
-        if (["completed", "stopped", "failed", "expired"].includes(data.status)) {
-          eventSource.close()
-          progressStreamRef.current = null
-        }
-      } catch (error) {
-        // Silently handle parse errors - invalid data will be ignored
-      }
-    }
-
-    eventSource.onerror = () => {
-      eventSource.close()
-      progressStreamRef.current = null
-
-      // Only reconnect if job is still active and we haven't exceeded max attempts
-      if (currentJobIdRef.current && reconnectAttemptsRef.current < maxReconnectAttempts) {
-        reconnectAttemptsRef.current++
-        const delay = reconnectDelay * Math.min(reconnectAttemptsRef.current, 5) // Exponential backoff, max 10s
-        
-        reconnectTimeoutRef.current = setTimeout(() => {
-          // Double-check job is still active before reconnecting
-          if (currentJobIdRef.current === id) {
-            startProgressStream(id)
-          }
-          reconnectTimeoutRef.current = null
-        }, delay)
-      } else if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
-        toast.addToast("Lost connection to job progress. Refresh the page to reconnect.", "warning")
-      }
-    }
-  }, [toast])
-
-  // Load job from URL param, or reset to create form when param is absent
+  // Sync form state when the job polling hook loads a job or resets
   useEffect(() => {
-    if (jobIdParam) {
-      loadJob(jobIdParam)
-    } else {
-      setCurrentJobId(null)
-      setJobStatus("pending")
-      setCurrentIndex(0)
-      setTotalChars(0)
-      setJobStartTime(null)
-      setIndexAtLoad(0)
-
+    if (!jobIdParam) {
       // When navigating away from a job to a fresh dashboard, wipe all form fields
-      // so the user gets a clean slate (like clicking "New Chat" in ChatGPT).
-      // Only reset when prevJobIdRef held an actual job ID string — skip on:
-      //   • initial mount (undefined) — avoids clobbering AI-text from sessionStorage
-      //   • effect re-fires caused by loadJob reference changes (null) — avoids
-      //     clearing text when toast.addToast triggers a loadJob recreation while
-      //     the user is still on the fresh form (e.g. after creating a Google Doc).
       if (typeof prevJobIdRef.current === "string") {
         setTextContent("")
         setDocumentId("")
@@ -644,43 +323,26 @@ function DashboardContent() {
         setShowSchedulePicker(false)
       }
     }
-    prevJobIdRef.current = jobIdParam
-  }, [jobIdParam, loadJob])
+  }, [jobIdParam])
 
-  // Manage EventSource lifecycle explicitly
+  // When a job is loaded via URL param, also restore form fields from the job data.
+  // useJobPolling.loadJob handles the core state; this handles form-specific fields.
   useEffect(() => {
-    const jobId = currentJobId
-
-    if (!jobId) {
-      // Clean up if no job is active
-      if (progressStreamRef.current) {
-        progressStreamRef.current.close()
-        progressStreamRef.current = null
-      }
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current)
-        reconnectTimeoutRef.current = null
-      }
-      reconnectAttemptsRef.current = 0
-      return
-    }
-
-    // Start stream for active job
-    startProgressStream(jobId)
-
-    // Cleanup function: close stream and clear timeouts on unmount or job change
-    return () => {
-      if (progressStreamRef.current) {
-        progressStreamRef.current.close()
-        progressStreamRef.current = null
-      }
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current)
-        reconnectTimeoutRef.current = null
-      }
-      reconnectAttemptsRef.current = 0
-    }
-  }, [currentJobId, startProgressStream])
+    if (!jobIdParam) return
+    // Fetch job data to restore form state (loadJob in the hook already ran)
+    fetch(`/api/jobs/${jobIdParam}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => {
+        if (!data?.job) return
+        const job = data.job
+        setDocumentId(job.documentId)
+        if (job.textContent) setTextContent(job.textContent)
+        setDurationMinutes(job.durationMinutes)
+        setTypingProfile(job.typingProfile as TypingProfile)
+        setTestWPM(job.testWPM ? Number(job.testWPM) : undefined)
+      })
+      .catch(() => {})
+  }, [jobIdParam])
 
   const handleCreateDocument = async (title: string): Promise<string> => {
     try {
@@ -901,15 +563,6 @@ function DashboardContent() {
     }
   }
 
-  const resetJobState = () => {
-    setCurrentJobId(null)
-    setJobStatus("pending")
-    setCurrentIndex(0)
-    setTotalChars(0)
-    setJobStartTime(null)
-    setIndexAtLoad(0)
-  }
-
   const isJobActive = !!currentJobId && jobStatus === "running"
 
   const progress = totalChars > 0 ? (currentIndex / totalChars) * 100 : 0
@@ -960,25 +613,7 @@ function DashboardContent() {
         <PaymentProcessingModal
           isDark={isDark}
           remainingSeconds={remainingSeconds}
-          onContinue={() => {
-            userContinuedRef.current = true
-            setIsProcessingPayment(false)
-            setGracePeriodStart(null)
-            if (pollingIntervalRef.current) {
-              clearInterval(pollingIntervalRef.current)
-              pollingIntervalRef.current = null
-            }
-            if (gracePeriodTimeoutRef.current) {
-              clearTimeout(gracePeriodTimeoutRef.current)
-              gracePeriodTimeoutRef.current = null
-            }
-            if (timerUpdateRef.current) {
-              clearTimeout(timerUpdateRef.current)
-              timerUpdateRef.current = null
-            }
-            // Keep ?checkout=success so the server still allows access (subscription may not be active yet)
-            router.replace("/dashboard?checkout=success", { scroll: false })
-          }}
+          onContinue={handlePaymentContinue}
         />
       )}
       
