@@ -10,6 +10,7 @@ export const dynamic = 'force-dynamic'
 
 const resumeJobSchema = z.object({
   jobId: z.string().min(1, "Job ID is required"),
+  durationMinutes: z.coerce.number().min(3).max(360).optional(),
 })
 
 export async function POST(request: Request) {
@@ -25,7 +26,7 @@ export async function POST(request: Request) {
 
     const body = await request.json()
     const validated = resumeJobSchema.parse(body)
-    const { jobId } = validated
+    const { jobId, durationMinutes } = validated
 
     // Verify ownership
     const job = await prisma.job.findUnique({
@@ -69,10 +70,15 @@ export async function POST(request: Request) {
       )
     }
 
-    // Resume job
+    // Resume job, optionally updating durationMinutes if user changed it while paused
     await prisma.job.update({
       where: { id: jobId },
-      data: { status: "running" },
+      data: {
+        status: "running",
+        ...(durationMinutes !== undefined && durationMinutes !== job.durationMinutes
+          ? { durationMinutes }
+          : {}),
+      },
     })
 
     await prisma.jobEvent.create({

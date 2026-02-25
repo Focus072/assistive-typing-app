@@ -12,10 +12,11 @@ const MAX_CHARS = 50000
 
 const startJobSchema = z.object({
   textContent: z.string().min(1).max(MAX_CHARS),
-  durationMinutes: z.coerce.number().min(10).max(360), // Coerce string to number
+  durationMinutes: z.coerce.number().min(3).max(360), // Coerce string to number
   typingProfile: z.enum(["steady", "fatigue", "burst", "micropause", "typing-test"]),
   documentId: z.string().min(1), // Ensure documentId is not empty
   testWPM: z.coerce.number().min(1).max(300).optional(), // WPM from typing test
+  scheduledAt: z.string().datetime().optional(), // ISO timestamp for future scheduling
 })
 
 export const dynamic = 'force-dynamic'
@@ -116,6 +117,32 @@ export async function POST(request: Request) {
       }
     }
 
+    // Clean up any globally stuck running jobs (running but older than max duration of 6 hours)
+    const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000)
+    await prisma.job.updateMany({
+      where: {
+        userId: session.user.id,
+        status: 'running',
+        createdAt: { lt: sixHoursAgo },
+      },
+      data: { status: 'failed', errorCode: 'STUCK_JOB_CLEANUP' },
+    })
+
+    // Enforce concurrent job limit per tier
+    const maxConcurrent = (userTier === 'UNLIMITED' || userTier === 'ADMIN') ? 2 : 1
+    const activeJobCount = await prisma.job.count({
+      where: {
+        userId: session.user.id,
+        status: { in: ['running', 'paused', 'scheduled'] },
+      },
+    })
+    if (activeJobCount >= maxConcurrent) {
+      const msg = maxConcurrent === 1
+        ? 'You already have an active typing job. Please stop or complete it first.'
+        : 'You have reached the maximum of 2 concurrent jobs on your plan.'
+      return NextResponse.json({ error: msg }, { status: 400 })
+    }
+
     // Atomic transaction: check document state and create job
     let job
     try {
@@ -179,6 +206,10 @@ export async function POST(request: Request) {
         const expiresAt = new Date()
         expiresAt.setDate(expiresAt.getDate() + 7) // 7 day TTL
 
+        const isScheduled = validated.scheduledAt
+          ? new Date(validated.scheduledAt) > new Date()
+          : false
+
         const newJob = await tx.job.create({
           data: {
             userId: session.user.id,
@@ -188,28 +219,37 @@ export async function POST(request: Request) {
             durationMinutes: validated.durationMinutes,
             typingProfile: validated.typingProfile,
             testWPM: validated.testWPM ? Number(validated.testWPM) : null,
-            status: "pending",
+            status: isScheduled ? "scheduled" : "pending",
             expiresAt,
           },
         })
+
+        // Prisma client may not yet know about scheduledAt (requires regeneration after db push).
+        // Write it via raw SQL so it is always persisted correctly.
+        if (isScheduled && validated.scheduledAt) {
+          await tx.$executeRaw`UPDATE "Job" SET "scheduledAt" = ${new Date(validated.scheduledAt)} WHERE id = ${newJob.id}`
+        }
 
         // 5. Create start event
         await tx.jobEvent.create({
           data: {
             jobId: newJob.id,
-            type: "started",
+            type: isScheduled ? "scheduled" : "started",
             details: JSON.stringify({
               durationMinutes: validated.durationMinutes,
               typingProfile: validated.typingProfile,
+              scheduledAt: validated.scheduledAt,
             }),
           },
         })
 
-        // 6. Update job to running
-        await tx.job.update({
-          where: { id: newJob.id },
-          data: { status: "running" },
-        })
+        // 6. Update job to running (only for immediate jobs)
+        if (!isScheduled) {
+          await tx.job.update({
+            where: { id: newJob.id },
+            data: { status: "running" },
+          })
+        }
 
         // 7. Update Document atomically
         await tx.document.update({

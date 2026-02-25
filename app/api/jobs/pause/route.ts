@@ -26,47 +26,25 @@ export async function POST(request: Request) {
     const validated = pauseJobSchema.parse(body)
     const { jobId } = validated
 
-    // Verify ownership
-    const job = await prisma.job.findUnique({
-      where: { id: jobId },
-    })
-
-    if (!job) {
-      return NextResponse.json(
-        { error: "Job not found" },
-        { status: 404 }
-      )
-    }
-
-    if (job.userId !== session.user.id) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 403 }
-      )
-    }
-
-    if (job.status !== "running") {
-      return NextResponse.json(
-        { error: `Job is not running (status: ${job.status})` },
-        { status: 400 }
-      )
-    }
-
-    // Pause job
-    await prisma.job.update({
-      where: { id: jobId },
+    // Single query: update only if owned by this user and currently running.
+    // Returns the updated row or null — no separate findUnique needed.
+    const updated = await prisma.job.updateMany({
+      where: { id: jobId, userId: session.user.id, status: "running" },
       data: { status: "paused" },
     })
 
-    await prisma.jobEvent.create({
-      data: {
-        jobId,
-        type: "paused",
-        details: JSON.stringify({ currentIndex: job.currentIndex }),
-      },
-    })
+    if (updated.count === 0) {
+      // Could be not found, wrong owner, or not running — check which
+      const job = await prisma.job.findUnique({ where: { id: jobId }, select: { userId: true, status: true } })
+      if (!job) return NextResponse.json({ error: "Job not found" }, { status: 404 })
+      if (job.userId !== session.user.id) return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
+      return NextResponse.json({ error: `Job is not running (status: ${job.status})` }, { status: 400 })
+    }
 
-    // Log job pause event
+    // Fire-and-forget: log event + audit — don't block the response
+    void prisma.jobEvent.create({
+      data: { jobId, type: "paused", details: "{}" },
+    })
     logger.job.pause(jobId, session.user.id)
 
     return NextResponse.json({ success: true })

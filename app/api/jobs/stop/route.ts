@@ -26,68 +26,31 @@ export async function POST(request: Request) {
     const validated = stopJobSchema.parse(body)
     const { jobId } = validated
 
-    // Verify ownership
+    // Single query: fetch job to verify ownership and read documentId in one shot
     const job = await prisma.job.findUnique({
       where: { id: jobId },
+      select: { userId: true, status: true, documentId: true, currentIndex: true, totalChars: true },
     })
 
-    if (!job) {
-      return NextResponse.json(
-        { error: "Job not found" },
-        { status: 404 }
-      )
-    }
-
-    if (job.userId !== session.user.id) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 403 }
-      )
-    }
-
+    if (!job) return NextResponse.json({ error: "Job not found" }, { status: 404 })
+    if (job.userId !== session.user.id) return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
     if (job.status === "stopped" || job.status === "completed" || job.status === "failed") {
-      return NextResponse.json(
-        { error: `Job is already ${job.status}` },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: `Job is already ${job.status}` }, { status: 400 })
     }
 
-    // Stop job (permanently non-resumable)
-    await prisma.job.update({
-      where: { id: jobId },
-      data: { status: "stopped" },
+    // Run job update + document unlock in a single transaction (2 writes, 1 round-trip)
+    await prisma.$transaction([
+      prisma.job.update({ where: { id: jobId }, data: { status: "stopped" } }),
+      prisma.document.updateMany({
+        where: { userId: session.user.id, documentId: job.documentId, currentJobId: jobId },
+        data: { state: "idle", currentJobId: null },
+      }),
+    ])
+
+    // Fire-and-forget: audit log — don't block the response
+    void prisma.jobEvent.create({
+      data: { jobId, type: "stopped", details: JSON.stringify({ currentIndex: job.currentIndex }) },
     })
-
-    await prisma.jobEvent.create({
-      data: {
-        jobId,
-        type: "stopped",
-        details: JSON.stringify({ currentIndex: job.currentIndex }),
-      },
-    })
-
-    // Unlock document with ownership verification
-    const document = await prisma.document.findUnique({
-      where: {
-        userId_documentId: {
-          userId: session.user.id,
-          documentId: job.documentId,
-        },
-      },
-    })
-
-    // Verify ownership: currentJobId must match job.id
-    if (document && document.currentJobId === jobId) {
-      await prisma.document.update({
-        where: { id: document.id },
-        data: {
-          state: "idle",
-          currentJobId: null,
-        },
-      })
-    }
-
-    // Log job stop event
     logger.job.stop(jobId, session.user.id, "user_requested", {
       documentId: job.documentId,
       currentIndex: job.currentIndex,
