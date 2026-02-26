@@ -4,7 +4,6 @@ import "./suppress-warnings"
 import { google } from "googleapis"
 import { getGoogleAuthClient } from "./auth"
 import { prisma } from "./prisma"
-import { hashString } from "./utils"
 import type { BatchInsertResult, TypingBatch } from "@/types"
 import type { FormatMetadata } from "@/components/FormatMetadataModal"
 import { MIN_INTERVAL_MS } from "./batching"
@@ -14,8 +13,6 @@ interface GoogleApiError {
   message?: string
   code?: number | string
 }
-
-const BATCH_SIZE = 20
 
 export async function getDocsClient(userId: string) {
   const auth = await getGoogleAuthClient(userId)
@@ -193,27 +190,6 @@ export async function getDocumentEndIndex(userId: string, documentId: string): P
       throw new Error("GOOGLE_AUTH_REVOKED")
     }
     throw error
-  }
-}
-
-export function createBatch(
-  text: string,
-  startIndex: number,
-  batchSize: number = BATCH_SIZE
-): TypingBatch | null {
-  if (startIndex >= text.length) {
-    return null
-  }
-
-  const endIndex = Math.min(startIndex + batchSize, text.length)
-  const batchText = text.slice(startIndex, endIndex)
-  const hash = hashString(`${batchText}-${startIndex}`)
-
-  return {
-    text: batchText,
-    startIndex,
-    endIndex,
-    hash,
   }
 }
 

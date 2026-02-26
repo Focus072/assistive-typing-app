@@ -361,21 +361,32 @@ export const typingBatch = inngest.createFunction(
         const batchMs = Date.now() - batchStart
         let sleepMs = Math.max(0, plan.totalDelayMs - batchMs)
 
-        // Human break: ~1.5% chance per batch of a longer pause simulating
-        // re-reading, thinking, or checking phone. Frequency scales so a
-        // typical 500-word essay (~150 batches) gets 1-3 breaks.
-        // Uses a simple hash of batchStart for lightweight determinism.
+        // Human breaks: lightweight deterministic rolls using batchStart hash.
+        // Two tiers: short breaks (~1.5%) and long complete stops (~0.3%).
         const breakRoll = ((batchStart * 2654435761) >>> 0) / 4294967296
-        if (breakRoll < 0.015) {
-          // 5-25 second pause — long enough to feel human, short enough
-          // not to blow the entire WPM budget
-          const breakMs = 5000 + Math.floor(breakRoll / 0.015 * 20000)
+        if (breakRoll < 0.003) {
+          // Complete stop: 15-60 second pause — simulating getting up, reading
+          // the whole paragraph, or checking phone at length. ~0.3% per batch
+          // means 0-1 stops in a typical 500-word essay (~150 batches).
+          const stopMs = 15000 + Math.floor((breakRoll / 0.003) * 45000)
+          sleepMs += stopMs
+          await prisma.jobEvent.create({
+            data: {
+              jobId,
+              type: "human_break",
+              details: JSON.stringify({ breakMs: stopMs, tier: "complete_stop" }),
+            },
+          })
+        } else if (breakRoll < 0.018) {
+          // Short break: 5-25 second pause — re-reading, thinking, checking phone.
+          // ~1.5% per batch → 1-3 breaks in a 500-word essay.
+          const breakMs = 5000 + Math.floor(((breakRoll - 0.003) / 0.015) * 20000)
           sleepMs += breakMs
           await prisma.jobEvent.create({
             data: {
               jobId,
               type: "human_break",
-              details: JSON.stringify({ breakMs }),
+              details: JSON.stringify({ breakMs, tier: "short_break" }),
             },
           })
         }

@@ -67,6 +67,11 @@ export async function GET(request: Request) {
           durationMinutes: job.durationMinutes,
         })
 
+        // Poll interval: accept a client hint via ?interval=<ms>, clamped to 1-10s.
+        // Default 2s balances responsiveness with DB load.
+        const rawInterval = Number(searchParams.get("interval")) || 2000
+        const pollMs = Math.max(1000, Math.min(10000, rawInterval))
+
         // Poll for updates - only fetch non-sensitive fields
         const interval = setInterval(async () => {
           try {
@@ -109,7 +114,7 @@ export async function GET(request: Request) {
             clearInterval(interval)
             controller.close()
           }
-        }, 1000) // Poll every second
+        }, pollMs)
 
         // Cleanup on close
         request.signal.addEventListener("abort", () => {

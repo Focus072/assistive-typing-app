@@ -248,6 +248,32 @@ export function buildBatchPlan(
     }
   }
 
+  // Session warm-up / cooldown: the first ~2 minutes are slower (finding rhythm)
+  // and the last ~2 minutes taper off (wrapping up). Uses elapsed progress as a
+  // proxy for time because we don't track wall-clock start inside the engine.
+  // Progress-based approximation: warmup = first 8% of chars ≈ first ~2 min of a
+  // 25-min session; cooldown = last 8%.
+  const WARMUP_THRESHOLD = 0.08
+  const COOLDOWN_THRESHOLD = 0.92
+  const MAX_WARMUP_SLOWDOWN = 0.15 // 15% slower at the very start
+  const MAX_COOLDOWN_SLOWDOWN = 0.10 // 10% slower at the very end
+
+  let sessionMultiplier = 1.0
+  if (progress < WARMUP_THRESHOLD) {
+    // Linear ramp from 1.15 at 0% to 1.0 at WARMUP_THRESHOLD
+    sessionMultiplier = 1 + MAX_WARMUP_SLOWDOWN * (1 - progress / WARMUP_THRESHOLD)
+  } else if (progress > COOLDOWN_THRESHOLD) {
+    // Linear ramp from 1.0 at COOLDOWN_THRESHOLD to 1.10 at 100%
+    const cooldownProgress = (progress - COOLDOWN_THRESHOLD) / (1 - COOLDOWN_THRESHOLD)
+    sessionMultiplier = 1 + MAX_COOLDOWN_SLOWDOWN * cooldownProgress
+  }
+
+  // Apply session multiplier to per-char delays (replaces the old 8%-only ramp
+  // in buildDelayPlan — that one is now redundant but harmless as a double layer)
+  const sessionAdjustedDelays = sessionMultiplier !== 1.0
+    ? charDelays.map(d => Math.round(d * sessionMultiplier))
+    : charDelays
+
   // Consume any pending pause from the previous batch's sentence/paragraph ending.
   // This makes the pause appear *before* typing the new sentence, not after the period.
   let adjustedBatchPauseMs = batchPauseMs + (existingState?.pendingPauseMs ?? 0)
@@ -270,11 +296,11 @@ export function buildBatchPlan(
 
   // Total delay = sum per-char + batch pause, but enforce minimum interval
   // Note: buildDelayPlan already enforces minimums, but we recalculate total here
-  const perCharSum = charDelays.reduce((a, b) => a + b, 0)
+  const perCharSum = sessionAdjustedDelays.reduce((a, b) => a + b, 0)
   const totalDelayMs = Math.round(Math.max(MIN_INTERVAL_MS, perCharSum + adjustedBatchPauseMs))
 
   const mistakePlan = planMistake(batch.text, randomFn)
-  const averageDelay = charDelays.length > 0 ? perCharSum / charDelays.length : 0
+  const averageDelay = sessionAdjustedDelays.length > 0 ? perCharSum / sessionAdjustedDelays.length : 0
   const nextTemporalState = updateTemporalState(temporalState, averageDelay)
   const nextWPMState = profile === "typing-test" && wpmState && testWPM !== undefined
     ? updateWPMState(wpmState, totalDelayMs, batch.text.length, testWPM)
@@ -302,7 +328,7 @@ export function buildBatchPlan(
   return {
     batch,
     totalDelayMs,
-    perCharDelays: charDelays,
+    perCharDelays: sessionAdjustedDelays,
     batchPauseMs: adjustedBatchPauseMs,
     mistakePlan,
     engineState,
