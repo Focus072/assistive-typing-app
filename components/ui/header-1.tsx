@@ -91,7 +91,7 @@ export function Header() {
 								</Button>
 							)}
 							{/* Dashboard when active subscription or admin */}
-							{(session.user?.subscriptionStatus === 'active' || session.user?.planTier === 'ADMIN' || session.user?.role === 'ADMIN') && (
+							{(session.user?.subscriptionStatus === 'active' || (session.user?.planTier && session.user.planTier !== 'FREE') || session.user?.role === 'ADMIN') && (
 								<Button variant="outline" asChild>
 									<Link href="/dashboard">Dashboard</Link>
 								</Button>
@@ -177,7 +177,7 @@ export function Header() {
 									<Link href="/admin" onClick={() => setOpen(false)}>Admin</Link>
 								</Button>
 							)}
-							{(session.user?.subscriptionStatus === 'active' || session.user?.planTier === 'ADMIN' || session.user?.role === 'ADMIN') && (
+							{(session.user?.subscriptionStatus === 'active' || (session.user?.planTier && session.user.planTier !== 'FREE') || session.user?.role === 'ADMIN') && (
 								<Button variant="outline" asChild className="w-full">
 									<Link href="/dashboard" onClick={() => setOpen(false)}>
 										Dashboard

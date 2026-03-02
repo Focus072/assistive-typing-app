@@ -10,7 +10,7 @@ export function HeroSection() {
 	const [isLoading, setIsLoading] = useState(false);
 
 	return (
-		<section className="mx-auto w-full max-w-5xl">
+		<section className="mx-auto w-full max-w-5xl px-6 sm:px-8 overflow-hidden">
 			{/* Top Shades */}
 			<div
 				aria-hidden="true"
@@ -120,7 +120,7 @@ export function ProofBar() {
 
 export function FeaturesSection() {
 	return (
-		<section id="features" className="relative space-y-8 py-16 px-4">
+		<section id="features" className="relative space-y-8 py-16 px-6 sm:px-8">
 			<div className="mx-auto max-w-5xl">
 				<div className="grid grid-cols-1 md:grid-cols-3 gap-8">
 					<div className="text-center">
@@ -164,7 +164,7 @@ export function FeaturesSection() {
 
 export function TrustSection() {
 	return (
-		<section id="trust" className="relative space-y-8 py-16 px-4">
+		<section id="trust" className="relative space-y-8 py-16 px-6 sm:px-8">
 			<div className="mx-auto max-w-5xl">
 				<div className="text-center mb-12">
 					<h2 className="text-3xl sm:text-4xl font-semibold mb-3 tracking-tight">
@@ -273,7 +273,7 @@ export function TrustSection() {
 
 export function AboutSection() {
 	return (
-		<section id="about" className="relative space-y-8 py-16 px-4">
+		<section id="about" className="relative space-y-8 py-16 px-6 sm:px-8">
 			<div className="mx-auto max-w-5xl">
 				<div className="text-center mb-12">
 					<h2 className="text-3xl sm:text-4xl font-semibold mb-3 tracking-tight">

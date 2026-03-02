@@ -27,11 +27,13 @@ export async function PATCH(
     const body = await request.json()
     const { planTier } = bodySchema.parse(body)
 
-    const updateData: { planTier: PlanTier; subscriptionStatus?: string } = {
+    const updateData: { planTier: PlanTier; subscriptionStatus?: string | null } = {
       planTier: planTier as PlanTier,
     }
-    if (planTier === "ADMIN") {
+    if (planTier !== "FREE") {
       updateData.subscriptionStatus = "active"
+    } else {
+      updateData.subscriptionStatus = null
     }
 
     const user = await prisma.user.update({
