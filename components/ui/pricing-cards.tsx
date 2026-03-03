@@ -37,7 +37,11 @@ export function PricingCards({ onCheckout, highlightPlan = 'unlimited' }: Pricin
     if (status === 'unauthenticated' || !session) {
       // Direct Google OAuth sign-in, then redirect to Stripe checkout for this tier
       setIsLoading(tier)
-      await signIn('google', { callbackUrl: `/api/stripe/checkout?priceId=${tier}` })
+      const referral = typeof window !== 'undefined' ? (window as any).tolt_referral : undefined
+      const callbackUrl = referral
+        ? `/api/stripe/checkout?priceId=${tier}&referral=${referral}`
+        : `/api/stripe/checkout?priceId=${tier}`
+      await signIn('google', { callbackUrl })
       return
     }
 
@@ -55,7 +59,10 @@ export function PricingCards({ onCheckout, highlightPlan = 'unlimited' }: Pricin
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ priceId: tier }),
+        body: JSON.stringify({
+          priceId: tier,
+          referral: typeof window !== 'undefined' ? (window as any).tolt_referral : undefined,
+        }),
       })
 
       if (!response.ok) {

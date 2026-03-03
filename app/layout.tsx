@@ -85,6 +85,7 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <script async src="https://files.tlt-cdn.com/tlt.js" data-tolt="pk_TjpjBU9KzWbWJE2UkKHXMotJ"></script>
       </head>
       <body className={`${inter.className} overflow-x-hidden`}>
         <ErrorBoundary>

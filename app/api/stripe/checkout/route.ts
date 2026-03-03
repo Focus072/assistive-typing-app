@@ -17,7 +17,8 @@ const checkoutSchema = z.object({
 async function createCheckoutSession(
   tier: 'basic' | 'pro' | 'unlimited',
   session: Session,
-  requestOrigin: string
+  requestOrigin: string,
+  referral?: string | null,
 ) {
   // Get the Stripe Price ID for the selected tier
   const priceId = STRIPE_PRICE_IDS[tier]
@@ -64,6 +65,7 @@ async function createCheckoutSession(
       userId: session.user.id,
       email: session.user.email ?? null,
       tier: tier,
+      tolt_referral: referral ?? null,
     },
   })
 
@@ -105,9 +107,10 @@ export async function GET(request: Request) {
 
     // 4. Create checkout session (use request origin so Stripe redirect URLs are always valid)
     const requestOrigin = new URL(request.url).origin
+    const referral = url.searchParams.get('referral')
     try {
-      const checkoutSession = await createCheckoutSession(validated.priceId, session, requestOrigin)
-      
+      const checkoutSession = await createCheckoutSession(validated.priceId, session, requestOrigin, referral)
+
       // 5. Redirect directly to Stripe Checkout
       if (checkoutSession.url) {
         return NextResponse.redirect(checkoutSession.url)
@@ -191,8 +194,9 @@ export async function POST(request: Request) {
 
     // 3. Create checkout session (use request origin so Stripe redirect URLs are always valid)
     const requestOrigin = new URL(request.url).origin
+    const referral = body.referral as string | undefined
     try {
-      const checkoutSession = await createCheckoutSession(validated.priceId, session, requestOrigin)
+      const checkoutSession = await createCheckoutSession(validated.priceId, session, requestOrigin, referral)
 
       // 4. Return checkout URL
       return NextResponse.json({ 
