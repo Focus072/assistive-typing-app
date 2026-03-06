@@ -29,7 +29,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     select: { subscriptionStatus: true, planTier: true },
   })
 
-  const hasAccess = user?.subscriptionStatus === "active" || (user?.planTier && user.planTier !== "FREE") || isAdmin
+  const hasAccess = user?.subscriptionStatus === "active" || user?.planTier === "ADMIN" || isAdmin
 
   if (!hasAccess) {
     if (checkoutSuccess) {

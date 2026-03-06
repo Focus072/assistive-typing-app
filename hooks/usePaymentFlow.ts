@@ -56,7 +56,7 @@ export function usePaymentFlow({ toast, onSuccess }: UsePaymentFlowOptions) {
   useEffect(() => {
     if (checkoutParam === "success" && status === "authenticated") {
       const u = session?.user
-      const hasAccess = u?.subscriptionStatus === "active" || (u?.planTier && u.planTier !== "FREE") || u?.role === "ADMIN"
+      const hasAccess = u?.subscriptionStatus === "active" || u?.planTier === "ADMIN" || u?.role === "ADMIN"
       if (hasAccess) {
         updateSession().then(() => {
           if (!hasShownPaymentSuccessToastRef.current) {
@@ -97,7 +97,7 @@ export function usePaymentFlow({ toast, onSuccess }: UsePaymentFlowOptions) {
           setTimeout(() => {
             if (userContinuedRef.current) return
             const u = session?.user
-            const hasAccess = u?.subscriptionStatus === "active" || (u?.planTier && u.planTier !== "FREE") || u?.role === "ADMIN"
+            const hasAccess = u?.subscriptionStatus === "active" || u?.planTier === "ADMIN" || u?.role === "ADMIN"
             if (hasAccess) {
               setIsProcessingPayment(false)
               setGracePeriodStart(null)
@@ -145,7 +145,7 @@ export function usePaymentFlow({ toast, onSuccess }: UsePaymentFlowOptions) {
   useEffect(() => {
     if (isProcessingPayment && session) {
       const u = session.user
-      const hasAccess = u?.subscriptionStatus === "active" || (u?.planTier && u.planTier !== "FREE") || u?.role === "ADMIN"
+      const hasAccess = u?.subscriptionStatus === "active" || u?.planTier === "ADMIN" || u?.role === "ADMIN"
       if (hasAccess) {
         if (pollingIntervalRef.current) {
           clearInterval(pollingIntervalRef.current)
