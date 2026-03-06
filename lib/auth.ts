@@ -216,27 +216,46 @@ export const authOptions: NextAuthOptions = {
   },
   events: {
     async signIn({ account, user }) {
-      if (account?.provider === "google" && account?.access_token && account?.refresh_token && user?.id) {
+      if (account?.provider === "google" && account?.access_token && user?.id) {
         try {
           const expiresAt = account.expires_at
             ? new Date(account.expires_at * 1000)
             : new Date(Date.now() + 3600 * 1000)
 
-          // Save token - if this fails, log but don't throw
-          await prisma.googleToken.upsert({
-            where: { userId: user.id },
-            create: {
-              userId: user.id,
-              accessToken: account.access_token,
-              refreshToken: account.refresh_token,
-              expiresAt,
-            },
-            update: {
-              accessToken: account.access_token,
-              refreshToken: account.refresh_token,
-              expiresAt,
-            },
-          })
+          if (account.refresh_token) {
+            // Full token save — we have both access and refresh tokens
+            await prisma.googleToken.upsert({
+              where: { userId: user.id },
+              create: {
+                userId: user.id,
+                accessToken: account.access_token,
+                refreshToken: account.refresh_token,
+                expiresAt,
+              },
+              update: {
+                accessToken: account.access_token,
+                refreshToken: account.refresh_token,
+                expiresAt,
+              },
+            })
+          } else {
+            // No refresh token — update access token only, preserve existing refresh token
+            const existing = await prisma.googleToken.findUnique({
+              where: { userId: user.id },
+            })
+            if (existing) {
+              await prisma.googleToken.update({
+                where: { userId: user.id },
+                data: {
+                  accessToken: account.access_token,
+                  expiresAt,
+                },
+              })
+            } else {
+              // No existing token and no refresh token — force re-consent
+              logger.warn("[NextAuth] No refresh token received and no existing token found. User may need to re-authorize.")
+            }
+          }
         } catch (error) {
           logger.error("[NextAuth] Error saving Google token in events (non-blocking):", error)
           // Don't throw - this is non-critical and won't affect OAuth flow
