@@ -169,6 +169,60 @@ function getHand(ch: string): "left" | "right" | null {
   return null // space, newline, etc.
 }
 
+/**
+ * Adjust delays for consecutive uppercase runs to simulate Shift-hold or Caps Lock.
+ *
+ * Without this, each uppercase char gets an independent 3-12ms hesitation from the
+ * profile builders. In reality, a typist either:
+ *   - Holds Shift: first char has a larger delay (pressing Shift), subsequent chars
+ *     in the run are *faster* than normal (Shift is already held).
+ *   - Toggles Caps Lock: initial toggle delay, then normal speed, then a small
+ *     toggle-off delay at the end.
+ *
+ * For runs of 2+ consecutive uppercase letters, we add a "Shift-down" delay to the
+ * first char and give subsequent chars a small speed bonus (removing per-char hesitation).
+ * At the end of the run we add a small "release" delay.
+ */
+function applyConsecutiveCapsDelay(
+  charDelays: number[],
+  textSlice: string,
+  randomFn: () => number
+): number[] {
+  const result = [...charDelays]
+  let i = 0
+
+  while (i < textSlice.length) {
+    // Find start of an uppercase run
+    if (/[A-Z]/.test(textSlice[i])) {
+      let runEnd = i + 1
+      while (runEnd < textSlice.length && /[A-Z]/.test(textSlice[runEnd])) {
+        runEnd++
+      }
+      const runLength = runEnd - i
+
+      if (runLength >= 2) {
+        // First char: "Shift-down" or "Caps Lock toggle" delay (15-35ms)
+        result[i] = result[i] + 15 + Math.floor(randomFn() * 20)
+
+        // Middle chars: remove per-char uppercase hesitation — typing flows freely
+        // with Shift held or Caps Lock on. Give a small speed bonus (5-10ms faster).
+        for (let j = i + 1; j < runEnd; j++) {
+          result[j] = Math.max(50, result[j] - 5 - Math.floor(randomFn() * 5))
+        }
+
+        // Last char in run: add a small "Shift-release" or "Caps Lock off" delay (8-20ms)
+        result[runEnd - 1] = result[runEnd - 1] + 8 + Math.floor(randomFn() * 12)
+      }
+
+      i = runEnd
+    } else {
+      i++
+    }
+  }
+
+  return result
+}
+
 function applyHandSwitchDelays(
   charDelays: number[],
   textSlice: string,
@@ -671,6 +725,9 @@ export function buildDelayPlan(
 
   // Note: session warm-up/cooldown is now handled in buildBatchPlan (typing-engine.ts)
   // which has access to durationMinutes for time-aware pacing.
+
+  // Apply consecutive-caps delay: realistic Shift-hold / Caps Lock pattern for uppercase runs.
+  adjustedCharDelays = applyConsecutiveCapsDelay(adjustedCharDelays, textSlice, randomFn)
 
   // Apply character-frequency variation: common letters slightly faster, rare ones slower.
   adjustedCharDelays = applyCharFrequencyVariation(adjustedCharDelays, textSlice, randomFn)

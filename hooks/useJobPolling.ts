@@ -58,8 +58,8 @@ export function useJobPolling({ onCompleted, toast }: UseJobPollingOptions) {
 
     const eventSource = new EventSource(`/api/progress/stream?jobId=${id}&interval=2000`)
     progressStreamRef.current = eventSource
-    const maxReconnectAttempts = 10
-    const reconnectDelay = 2000
+    const maxReconnectAttempts = 50
+    const baseDelay = 2000
 
     eventSource.onmessage = (event) => {
       try {
@@ -85,7 +85,16 @@ export function useJobPolling({ onCompleted, toast }: UseJobPollingOptions) {
 
       if (currentJobIdRef.current && reconnectAttemptsRef.current < maxReconnectAttempts) {
         reconnectAttemptsRef.current++
-        const delay = reconnectDelay * Math.min(reconnectAttemptsRef.current, 5)
+        // Exponential backoff with jitter: min(30s, 2s * 2^attempt) + random 0-1s
+        const expDelay = Math.min(30000, baseDelay * Math.pow(2, reconnectAttemptsRef.current - 1))
+        const jitter = Math.floor(Math.random() * 1000)
+        const delay = expDelay + jitter
+
+        // After 10 consecutive failures, show a non-blocking info toast
+        if (reconnectAttemptsRef.current === 10) {
+          toast.addToast("Reconnecting to job progress...", "info")
+        }
+
         reconnectTimeoutRef.current = setTimeout(() => {
           if (currentJobIdRef.current === id) {
             startProgressStream(id)

@@ -119,6 +119,27 @@ export function planMistake(
   const mistakeChance = 1 - Math.pow(1 - MISTAKE_CHANCE_PER_WORD, wordCount)
   if (randomFn() > mistakeChance) return { hasMistake: false, deleteCount: 0, pauseAfterMs: 0 }
 
+  // Hesitation after catching the mistake: 100-400ms (the "oh crap" moment)
+  const pauseAfterMs = 100 + Math.floor(randomFn() * 300)
+
+  // Decide typo type: ~40% transposition (swapping two adjacent chars, e.g. "teh" for "the"),
+  // ~60% adjacent-key substitution (hitting a neighboring key)
+  const typoTypeRoll = randomFn()
+
+  if (typoTypeRoll < 0.40) {
+    // --- Transposition typo ---
+    // Find the last pair of adjacent alphabetic characters to swap
+    for (let i = batchText.length - 1; i >= 1; i--) {
+      if (/[a-zA-Z]/.test(batchText[i]) && /[a-zA-Z]/.test(batchText[i - 1])) {
+        // Swap the pair: "th" becomes "ht"
+        const wrongChars = batchText[i] + batchText[i - 1]
+        return { hasMistake: true, deleteCount: 2, wrongChars, pauseAfterMs }
+      }
+    }
+    // No adjacent alpha pair found — fall through to adjacent-key substitution
+  }
+
+  // --- Adjacent-key substitution typo ---
   // Determine how many wrong characters to type before noticing (1-3).
   // Most mistakes are caught after 1 char; occasionally 2-3 slip through.
   const multiRoll = randomFn()
@@ -141,9 +162,6 @@ export function planMistake(
       }
     }
   }
-
-  // Hesitation after catching the mistake: 100-400ms (the "oh crap" moment)
-  const pauseAfterMs = 100 + Math.floor(randomFn() * 300)
 
   if (wrongChars.length > 0) {
     return { hasMistake: true, deleteCount: wrongChars.length, wrongChars, pauseAfterMs }
@@ -177,7 +195,8 @@ export function buildBatchPlan(
   const wpmState = profile === "typing-test" ? (existingState?.wpmState ?? createWPMState()) : undefined
   const randomFn = () => nextRandom(randomState)
 
-  const batchSize = chooseBatchSize(existingState?.lastBatchSize, randomFn)
+  const upcomingText = fullText.slice(currentIndex, currentIndex + 8)
+  const batchSize = chooseBatchSize(existingState?.lastBatchSize, randomFn, upcomingText)
   const batch = createTypingBatch(fullText, currentIndex, batchSize)
   if (!batch) {
     const emptyEngineState: EngineState = {
