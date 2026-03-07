@@ -102,6 +102,7 @@ model Job {
   errorCode            String? // Specific error codes (GOOGLE_AUTH_REVOKED, etc.)
   scheduledAt          DateTime? // When the job is scheduled to start (null = immediate)
   engineState          String?    @db.Text // JSON-serialized EngineState (PRNG + profile phase state) persisted between batches
+  dryRun               Boolean    @default(false) // Dry-run test jobs skip Google Docs API calls
   user                 User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   events               JobEvent[]
   documentAsCurrentJob Document?  @relation("DocumentCurrentJob")
@@ -170,6 +171,17 @@ model ChatMessage {
   session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([sessionId, order])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  adminEmail String
+  action     String
+  details    String?  @db.Text
+  createdAt  DateTime @default(now())
+
+  @@index([adminEmail])
+  @@index([createdAt])
 }
 
 model Announcement {

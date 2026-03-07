@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { isAdminEmail } from "@/lib/admin"
 import { logger } from "@/lib/logger"
+import { logAudit } from "@/lib/audit"
 import { PlanTier } from "@prisma/client"
 import { z } from "zod"
 
@@ -49,6 +50,7 @@ export async function PATCH(
       },
     })
     logger.log(`[ADMIN] Admin ${session.user.email} changed User ${userId} to tier ${planTier}`)
+    logAudit(session.user.email, "tier_change", { userId, planTier, previousTier: user.planTier })
     return NextResponse.json(user)
   } catch (error: unknown) {
     if (error instanceof z.ZodError) {

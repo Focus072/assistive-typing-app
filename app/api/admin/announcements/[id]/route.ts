@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth"
 import { isAdminEmail } from "@/lib/admin"
 import { prisma } from "@/lib/prisma"
 import { logger } from "@/lib/logger"
+import { logAudit } from "@/lib/audit"
 import { patchAnnouncementSchema } from "@/lib/schemas/announcements"
 
 async function requireAdmin() {
@@ -32,6 +33,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       data.publishedAt = parsed.data.published ? new Date() : null
     }
     const updated = await prisma.announcement.update({ where: { id }, data })
+    const adminSession = await requireAdmin()
+    logAudit(adminSession!.user!.email!, "announcement_update", { id, changes: parsed.data })
     revalidatePath("/updates")
     return NextResponse.json(updated)
   } catch (error: unknown) {
@@ -47,6 +50,8 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const { id } = await params
   try {
     await prisma.announcement.delete({ where: { id } })
+    const adminSession = await requireAdmin()
+    logAudit(adminSession!.user!.email!, "announcement_delete", { id })
     revalidatePath("/updates")
     return NextResponse.json({ success: true })
   } catch (error: unknown) {

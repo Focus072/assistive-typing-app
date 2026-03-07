@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth"
 import { isAdminEmail } from "@/lib/admin"
 import { prisma } from "@/lib/prisma"
 import { logger } from "@/lib/logger"
+import { logAudit } from "@/lib/audit"
 import { createAnnouncementSchema } from "@/lib/schemas/announcements"
 
 async function requireAdmin() {
@@ -44,6 +45,8 @@ export async function POST(req: NextRequest) {
       )
     }
     const announcement = await prisma.announcement.create({ data: parsed.data })
+    const adminSession = await requireAdmin()
+    logAudit(adminSession!.user!.email!, "announcement_create", { id: announcement.id, title: parsed.data.title })
     revalidatePath("/updates")
     return NextResponse.json(announcement, { status: 201 })
   } catch (error: unknown) {

@@ -251,7 +251,51 @@ export const typingBatch = inngest.createFunction(
           continue
         }
 
-        // Insert the batch into Google Docs
+        // --- Dry-run mode: skip Google Docs API calls, still run full engine ---
+        if (fresh.dryRun) {
+          const nextIndex = plan.batch.endIndex
+
+          await prisma.job.update({
+            where: { id: jobId },
+            data: {
+              currentIndex: nextIndex,
+              lastBatchHash: plan.batch.hash,
+              throttleDelayMs: MIN_INTERVAL_MS,
+              engineState: JSON.stringify(plan.engineState),
+            },
+          })
+
+          await prisma.jobEvent.create({
+            data: {
+              jobId,
+              type: "batch_success",
+              details: JSON.stringify({
+                insertedChars: plan.batch.text.length,
+                currentIndex: plan.batch.endIndex,
+                delayMs: plan.totalDelayMs,
+                batchText: plan.batch.text,
+                batchSize: plan.batch.text.length,
+                mistakePlan: plan.mistakePlan,
+                perCharDelays: plan.perCharDelays,
+                batchPauseMs: plan.batchPauseMs,
+              }),
+            },
+          })
+
+          // Inline inter-batch sleep for dry-run (same timing as real jobs)
+          const batchMs = Date.now() - batchStart
+          const sleepMs = Math.max(0, plan.totalDelayMs - batchMs)
+          const remaining = STEP_BUDGET_MS - (Date.now() - loopStart)
+          if (sleepMs >= remaining) {
+            return { done: false }
+          }
+          if (sleepMs > 0) {
+            await new Promise<void>(r => setTimeout(r, sleepMs))
+          }
+          continue
+        }
+
+        // --- Normal mode: Insert the batch into Google Docs ---
         const insertRes = await insertBatch(
           fresh.userId,
           fresh.documentId,

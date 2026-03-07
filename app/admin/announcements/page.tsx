@@ -111,27 +111,24 @@ export default function AdminAnnouncementsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] px-6 py-12">
-      <div className="max-w-3xl mx-auto space-y-8">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-4"
-        >
-          <Link
-            href="/admin"
-            className="flex items-center gap-2 text-zinc-400 hover:text-white text-sm transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Admin
-          </Link>
-          <span className="text-zinc-700">/</span>
-          <div className="flex items-center gap-2">
+    <div className="min-h-screen bg-zinc-950 text-white">
+      {/* Sticky header */}
+      <div className="sticky top-0 z-50 bg-zinc-950/80 backdrop-blur-md border-b border-white/10">
+        <div className="max-w-3xl mx-auto pl-14 md:pl-4 pr-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-3">
+            <Link
+              href="/admin"
+              className="flex items-center justify-center min-h-[44px] min-w-[44px] text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </Link>
             <Megaphone className="w-5 h-5 text-violet-400" />
-            <h1 className="text-xl font-semibold text-white">Announcements</h1>
+            <h1 className="text-lg sm:text-xl font-semibold text-white">Announcements</h1>
           </div>
-        </motion.div>
+        </div>
+      </div>
+
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
 
         {/* Error */}
         {error && (
@@ -266,7 +263,7 @@ export default function AdminAnnouncementsPage() {
                     <button
                       onClick={() => handleTogglePublish(a)}
                       title={a.published ? "Unpublish" : "Publish"}
-                      className={`p-2 rounded-lg border transition-all ${
+                      className={`flex items-center justify-center min-h-[44px] min-w-[44px] p-2 rounded-lg border transition-all ${
                         a.published
                           ? "bg-green-500/10 border-green-500/20 text-green-400 hover:bg-green-500/20"
                           : "bg-white/5 border-white/10 text-zinc-500 hover:text-white hover:bg-white/10"
@@ -277,7 +274,7 @@ export default function AdminAnnouncementsPage() {
                     <button
                       onClick={() => handleDelete(a.id)}
                       title="Delete"
-                      className="p-2 rounded-lg bg-white/5 border border-white/10 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/20 transition-all"
+                      className="flex items-center justify-center min-h-[44px] min-w-[44px] p-2 rounded-lg bg-white/5 border border-white/10 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/20 transition-all"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
