@@ -1354,10 +1354,10 @@ function DashboardContent() {
                 : "hidden"
             }`}
           >
-            <div className="w-full max-w-full px-4 md:px-6 py-3 md:py-4 flex flex-col gap-2 md:gap-3 md:flex-row md:items-center md:justify-between md:container md:mx-auto overflow-x-hidden">
+            <div className="w-full max-w-full px-4 md:px-6 py-3 md:py-4 flex flex-col gap-2 lg:gap-3 lg:flex-row lg:items-center lg:justify-between lg:container lg:mx-auto overflow-x-hidden">
               {/* Status text - hidden on mobile when ready, shown on desktop */}
               <div
-                className={`text-xs hidden md:block ${
+                className={`text-xs hidden lg:block ${
                   isDark ? "text-white/50" : "text-black/50"
                 }`}
               >
@@ -1380,7 +1380,7 @@ function DashboardContent() {
                 )}
               </div>
               {/* PlaybackControls only on mobile - desktop has it above live preview */}
-              <div className="md:hidden">
+              <div className="lg:hidden">
                 <PlaybackControls
                   status={jobStatus}
                   onStart={handleStart}
