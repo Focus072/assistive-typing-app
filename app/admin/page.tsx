@@ -382,15 +382,59 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-zinc-950/90 backdrop-blur-md border-b border-white/10">
-        <div className="max-w-[1400px] mx-auto pl-14 md:pl-4 pr-4 sm:px-6 lg:px-8 py-3">
-          <div className="flex items-center justify-between gap-2 sm:gap-4">
-            <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-3">
+          {/* Mobile header: two rows for breathing room */}
+          <div className="flex md:hidden flex-col gap-2">
+            {/* Row 1: hamburger spacer + title + action icons */}
+            <div className="flex items-center gap-2">
+              {/* Spacer matching the fixed hamburger button width */}
+              <div className="w-10 shrink-0" />
+              <div className="min-w-0 flex-1">
+                <h1 className="text-lg font-bold text-white truncate">Dashboard</h1>
+                <p className="text-[11px] text-zinc-500 truncate">{session?.user?.email}</p>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  onClick={() => { setHasNotifications(false); router.push("/admin/jobs") }}
+                  className="relative flex items-center justify-center w-10 h-10 text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                >
+                  <Bell className="w-4 h-4" />
+                  {hasNotifications && (
+                    <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-zinc-950" />
+                  )}
+                </button>
+                <button
+                  onClick={refreshAll}
+                  disabled={refreshing}
+                  className="flex items-center justify-center w-10 h-10 text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors disabled:opacity-50"
+                  title="Refresh"
+                >
+                  <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+                </button>
+              </div>
+            </div>
+            {/* Row 2: full-width search bar */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search jobs, users..."
+                className="w-full h-10 pl-10 pr-3 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50"
+              />
+            </div>
+          </div>
+
+          {/* Desktop header: single row */}
+          <div className="hidden md:flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4 min-w-0">
               <div className="min-w-0">
-                <h1 className="text-lg sm:text-xl font-bold text-white">Dashboard</h1>
+                <h1 className="text-xl font-bold text-white">Dashboard</h1>
                 <p className="text-xs text-zinc-500 truncate">{session?.user?.email}</p>
               </div>
               {runningJobs.length > 0 && (
-                <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20">
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20">
                   <span className="relative flex h-2 w-2">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
@@ -399,9 +443,9 @@ export default function AdminDashboard() {
                 </div>
               )}
             </div>
-            <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+            <div className="flex items-center gap-2 shrink-0">
               {/* Search bar with focus expansion */}
-              <div className={`relative transition-all duration-300 ${searchFocused ? "w-44 sm:w-64" : "w-10"}`}>
+              <div className={`relative transition-all duration-300 ${searchFocused ? "w-64" : "w-10"}`}>
                 <button
                   onClick={() => { setSearchFocused(true); setTimeout(() => searchRef.current?.focus(), 50) }}
                   className={`absolute left-0 top-0 flex items-center justify-center w-10 h-10 text-zinc-400 hover:text-white rounded-lg transition-colors ${searchFocused ? "pointer-events-none" : ""}`}
@@ -421,7 +465,6 @@ export default function AdminDashboard() {
                 )}
               </div>
 
-              {/* Notification bell */}
               <button
                 onClick={() => { setHasNotifications(false); router.push("/admin/jobs") }}
                 className="relative flex items-center justify-center w-10 h-10 text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
@@ -442,7 +485,7 @@ export default function AdminDashboard() {
               </button>
               <Link
                 href="/dashboard"
-                className="hidden sm:flex items-center gap-2 h-10 px-3 text-violet-400 hover:text-violet-300 hover:bg-white/5 rounded-lg transition-colors text-sm font-medium"
+                className="flex items-center gap-2 h-10 px-3 text-violet-400 hover:text-violet-300 hover:bg-white/5 rounded-lg transition-colors text-sm font-medium"
               >
                 <ArrowLeft className="w-4 h-4 shrink-0" />
                 <span>App</span>
