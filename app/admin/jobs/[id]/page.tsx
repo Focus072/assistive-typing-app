@@ -6,6 +6,7 @@ import { useRouter, useParams } from "next/navigation"
 import { motion } from "framer-motion"
 import { ArrowLeft, RefreshCw, Clock, User, FileText, Zap } from "lucide-react"
 import Link from "next/link"
+import { MobileMenuButton } from "../../_components/admin-sidebar"
 
 interface JobEvent {
   id: string
@@ -105,9 +106,10 @@ export default function JobDetailPage() {
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
       <div className="sticky top-0 z-50 bg-zinc-950/80 backdrop-blur-md border-b border-white/10">
-        <div className="max-w-7xl mx-auto pl-14 md:pl-4 pr-4 sm:px-6 lg:px-8 py-3 sm:py-4 flex items-center justify-between gap-2">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-wrap">
-            <Link href="/admin/jobs" className="flex items-center justify-center min-h-[44px] min-w-[44px] text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors shrink-0">
+            <MobileMenuButton />
+            <Link href="/admin/jobs" className="hidden md:flex items-center justify-center min-h-[44px] min-w-[44px] text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors shrink-0">
               <ArrowLeft className="w-5 h-5" />
             </Link>
             <h1 className="text-lg sm:text-xl font-bold">Job Detail</h1>

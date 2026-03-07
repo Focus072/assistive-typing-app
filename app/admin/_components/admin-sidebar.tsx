@@ -1,12 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
   LayoutDashboard, UserCog, ClipboardList, FlaskConical,
   BarChart3, Megaphone, ScrollText, Activity, ChevronLeft,
-  ChevronRight, Menu, X,
+  ChevronRight, Menu, X, Home,
 } from "lucide-react"
 
 const NAV_ITEMS = [
@@ -20,6 +20,22 @@ const NAV_ITEMS = [
   { href: "/admin/diagnostics", label: "Diagnostics", Icon: Activity, color: "text-rose-400" },
 ] as const
 
+// Custom event name for opening the sidebar from any page header
+export const SIDEBAR_OPEN_EVENT = "admin-sidebar-open"
+
+/** Hamburger button to embed in each page's sticky header (mobile only) */
+export function MobileMenuButton() {
+  return (
+    <button
+      onClick={() => window.dispatchEvent(new Event(SIDEBAR_OPEN_EVENT))}
+      className="md:hidden flex items-center justify-center w-10 h-10 shrink-0 rounded-lg bg-white/5 border border-white/10 text-zinc-400 hover:text-white transition-colors"
+      aria-label="Open menu"
+    >
+      <Menu className="w-5 h-5" />
+    </button>
+  )
+}
+
 export function AdminSidebar() {
   const [collapsed, setCollapsed] = useState(true)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -29,6 +45,16 @@ export function AdminSidebar() {
   useEffect(() => {
     setMobileOpen(false)
   }, [pathname])
+
+  // Listen for open event from page headers
+  const handleOpenEvent = useCallback(() => {
+    setMobileOpen(true)
+  }, [])
+
+  useEffect(() => {
+    window.addEventListener(SIDEBAR_OPEN_EVENT, handleOpenEvent)
+    return () => window.removeEventListener(SIDEBAR_OPEN_EVENT, handleOpenEvent)
+  }, [handleOpenEvent])
 
   // Prevent body scroll when mobile menu is open
   useEffect(() => {
@@ -92,6 +118,19 @@ export function AdminSidebar() {
         })}
       </nav>
 
+      {/* Back to App link (mobile only) */}
+      {isMobile && (
+        <div className="px-2 pb-2">
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5 transition-colors min-h-[44px]"
+          >
+            <Home className="w-5 h-5 shrink-0 text-violet-400" />
+            <span className="text-sm font-medium">Back to App</span>
+          </Link>
+        </div>
+      )}
+
       {/* Collapse toggle (desktop only) */}
       {!isMobile && (
         <button
@@ -106,14 +145,7 @@ export function AdminSidebar() {
 
   return (
     <>
-      {/* Mobile hamburger button — shown in top-left on small screens */}
-      <button
-        onClick={() => setMobileOpen(true)}
-        className="fixed top-3 left-3 z-[61] md:hidden flex items-center justify-center w-10 h-10 rounded-lg bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white transition-colors"
-        aria-label="Open menu"
-      >
-        <Menu className="w-5 h-5" />
-      </button>
+      {/* No fixed hamburger button — each page's sticky header includes its own */}
 
       {/* Mobile overlay */}
       {mobileOpen && (

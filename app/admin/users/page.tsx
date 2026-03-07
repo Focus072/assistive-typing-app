@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, Download, Users, Loader2 } from "lucide-react"
+import { MobileMenuButton } from "../_components/admin-sidebar"
 
 interface User {
   id: string
@@ -167,17 +168,20 @@ export default function AdminUsersPage() {
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
       <header className="sticky top-0 z-50 bg-zinc-950/90 backdrop-blur-md border-b border-white/10">
-        <div className="max-w-7xl mx-auto pl-14 md:pl-4 pr-4 sm:px-6 lg:px-8 py-3 sm:py-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
           <div className="flex items-center justify-between gap-2 sm:gap-4">
-            <div className="min-w-0">
-              <h1 className="text-lg sm:text-2xl font-bold text-white truncate">
-                {acceptedOnly ? "Accepted Members" : "User Management"}
-              </h1>
-              <p className="text-xs sm:text-sm text-zinc-400 mt-0.5 truncate">
-                {acceptedOnly
-                  ? `${pagination.total.toLocaleString()} users have accepted`
-                  : `${pagination.total.toLocaleString()} total · Override plan tiers manually`}
-              </p>
+            <div className="flex items-center gap-2 min-w-0">
+              <MobileMenuButton />
+              <div className="min-w-0">
+                <h1 className="text-lg sm:text-2xl font-bold text-white truncate">
+                  {acceptedOnly ? "Accepted Members" : "User Management"}
+                </h1>
+                <p className="text-xs sm:text-sm text-zinc-400 mt-0.5 truncate">
+                  {acceptedOnly
+                    ? `${pagination.total.toLocaleString()} users have accepted`
+                    : `${pagination.total.toLocaleString()} total · Override plan tiers manually`}
+                </p>
+              </div>
             </div>
             <div className="flex items-center gap-1 sm:gap-2 shrink-0">
               <button

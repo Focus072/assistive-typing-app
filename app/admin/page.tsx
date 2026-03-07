@@ -6,10 +6,11 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { motion } from "framer-motion"
 import {
-  RefreshCw, ArrowLeft, Search, Bell,
+  RefreshCw, ArrowLeft, Search, Bell, Home,
   ChevronDown, Settings, TrendingUp, TrendingDown, Users, Zap,
   CheckCircle2,
 } from "lucide-react"
+import { MobileMenuButton } from "./_components/admin-sidebar"
 import {
   Chart as ChartJS,
   CategoryScale, LinearScale, PointElement, LineElement,
@@ -385,15 +386,18 @@ export default function AdminDashboard() {
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-3">
           {/* Mobile header: two rows for breathing room */}
           <div className="flex md:hidden flex-col gap-2">
-            {/* Row 1: hamburger spacer + title + action icons */}
+            {/* Row 1: hamburger + title + action icons */}
             <div className="flex items-center gap-2">
-              {/* Spacer matching the fixed hamburger button width */}
-              <div className="w-10 shrink-0" />
-              <div className="min-w-0 flex-1">
-                <h1 className="text-lg font-bold text-white truncate">Dashboard</h1>
-                <p className="text-[11px] text-zinc-500 truncate">{session?.user?.email}</p>
-              </div>
+              <MobileMenuButton />
+              <h1 className="text-lg font-bold text-white truncate flex-1">Dashboard</h1>
               <div className="flex items-center gap-1 shrink-0">
+                <Link
+                  href="/dashboard"
+                  className="flex items-center justify-center w-10 h-10 text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                  title="Back to App"
+                >
+                  <Home className="w-4 h-4" />
+                </Link>
                 <button
                   onClick={() => { setHasNotifications(false); router.push("/admin/jobs") }}
                   className="relative flex items-center justify-center w-10 h-10 text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"

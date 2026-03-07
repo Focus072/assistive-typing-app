@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import { ArrowLeft, Shield, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react"
 import Link from "next/link"
+import { MobileMenuButton } from "../_components/admin-sidebar"
 
 interface AuditEntry {
   id: string
@@ -68,9 +69,10 @@ export default function AuditLogPage() {
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
       <div className="sticky top-0 z-50 bg-zinc-950/80 backdrop-blur-md border-b border-white/10">
-        <div className="max-w-7xl mx-auto pl-14 md:pl-4 pr-4 sm:px-6 lg:px-8 py-3 sm:py-4 flex items-center justify-between gap-2">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4 flex items-center justify-between gap-2">
           <div className="flex items-center gap-3">
-            <Link href="/admin" className="flex items-center justify-center min-h-[44px] min-w-[44px] text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors">
+            <MobileMenuButton />
+            <Link href="/admin" className="hidden md:flex items-center justify-center min-h-[44px] min-w-[44px] text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors">
               <ArrowLeft className="w-5 h-5" />
             </Link>
             <Shield className="w-5 h-5 text-emerald-400" />

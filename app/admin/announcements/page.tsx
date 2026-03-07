@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react"
 import { motion } from "framer-motion"
 import { Megaphone, Plus, Trash2, Eye, EyeOff, ArrowLeft, Loader2 } from "lucide-react"
 import Link from "next/link"
+import { MobileMenuButton } from "../_components/admin-sidebar"
 
 interface Announcement {
   id: string
@@ -114,11 +115,12 @@ export default function AdminAnnouncementsPage() {
     <div className="min-h-screen bg-zinc-950 text-white">
       {/* Sticky header */}
       <div className="sticky top-0 z-50 bg-zinc-950/80 backdrop-blur-md border-b border-white/10">
-        <div className="max-w-3xl mx-auto pl-14 md:pl-4 pr-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-2">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-2">
           <div className="flex items-center gap-3">
+            <MobileMenuButton />
             <Link
               href="/admin"
-              className="flex items-center justify-center min-h-[44px] min-w-[44px] text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+              className="hidden md:flex items-center justify-center min-h-[44px] min-w-[44px] text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
             </Link>
